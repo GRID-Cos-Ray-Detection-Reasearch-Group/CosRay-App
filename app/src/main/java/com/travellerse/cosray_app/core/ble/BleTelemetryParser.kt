@@ -13,6 +13,7 @@ import com.travellerse.cosray_app.domain.model.TelemetrySample
 import java.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 
 object BleTelemetryParser {
@@ -26,7 +27,7 @@ object BleTelemetryParser {
         if (raw.isEmpty()) return null
         val payload = raw.decodeToString().trim()
         if (payload.isEmpty()) return null
-        return runCatching { json.decodeFromString(BleTelemetryDto.serializer(), payload) }
+        return runCatching { json.decodeFromString<BleTelemetryDto>(payload) }
                 .mapCatching { dto -> dto.toDomain(device) }
                 .getOrNull()
     }
