@@ -1,0 +1,65 @@
+name: Sync to GitLab
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: sync-gitlab-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Configure Git identity
+        env:
+          GITLAB_USERNAME: ${{ secrets.GITLAB_USERNAME }}
+          GITLAB_EMAIL: ${{ secrets.GITLAB_EMAIL }}
+        run: |
+          if [ -z "${GITLAB_USERNAME}" ] || [ -z "${GITLAB_EMAIL}" ]; then
+            echo "GitLab identity secrets not configured. Skipping identity setup."
+            exit 1
+          fi
+
+          git config user.name "${GITLAB_USERNAME}"
+          git config user.email "${GITLAB_EMAIL}"
+      - name: Push to GitLab
+        shell: bash
+        env:
+          SYNC_BRANCH: main
+          GITLAB_URL: ${{ secrets.GITLAB_URL }}
+          GITLAB_USERNAME: ${{ secrets.GITLAB_USERNAME }}
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${GITLAB_URL}" ] || [ -z "${GITLAB_USERNAME}" ] || [ -z "${GITLAB_TOKEN}" ]; then
+             echo "ERROR: GitLab sync secrets (GITLAB_URL, GITLAB_USERNAME, GITLAB_TOKEN) are not fully configured. Failing job to alert maintainers."
+             exit 1
+          fi
+
+          echo "::add-mask::${GITLAB_URL}"
+          echo "::add-mask::https://${GITLAB_URL}"
+          echo "::add-mask::${GITLAB_USERNAME}:${GITLAB_TOKEN}@${GITLAB_URL}"
+          echo "::add-mask::https://${GITLAB_USERNAME}:${GITLAB_TOKEN}@${GITLAB_URL}"
+
+          if git remote get-url gitlab >/dev/null 2>&1; then
+            git remote remove gitlab
+          fi
+
+          git remote add gitlab "https://${GITLAB_USERNAME}:${GITLAB_TOKEN}@${GITLAB_URL}"
+
+          # Keep remote-tracking refs synced before using force-with-lease.
+          git fetch --no-tags --prune --depth=1 gitlab "${SYNC_BRANCH}" 2>&1 | sed -E "s#https://[^ ]+#https://***#g"
+
+          if ! git push gitlab "HEAD:${SYNC_BRANCH}" --force-with-lease --follow-tags; then
+            echo "Lease check failed; forcing mirror update." >&2
+            git push gitlab "HEAD:${SYNC_BRANCH}" --force --follow-tags
+          fi
