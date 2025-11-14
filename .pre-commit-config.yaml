@@ -28,7 +28,7 @@ repos:
     hooks:
       - id: ktlint
         name: Kotlin linting
-        entry: script/ktlint_runner.py
+        entry: python ./script/ktlint_runner.py
         language: python
         files: '\.(kt|kts)$'
         args: ["--relative"]
