@@ -17,21 +17,21 @@ repos:
       - id: check-added-large-files
       - id: detect-private-key
 
-  - repo: local
-    hooks:
-      - id: ktlint-gradle
-        name: ktlint (Gradle plugin)
-        entry: scripts/ktlint-check.sh
-        language: script
-        pass_filenames: false
-        files: \.(kt|kts)$
-
   - repo: https://github.com/oxipng/oxipng
     rev: v9.1.5
     hooks:
       - id: oxipng
         name: Image Compression
         args: ["-q", "-o", "2", "-s", "--ng"]
+
+  - repo: local
+    hooks:
+      - id: ktlint
+        name: Kotlin linting
+        entry: script/ktlint_runner.py
+        language: python
+        files: '\.(kt|kts)$'
+        args: ["--relative"]
 
 # sets up .pre-commit-ci.yaml to ensure pre-commit dependencies stay up to date
 default_install_hook_types: [pre-commit, prepare-commit-msg]

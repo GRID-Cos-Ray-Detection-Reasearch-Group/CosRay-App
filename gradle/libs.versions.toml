@@ -16,8 +16,6 @@ activityCompose = "1.11.0"
 composeBom = "2025.11.00"
 lifecycleCompose = "2.9.4"
 navigation = "2.9.6"
-ktlintGradle = "11.5.0"
-ktlintCli = "0.52.0"
 
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }
