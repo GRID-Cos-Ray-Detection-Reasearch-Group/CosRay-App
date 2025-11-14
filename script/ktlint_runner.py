@@ -16,5 +16,10 @@ else:
 if not executable.exists():
     raise SystemExit(f"ktlint runner needs {executable.name} in {SCRIPT_DIR}")
 
-return_code = subprocess.run([str(executable)] + sys.argv[1:]).returncode
+if sys.platform.startswith("win"):
+    command = [str(executable)]
+else:
+    command = ["bash", str(executable)]
+
+return_code = subprocess.run(command + sys.argv[1:]).returncode
 sys.exit(return_code)
