@@ -115,6 +115,7 @@ class BleController(private val context: Context, private val externalScope: Cor
 
     private val gattCallback =
             object : BluetoothGattCallback() {
+                @SuppressLint("MissingPermission")
                 override fun onConnectionStateChange(
                         gatt: BluetoothGatt,
                         status: Int,
@@ -252,6 +253,7 @@ class BleController(private val context: Context, private val externalScope: Cor
         closeConnection(DeviceConnectionState.Disconnected)
     }
 
+    @SuppressLint("MissingPermission")
     private fun enableNotifications(
             gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic
@@ -264,6 +266,7 @@ class BleController(private val context: Context, private val externalScope: Cor
         }
     }
 
+    @SuppressLint("MissingPermission")
     private fun closeConnection(state: DeviceConnectionState) {
         bluetoothGatt?.close()
         bluetoothGatt = null
@@ -271,6 +274,7 @@ class BleController(private val context: Context, private val externalScope: Cor
         _connectionState.value = state
     }
 
+    @SuppressLint("MissingPermission")
     private fun fallbackDevice(device: BluetoothDevice): BleDevice {
         val now = Instant.now()
         return BleDevice(
@@ -284,6 +288,7 @@ class BleController(private val context: Context, private val externalScope: Cor
 
     private fun deriveDetectorId(device: BluetoothDevice, scanResult: ScanResult?): DetectorId {
         val advertisedId = scanResult?.scanRecord?.deviceName?.takeIf { it.isNotBlank() }?.trim()
+        @SuppressLint("MissingPermission")
         val deviceName = device.name?.takeIf { it.isNotBlank() }?.trim()
         val identifier = advertisedId ?: deviceName ?: device.address.uppercase(Locale.US)
         return DetectorId(identifier)
