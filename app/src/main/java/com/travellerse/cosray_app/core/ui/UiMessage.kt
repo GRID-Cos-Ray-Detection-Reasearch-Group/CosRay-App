@@ -11,7 +11,7 @@ import androidx.compose.ui.res.stringResource
 data class UiMessage
 @JvmOverloads
 constructor(
-        @StringRes val resId: Int? = null,
+        @param:StringRes val resId: Int? = null,
         val args: List<Any> = emptyList(),
         val rawMessage: String? = null
 ) {
