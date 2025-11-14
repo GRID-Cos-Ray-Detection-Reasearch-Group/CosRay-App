@@ -173,11 +173,11 @@ class BleController(private val context: Context, private val externalScope: Cor
 
                 override fun onCharacteristicChanged(
                         gatt: BluetoothGatt,
-                        characteristic: BluetoothGattCharacteristic
+                        characteristic: BluetoothGattCharacteristic,
+                        value: ByteArray
                 ) {
-                    super.onCharacteristicChanged(gatt, characteristic)
-                    val payload = characteristic.value ?: return
-                    val sample = BleTelemetryParser.parse(payload, activeDevice)
+                    super.onCharacteristicChanged(gatt, characteristic, value)
+                    val sample = BleTelemetryParser.parse(value, activeDevice)
                     if (sample != null) {
                         externalScope.launch { _telemetry.emit(sample) }
                     }
@@ -254,15 +254,21 @@ class BleController(private val context: Context, private val externalScope: Cor
     }
 
     @SuppressLint("MissingPermission")
+    @Suppress("DEPRECATION")
     private fun enableNotifications(
             gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic
     ) {
         gatt.setCharacteristicNotification(characteristic, true)
         val descriptor = characteristic.getDescriptor(BleConfig.CLIENT_DESCRIPTOR_UUID)
-        descriptor?.let {
-            it.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-            gatt.writeDescriptor(it)
+        descriptor?.let { descriptor ->
+            val notificationValue = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                gatt.writeDescriptor(descriptor, notificationValue)
+            } else {
+                descriptor.setValue(notificationValue)
+                @Suppress("DEPRECATION") gatt.writeDescriptor(descriptor)
+            }
         }
     }
 
