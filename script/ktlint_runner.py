@@ -1,0 +1,20 @@
+#!/usr/bin/env python3
+"""Invoke the shipped ktlint binary (or batch) so pre-commit can run it cross-platform."""
+from __future__ import annotations
+
+import subprocess
+import sys
+from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+
+if sys.platform.startswith("win"):
+    executable = SCRIPT_DIR / "ktlint.bat"
+else:
+    executable = SCRIPT_DIR / "ktlint"
+
+if not executable.exists():
+    raise SystemExit(f"ktlint runner needs {executable.name} in {SCRIPT_DIR}")
+
+return_code = subprocess.run([str(executable)] + sys.argv[1:]).returncode
+sys.exit(return_code)
