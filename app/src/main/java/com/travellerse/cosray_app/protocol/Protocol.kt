@@ -11,7 +11,7 @@ object Protocol {
         const val FRAME_HEADER: Short = 0x55AA
         const val FRAME_TRAILER: Short = 0xAA55
 
-        const val CMD_TYPE_REQUEST_DATA: Byte = 0x01 
+        const val CMD_TYPE_REQUEST_DATA: Byte = 0x01
         const val CMD_ID_REQUEST_DATA: Byte = 0x01
 
         fun buildRequestFrame(cmdType: Byte = CMD_TYPE_REQUEST_DATA): ByteArray {
@@ -50,7 +50,7 @@ object Protocol {
         val pps: Int          // 上电以来PPS脉冲计数（4字节）
     ) {
         companion object {
-            const val SIZE = 14 
+            const val SIZE = 14
             fun fromByteBuffer(buffer: ByteBuffer): MuonData {
                 require(buffer.order() == ByteOrder.LITTLE_ENDIAN) { "MuonData 解析需小端序" }
                 return MuonData(
@@ -237,7 +237,7 @@ object Protocol {
                 val crc = buffer.short
                 val calculatedCrc = Command.calculateChecksum(
                     data = rawData,
-                    startIndex = 3, 
+                    startIndex = 3,
                     length = TOTAL_SIZE - 3 - 2 // 总长度 - 头部3字节 - CRC2字节 = 507
                 )
                 require((crc.toInt() and 0xFFFF) == (calculatedCrc.toInt() and 0xFFFF)) {

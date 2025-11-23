@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
         val bleRepository = appContainer.bleRepository
         setContent {
             CompositionLocalProvider(LocalAppContainer provides appContainer) {
-                CosRayAppTheme { 
+                CosRayAppTheme {
                     Column(
                         modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
                             onClick = {
                                 val commandFrame = Protocol.Command.buildRequestFrame()
                                 lifecycleScope.launch {
-                                    if (bleRepository.hasPermissions() && 
+                                    if (bleRepository.hasPermissions() &&
                                         bleRepository.connectionState.value is DeviceConnectionState.Connected) {
                                         bleRepository.sendCommand(commandFrame)
                                     } else {
@@ -66,7 +66,7 @@ class MainActivity : ComponentActivity() {
                         ) {
                             Text("Ask for Request")
                         }
-                    CosRayApp() 
+                    CosRayApp()
                 }
             }
         }
