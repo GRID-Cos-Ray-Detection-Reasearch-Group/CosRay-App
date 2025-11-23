@@ -19,4 +19,5 @@ class BleRepository(private val controller: BleController) {
     fun connect(address: String) = controller.connect(address)
     fun disconnect() = controller.disconnect()
     fun hasPermissions(): Boolean = controller.hasBluetoothPermissions()
+    fun sendCommand(command: ByteArray) = controller.sendCommand(command)
 }
