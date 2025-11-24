@@ -16,3 +16,5 @@ local.properties
 
 uv.lock
 *.salive
+.venv/
+.kotlin/

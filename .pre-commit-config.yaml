@@ -24,15 +24,6 @@ repos:
         name: Image Compression
         args: ["-q", "-o", "2", "-s", "--ng"]
 
-  - repo: local
-    hooks:
-      - id: ktlint
-        name: Kotlin linting
-        entry: python ./script/ktlint_runner.py
-        language: python
-        files: '\.(kt|kts)$'
-        args: ["--relative"]
-
 # sets up .pre-commit-ci.yaml to ensure pre-commit dependencies stay up to date
 default_install_hook_types: [pre-commit, prepare-commit-msg]
 ci:
