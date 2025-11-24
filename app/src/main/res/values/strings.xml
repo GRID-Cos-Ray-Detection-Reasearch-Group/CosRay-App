@@ -28,6 +28,7 @@
     <string name="device_login_hint">登录后可同步设备数据</string>
     <string name="device_login_action">登录 / 注册</string>
     <string name="device_permissions_request_action">重新请求权限</string>
+    <string name="device_logout_action">退出登录</string>
     <string name="device_permissions_missing">蓝牙权限未授予，无法扫描设备</string>
     <string name="device_status_connected">已连接 %1$s</string>
     <string name="device_status_connecting">正在连接 %1$s</string>

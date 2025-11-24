@@ -12,8 +12,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,7 +40,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun DeviceScreen(
         state: DeviceUiState,
@@ -45,98 +52,99 @@ fun DeviceScreen(
         onDisconnect: () -> Unit,
         onNavigateToDashboard: () -> Unit,
         isAuthenticated: Boolean,
-        onRequestLogin: () -> Unit
+        onRequestLogin: () -> Unit,
+        onOpenDrawer: () -> Unit
 ) {
         LaunchedEffect(permissionsState.allPermissionsGranted) { onRequestPermissions() }
-        Column(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
-        ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                                text = stringResource(R.string.device_scan_title),
-                                style = MaterialTheme.typography.headlineSmall,
-                                color = MaterialTheme.colorScheme.onSurface
+
+        Scaffold(
+                topBar = {
+                        CenterAlignedTopAppBar(
+                                title = { Text(stringResource(R.string.device_scan_title)) },
+                                navigationIcon = {
+                                        IconButton(onClick = onOpenDrawer) {
+                                                Icon(
+                                                        imageVector = Icons.Default.Menu,
+                                                        contentDescription = "Menu"
+                                                )
+                                        }
+                                }
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                }
+        ) { innerPadding ->
+                Column(
+                        modifier =
+                                Modifier.fillMaxSize()
+                                        .padding(innerPadding)
+                                        .padding(horizontal = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(18.dp)
+                ) {
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
                                 text = stringResource(R.string.device_scan_subtitle),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                }
 
-                if (!isAuthenticated) {
-                        Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                        ConnectionOverview(
+                                state = state,
+                                onDisconnect = onDisconnect,
+                                onNavigateToDashboard = onNavigateToDashboard
+                        )
+
+                        Button(
+                                onClick = {
+                                        if (state.isScanning) {
+                                                onStopScan()
+                                        } else {
+                                                // Request permissions if not granted, then
+                                                // start scan
+                                                if (!permissionsState.allPermissionsGranted) {
+                                                        permissionsState
+                                                                .launchMultiplePermissionRequest()
+                                                } else {
+                                                        onStartScan()
+                                                }
+                                        }
+                                },
+                                modifier = Modifier.fillMaxWidth()
                         ) {
                                 Text(
-                                        text = stringResource(R.string.device_login_hint),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        text =
+                                                if (state.isScanning)
+                                                        stringResource(R.string.device_scan_stop)
+                                                else stringResource(R.string.device_scan_start)
                                 )
-                                TextButton(onClick = onRequestLogin) {
-                                        Text(text = stringResource(R.string.device_login_action))
-                                }
                         }
-                }
 
-                ConnectionOverview(
-                        state = state,
-                        onDisconnect = onDisconnect,
-                        onNavigateToDashboard = onNavigateToDashboard
-                )
-
-                Button(
-                        onClick = {
-                                if (state.isScanning) {
-                                        onStopScan()
-                                } else {
-                                        // Request permissions if not granted, then start scan
-                                        if (!permissionsState.allPermissionsGranted) {
-                                                permissionsState.launchMultiplePermissionRequest()
-                                        } else {
-                                                onStartScan()
-                                        }
-                                }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                ) {
-                        Text(
-                                text =
-                                        if (state.isScanning)
-                                                stringResource(R.string.device_scan_stop)
-                                        else stringResource(R.string.device_scan_start)
-                        )
-                }
-
-                if (!permissionsState.allPermissionsGranted) {
-                        Text(
-                                text = stringResource(R.string.device_permissions_missing),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error
-                        )
-                }
-
-                LazyColumn(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                        items(state.devices) { device ->
-                                val connectedDevice =
-                                        (state.connectionState as? BleConnectionState.Connected)
-                                                ?.device
-                                val isConnected = connectedDevice?.macAddress == device.macAddress
-                                DeviceItemCard(
-                                        item = device,
-                                        isConnected = isConnected,
-                                        onClick = {
-                                                if (isConnected) onDisconnect()
-                                                else onConnect(device.macAddress)
-                                        }
+                        if (!permissionsState.allPermissionsGranted) {
+                                Text(
+                                        text = stringResource(R.string.device_permissions_missing),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.error
                                 )
+                        }
+
+                        LazyColumn(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                                items(state.devices) { device ->
+                                        val connectedDevice =
+                                                (state.connectionState as?
+                                                                BleConnectionState.Connected)
+                                                        ?.device
+                                        val isConnected =
+                                                connectedDevice?.macAddress == device.macAddress
+                                        DeviceItemCard(
+                                                item = device,
+                                                isConnected = isConnected,
+                                                onClick = {
+                                                        if (isConnected) onDisconnect()
+                                                        else onConnect(device.macAddress)
+                                                }
+                                        )
+                                }
                         }
                 }
         }

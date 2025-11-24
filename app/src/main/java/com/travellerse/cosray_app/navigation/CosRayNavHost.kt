@@ -1,8 +1,26 @@
 package com.travellerse.cosray_app.navigation
 
+
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
@@ -10,6 +28,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.travellerse.cosray_app.R
 import com.travellerse.cosray_app.core.ui.viewModelFactory
 import com.travellerse.cosray_app.data.auth.AuthState
 import com.travellerse.cosray_app.data.auth.AuthValidator
@@ -19,16 +38,119 @@ import com.travellerse.cosray_app.feature.dashboard.DashboardScreen
 import com.travellerse.cosray_app.feature.dashboard.DashboardViewModel
 import com.travellerse.cosray_app.feature.device.DeviceScreen
 import com.travellerse.cosray_app.feature.device.DeviceViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun CosRayNavHost(appState: CosRayAppState) {
-        NavHost(
-                navController = appState.navController,
-                startDestination = CosRayDestination.Login.route
+        val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+        val scope = rememberCoroutineScope()
+        val authState by
+                appState.authState.collectAsStateWithLifecycle(initialValue = AuthState.Loading)
+        val isAuthenticated = authState is AuthState.Authenticated
+
+        ModalNavigationDrawer(
+                drawerState = drawerState,
+                drawerContent = {
+                        ModalDrawerSheet(modifier = Modifier.fillMaxWidth(0.75f)) {
+                                Spacer(Modifier.height(12.dp))
+                                Text(
+                                        text = stringResource(R.string.app_name),
+                                        modifier =
+                                                Modifier.padding(
+                                                        horizontal = 28.dp,
+                                                        vertical = 24.dp
+                                                ),
+                                        style = MaterialTheme.typography.headlineMedium
+                                )
+                                NavigationDrawerItem(
+                                        label = {
+                                                Text(
+                                                        stringResource(
+                                                                R.string.device_dashboard_action
+                                                        )
+                                                )
+                                        },
+                                        selected = false,
+                                        onClick = {
+                                                scope.launch { drawerState.close() }
+                                                appState.navigateTo(CosRayDestination.Dashboard)
+                                        },
+                                        modifier =
+                                                Modifier.padding(
+                                                        NavigationDrawerItemDefaults.ItemPadding
+                                                )
+                                )
+
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                                if (isAuthenticated) {
+                                        NavigationDrawerItem(
+                                                label = {
+                                                        Text(
+                                                                stringResource(
+                                                                        R.string
+                                                                                .device_logout_action
+                                                                )
+                                                        )
+                                                },
+                                                selected = false,
+                                                onClick = {
+                                                        scope.launch { drawerState.close() }
+                                                        // TODO: Implement logout callback if needed
+                                                        appState.exitGuestMode()
+                                                        appState.navigateTo(
+                                                                CosRayDestination.Login,
+                                                                popUpToStart = true
+                                                        )
+                                                },
+                                                modifier =
+                                                        Modifier.padding(
+                                                                NavigationDrawerItemDefaults
+                                                                        .ItemPadding
+                                                        )
+                                        )
+                                } else {
+                                        NavigationDrawerItem(
+                                                label = {
+                                                        Text(
+                                                                stringResource(
+                                                                        R.string.device_login_action
+                                                                )
+                                                        )
+                                                },
+                                                selected = false,
+                                                onClick = {
+                                                        scope.launch { drawerState.close() }
+                                                        appState.exitGuestMode()
+                                                        appState.navigateTo(
+                                                                CosRayDestination.Login,
+                                                                popUpToStart = true
+                                                        )
+                                                },
+                                                modifier =
+                                                        Modifier.padding(
+                                                                NavigationDrawerItemDefaults
+                                                                        .ItemPadding
+                                                        )
+                                        )
+                                }
+                        }
+                },
         ) {
-                loginDestination(appState)
-                deviceDestination(appState)
-                dashboardDestination(appState)
+                NavHost(
+                        navController = appState.navController,
+                        startDestination = CosRayDestination.Device.route
+                ) {
+                        loginDestination(appState)
+                        deviceDestination(
+                                appState,
+                                onOpenDrawer = { scope.launch { drawerState.open() } }
+                        )
+                        dashboardDestination(
+                                appState,
+                                onOpenDrawer = { scope.launch { drawerState.open() } }
+                        )
+                }
         }
 }
 
@@ -60,9 +182,10 @@ private fun NavGraphBuilder.loginDestination(appState: CosRayAppState) {
                 )
         }
 }
+
 // MVVM Model - view model -view
 @OptIn(ExperimentalPermissionsApi::class)
-private fun NavGraphBuilder.deviceDestination(appState: CosRayAppState) {
+private fun NavGraphBuilder.deviceDestination(appState: CosRayAppState, onOpenDrawer: () -> Unit) {
         composable(CosRayDestination.Device.route) {
                 val viewModel: DeviceViewModel =
                         viewModel(
@@ -126,12 +249,16 @@ private fun NavGraphBuilder.deviceDestination(appState: CosRayAppState) {
                         onRequestLogin = {
                                 appState.exitGuestMode()
                                 appState.navigateTo(CosRayDestination.Login, popUpToStart = true)
-                        }
+                        },
+                        onOpenDrawer = onOpenDrawer
                 )
         }
 }
 
-private fun NavGraphBuilder.dashboardDestination(appState: CosRayAppState) {
+private fun NavGraphBuilder.dashboardDestination(
+        appState: CosRayAppState,
+        onOpenDrawer: () -> Unit
+) {
         composable(CosRayDestination.Dashboard.route) {
                 val viewModel: DashboardViewModel =
                         viewModel(
@@ -149,7 +276,8 @@ private fun NavGraphBuilder.dashboardDestination(appState: CosRayAppState) {
                 DashboardScreen(
                         state = state,
                         onUpload = viewModel::uploadBufferedTelemetry,
-                        onMessageShown = viewModel::clearStatusMessage
+                        onMessageShown = viewModel::clearStatusMessage,
+                        onOpenDrawer = onOpenDrawer
                 )
         }
 }
