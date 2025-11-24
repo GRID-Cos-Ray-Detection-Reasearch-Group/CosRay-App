@@ -8,9 +8,7 @@ plugins {
 
 android {
     namespace = "com.travellerse.cosray_app"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk { version = release(36) }
 
     defaultConfig {
         applicationId = "com.travellerse.cosray_app"
@@ -24,14 +22,12 @@ android {
     }
 
     buildTypes {
-        debug {
-            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8000\"")
-        }
+        debug { buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8000\"") }
         release {
             isMinifyEnabled = false
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                    getDefaultProguardFile("proguard-android-optimize.txt"),
+                    "proguard-rules.pro"
             )
         }
     }
@@ -43,11 +39,16 @@ android {
         compose = true
         buildConfig = true
     }
+    composeCompiler { enableStrongSkippingMode = true }
 }
 
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_21
+        freeCompilerArgs.addAll(
+                "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
+                "-opt-in=kotlinx.coroutines.FlowPreview"
+        )
     }
     jvmToolchain(21)
 }
@@ -70,6 +71,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.ktor.client.android)
+    implementation("io.ktor:ktor-client-core:${libs.versions.ktor.get()}")
     implementation(libs.ktor.client.auth)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.client.logging)

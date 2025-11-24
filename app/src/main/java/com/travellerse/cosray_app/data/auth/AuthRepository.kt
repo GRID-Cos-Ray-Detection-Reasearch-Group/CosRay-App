@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class AuthRepository(
         private val api: CosRayApi,
@@ -24,6 +26,8 @@ class AuthRepository(
 
     private val _tokens = MutableStateFlow<AuthTokens?>(null)
     val tokens: StateFlow<AuthTokens?> = _tokens.asStateFlow()
+
+    private val refreshMutex = Mutex()
 
     init {
         externalScope.launch {
@@ -50,7 +54,10 @@ class AuthRepository(
                 persistAuth(user, tokens)
             }
 
-    suspend fun refreshTokens(): CosRayResult<Unit> {
+    /**
+     * Refresh authentication tokens with mutex protection to prevent concurrent refresh attempts
+     */
+    suspend fun refreshTokens(): CosRayResult<Unit> = refreshMutex.withLock {
         val currentTokens = _tokens.value
         val currentUser = (authState.value as? AuthState.Authenticated)?.user
         return if (currentTokens == null || currentUser == null) {
@@ -61,6 +68,28 @@ class AuthRepository(
             runCosRayCatching {
                 val refreshed = api.refreshToken(currentTokens.refreshToken)
                 persistAuth(currentUser, refreshed)
+            }
+        }
+    }
+
+    /**
+     * Ensure we have a valid access token, refreshing if necessary
+     */
+    suspend fun ensureValidToken(): CosRayResult<String> = refreshMutex.withLock {
+        val current = _tokens.value
+            ?: return CosRayResult.Error(IllegalStateException("Missing access token"))
+
+        if (!current.isExpired) {
+            return CosRayResult.Success(current.accessToken)
+        }
+
+        refreshTokens().let { result ->
+            when (result) {
+                is CosRayResult.Success -> {
+                    _tokens.value?.accessToken?.let { CosRayResult.Success(it) }
+                        ?: CosRayResult.Error(IllegalStateException("Token refresh succeeded but token is null"))
+                }
+                is CosRayResult.Error -> result
             }
         }
     }

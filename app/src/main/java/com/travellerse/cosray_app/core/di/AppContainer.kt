@@ -15,7 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 val LocalAppContainer =
         staticCompositionLocalOf<AppContainer> { error("AppContainer not provided") }
 
-interface AppContainer {
+interface AppContainer : AutoCloseable {
     val authRepository: AuthRepository
     val bleRepository: BleRepository
     val telemetryRepository: TelemetryRepository
@@ -28,22 +28,36 @@ class AppContainerImpl(appContext: Context, externalScope: CoroutineScope) : App
 
     override val applicationScope: CoroutineScope = externalScope
     override val httpClient: HttpClient = HttpClientFactory.create()
+
     private val userPreferences = UserPreferencesDataSource(appContext)
     private val bleController = BleController(appContext, externalScope)
 
     override val api: CosRayApi = CosRayApi(httpClient)
-    override val authRepository: AuthRepository =
-            AuthRepository(
-                    api = api,
-                    userPreferences = userPreferences,
-                    externalScope = externalScope
-            )
-    override val bleRepository: BleRepository = BleRepository(bleController)
-    override val telemetryRepository: TelemetryRepository =
-            TelemetryRepository(
-                    api = api,
-                    bleRepository = bleRepository,
-                    authRepository = authRepository,
-                    externalScope = externalScope
-            )
+
+    override val authRepository: AuthRepository by lazy {
+        AuthRepository(
+            api = api,
+            userPreferences = userPreferences,
+            externalScope = externalScope
+        )
+    }
+
+    override val bleRepository: BleRepository by lazy {
+        BleRepository(bleController)
+    }
+
+    override val telemetryRepository: TelemetryRepository by lazy {
+        TelemetryRepository(
+            api = api,
+            bleRepository = bleRepository,
+            authRepository = authRepository,
+            externalScope = externalScope
+        )
+    }
+
+    override fun close() {
+        // Clean up resources in reverse order of initialization
+        bleController.shutdown()
+        httpClient.close()
+    }
 }

@@ -253,6 +253,50 @@ class BleController(private val context: Context, private val externalScope: Cor
         closeConnection(DeviceConnectionState.Disconnected)
     }
 
+    /**
+     * Send a command to the connected BLE device
+     * @param command The command bytes to send
+     * @return true if the write operation was initiated successfully, false otherwise
+     */
+    @SuppressLint("MissingPermission")
+    @Suppress("DEPRECATION")
+    fun sendCommand(command: ByteArray): Boolean {
+        val gatt = bluetoothGatt ?: return false
+        if (!hasBluetoothPermissions()) return false
+        if (connectionState.value !is DeviceConnectionState.Connected) return false
+
+        val service = gatt.getService(BleConfig.SERVICE_UUID) ?: return false
+        val writeCharacteristic = service.getCharacteristic(BleConfig.WRITE_CHARACTERISTIC_UUID) ?: return false
+
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val result = gatt.writeCharacteristic(
+                writeCharacteristic,
+                command,
+                BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+            )
+            result == BluetoothGatt.GATT_SUCCESS
+        } else {
+            writeCharacteristic.value = command
+            gatt.writeCharacteristic(writeCharacteristic)
+        }
+    }
+
+    /**
+     * Shutdown the BLE controller and release all resources
+     * Should be called when the controller is no longer needed
+     */
+    @SuppressLint("MissingPermission")
+    fun shutdown() {
+        stopScan()
+        bluetoothGatt?.disconnect()
+        bluetoothGatt?.close()
+        bluetoothGatt = null
+        activeDevice = null
+        deviceCache.clear()
+        _scanResults.value = emptyList()
+        _connectionState.value = DeviceConnectionState.Disconnected
+    }
+
     @SuppressLint("MissingPermission")
     @Suppress("DEPRECATION")
     private fun enableNotifications(
