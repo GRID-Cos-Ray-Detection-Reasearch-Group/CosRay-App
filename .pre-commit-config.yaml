@@ -26,7 +26,7 @@ repos:
         pass_filenames: false
         files: \.(kt|kts)$
 
-  - repo: https://github.com/shssoichiro/oxipng
+  - repo: https://github.com/oxipng/oxipng
     rev: v9.1.5
     hooks:
       - id: oxipng
