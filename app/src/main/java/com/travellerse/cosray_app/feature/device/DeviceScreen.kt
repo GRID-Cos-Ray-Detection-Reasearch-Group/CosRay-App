@@ -43,7 +43,9 @@ fun DeviceScreen(
         onStopScan: () -> Unit,
         onConnect: (String) -> Unit,
         onDisconnect: () -> Unit,
-        onNavigateToDashboard: () -> Unit
+        onNavigateToDashboard: () -> Unit,
+        isAuthenticated: Boolean,
+        onRequestLogin: () -> Unit
 ) {
     LaunchedEffect(permissionsState.allPermissionsGranted) { onRequestPermissions() }
     Column(
@@ -57,11 +59,28 @@ fun DeviceScreen(
                     color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                    text = stringResource(R.string.device_scan_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+                Text(
+                        text = stringResource(R.string.device_scan_subtitle),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+        }
+
+        if (!isAuthenticated) {
+            Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                        text = stringResource(R.string.device_login_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                TextButton(onClick = onRequestLogin) {
+                    Text(text = stringResource(R.string.device_login_action))
+                }
+            }
         }
 
         ConnectionOverview(

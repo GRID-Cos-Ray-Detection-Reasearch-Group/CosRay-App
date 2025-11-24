@@ -11,6 +11,7 @@ import androidx.navigation.compose.composable
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.travellerse.cosray_app.core.ui.viewModelFactory
+import com.travellerse.cosray_app.data.auth.AuthState
 import com.travellerse.cosray_app.data.auth.AuthValidator
 import com.travellerse.cosray_app.feature.auth.LoginScreen
 import com.travellerse.cosray_app.feature.auth.LoginViewModel
@@ -51,11 +52,15 @@ private fun NavGraphBuilder.loginDestination(appState: CosRayAppState) {
                         onPasswordChange = viewModel::onPasswordChanged,
                         onDisplayNameChange = viewModel::onDisplayNameChanged,
                         onSubmit = viewModel::submit,
-                        onToggleMode = viewModel::toggleCreateAccount
+                        onToggleMode = viewModel::toggleCreateAccount,
+                        onContinueAsGuest = {
+                                appState.enterGuestMode()
+                                appState.navigateTo(CosRayDestination.Device, popUpToStart = true)
+                        }
                 )
         }
 }
-
+// MVVM Model - view model -view
 @OptIn(ExperimentalPermissionsApi::class)
 private fun NavGraphBuilder.deviceDestination(appState: CosRayAppState) {
         composable(CosRayDestination.Device.route) {
@@ -83,6 +88,11 @@ private fun NavGraphBuilder.deviceDestination(appState: CosRayAppState) {
                                         )
                         )
 
+                val authState by appState.authState.collectAsStateWithLifecycle(
+                        initialValue = AuthState.Loading
+                )
+                val isAuthenticated = authState is AuthState.Authenticated
+
                 LaunchedEffect(permissionsState.allPermissionsGranted) {
                         viewModel.onPermissionsChanged(permissionsState.allPermissionsGranted)
                 }
@@ -99,7 +109,12 @@ private fun NavGraphBuilder.deviceDestination(appState: CosRayAppState) {
                         onStopScan = viewModel::stopScan,
                         onConnect = viewModel::connect,
                         onDisconnect = viewModel::disconnect,
-                        onNavigateToDashboard = { appState.navigateTo(CosRayDestination.Dashboard) }
+                        onNavigateToDashboard = { appState.navigateTo(CosRayDestination.Dashboard) },
+                        isAuthenticated = isAuthenticated,
+                        onRequestLogin = {
+                                appState.exitGuestMode()
+                                appState.navigateTo(CosRayDestination.Login, popUpToStart = true)
+                        }
                 )
         }
 }

@@ -24,6 +24,18 @@ class CosRayAppState(
 
     val authRepository: AuthRepository = appContainer.authRepository
     val authState = authRepository.authState
+    private var guestMode = false
+
+    val isGuestMode: Boolean
+        get() = guestMode
+
+    fun enterGuestMode() {
+        guestMode = true
+    }
+
+    fun exitGuestMode() {
+        guestMode = false
+    }
 
     fun navigateTo(destination: CosRayDestination, popUpToStart: Boolean = false) {
         navController.navigate(destination.route) {
@@ -37,6 +49,7 @@ class CosRayAppState(
     fun onLogout() {
         coroutineScope.launch {
             authRepository.logout()
+            exitGuestMode()
             navController.navigate(CosRayDestination.Login.route) {
                 popUpTo(navController.graph.startDestinationId) { inclusive = true }
                 launchSingleTop = true

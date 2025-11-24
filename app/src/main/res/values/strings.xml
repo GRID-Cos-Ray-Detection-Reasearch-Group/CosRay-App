@@ -13,6 +13,7 @@
     <string name="auth_register_action">注册</string>
     <string name="auth_create_account_action">创建新账户</string>
     <string name="auth_have_account_action">已有账号？立即登录</string>
+    <string name="auth_skip_login_action">暂不登录</string>
     <string name="auth_error_invalid_email">请输入有效的邮箱</string>
     <string name="auth_error_invalid_username">请输入用户名</string>
     <string name="auth_error_weak_password">密码至少8位，包含数字和大写字母</string>
@@ -24,6 +25,8 @@
     <string name="device_scan_start">开始扫描</string>
     <string name="device_scan_title">查找附近设备</string>
     <string name="device_scan_subtitle">授予权限后即可连接采样器</string>
+    <string name="device_login_hint">登录后可同步设备数据</string>
+    <string name="device_login_action">登录 / 注册</string>
     <string name="device_permissions_request_action">重新请求权限</string>
     <string name="device_permissions_missing">蓝牙权限未授予，无法扫描设备</string>
     <string name="device_status_connected">已连接 %1$s</string>

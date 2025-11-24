@@ -21,12 +21,11 @@ fun CosRayApp(appState: CosRayAppState = rememberCosRayAppState()) {
     LaunchedEffect(authState) {
         when (authState) {
             is AuthState.Authenticated -> {
+                appState.exitGuestMode()
                 appState.navigateTo(CosRayDestination.Device, popUpToStart = true)
             }
-            AuthState.Unauthenticated -> {
-                appState.navigateTo(CosRayDestination.Login, popUpToStart = true)
-            }
             AuthState.Loading -> Unit
+            else -> Unit
         }
     }
 

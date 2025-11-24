@@ -36,7 +36,8 @@ fun LoginScreen(
         onPasswordChange: (String) -> Unit,
         onDisplayNameChange: (String) -> Unit,
         onSubmit: () -> Unit,
-        onToggleMode: () -> Unit
+        onToggleMode: () -> Unit,
+        onContinueAsGuest: () -> Unit
 ) {
     val isRegistering = state.mode == AuthMode.Register
     Column(
@@ -148,6 +149,16 @@ fun LoginScreen(
                             else stringResource(R.string.auth_create_account_action),
                     style = MaterialTheme.typography.labelLarge
             )
+        }
+
+        TextButton(
+                onClick = onContinueAsGuest,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+        ) {
+                Text(
+                        text = stringResource(R.string.auth_skip_login_action),
+                        style = MaterialTheme.typography.labelLarge
+                )
         }
     }
 }
