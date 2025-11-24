@@ -81,16 +81,26 @@ private fun NavGraphBuilder.deviceDestination(appState: CosRayAppState) {
                 val permissionsState =
                         rememberMultiplePermissionsState(
                                 permissions =
-                                        listOf(
-                                                android.Manifest.permission.BLUETOOTH_SCAN,
-                                                android.Manifest.permission.BLUETOOTH_CONNECT,
-                                                android.Manifest.permission.ACCESS_FINE_LOCATION
-                                        )
+                                        if (android.os.Build.VERSION.SDK_INT >=
+                                                        android.os.Build.VERSION_CODES.S
+                                        ) {
+                                                listOf(
+                                                        android.Manifest.permission.BLUETOOTH_SCAN,
+                                                        android.Manifest.permission
+                                                                .BLUETOOTH_CONNECT
+                                                )
+                                        } else {
+                                                listOf(
+                                                        android.Manifest.permission
+                                                                .ACCESS_FINE_LOCATION
+                                                )
+                                        }
                         )
 
-                val authState by appState.authState.collectAsStateWithLifecycle(
-                        initialValue = AuthState.Loading
-                )
+                val authState by
+                        appState.authState.collectAsStateWithLifecycle(
+                                initialValue = AuthState.Loading
+                        )
                 val isAuthenticated = authState is AuthState.Authenticated
 
                 LaunchedEffect(permissionsState.allPermissionsGranted) {
@@ -109,7 +119,9 @@ private fun NavGraphBuilder.deviceDestination(appState: CosRayAppState) {
                         onStopScan = viewModel::stopScan,
                         onConnect = viewModel::connect,
                         onDisconnect = viewModel::disconnect,
-                        onNavigateToDashboard = { appState.navigateTo(CosRayDestination.Dashboard) },
+                        onNavigateToDashboard = {
+                                appState.navigateTo(CosRayDestination.Dashboard)
+                        },
                         isAuthenticated = isAuthenticated,
                         onRequestLogin = {
                                 appState.exitGuestMode()

@@ -2,9 +2,9 @@ package com.travellerse.cosray_app.feature.device
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.travellerse.cosray_app.core.ble.BleConnectionState
 import com.travellerse.cosray_app.data.ble.BleRepository
 import com.travellerse.cosray_app.data.telemetry.TelemetryRepository
-import com.travellerse.cosray_app.domain.model.DeviceConnectionState
 import com.travellerse.cosray_app.domain.model.SignalQuality
 import com.travellerse.cosray_app.domain.model.TelemetrySample
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,7 +60,7 @@ class DeviceViewModel(
     }
 
     fun startScan() {
-        bleRepository.startScan()
+        viewModelScope.launch { bleRepository.startScan() }
     }
 
     fun stopScan() {
@@ -68,7 +68,7 @@ class DeviceViewModel(
     }
 
     fun connect(address: String) {
-        bleRepository.connect(address)
+        viewModelScope.launch { bleRepository.connect(address) }
     }
 
     fun disconnect() {
@@ -79,7 +79,7 @@ class DeviceViewModel(
 data class DeviceUiState(
         val devices: List<DeviceItem> = emptyList(),
         val isScanning: Boolean = false,
-        val connectionState: DeviceConnectionState = DeviceConnectionState.Disconnected,
+        val connectionState: BleConnectionState = BleConnectionState.Disconnected,
         val hasPermissions: Boolean = false,
         val latestTelemetry: TelemetrySample? = null
 )

@@ -1,5 +1,6 @@
 package com.travellerse.cosray_app.data.telemetry
 
+import com.travellerse.cosray_app.core.ble.BleConnectionState
 import com.travellerse.cosray_app.core.common.CosRayResult
 import com.travellerse.cosray_app.core.common.runCosRayCatching
 import com.travellerse.cosray_app.core.network.CosRayApi
@@ -7,7 +8,6 @@ import com.travellerse.cosray_app.core.network.model.TelemetryPayloadDto
 import com.travellerse.cosray_app.data.auth.AuthRepository
 import com.travellerse.cosray_app.data.ble.BleRepository
 import com.travellerse.cosray_app.domain.model.BleDevice
-import com.travellerse.cosray_app.domain.model.DeviceConnectionState
 import com.travellerse.cosray_app.domain.model.TelemetrySample
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,9 +46,9 @@ class TelemetryRepository(
             }
         }
         externalScope.launch {
-            bleRepository.connectionState.collect { state: DeviceConnectionState ->
+            bleRepository.connectionState.collect { state: BleConnectionState ->
                 when (state) {
-                    is DeviceConnectionState.Connected -> _connectedDevice.value = state.device
+                    is BleConnectionState.Connected -> _connectedDevice.value = state.device
                     else -> _connectedDevice.value = null
                 }
             }
