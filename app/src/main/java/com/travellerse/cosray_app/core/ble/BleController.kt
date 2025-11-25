@@ -71,6 +71,7 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
     private var scanJob: Job? = null
 
     // GATT operation queue
+    private var pendingWriteOperation: GattOperation.Write? = null
     private val gattOperationQueue = Channel<GattOperation>(Channel.UNLIMITED)
     private var isProcessingQueue = false
     private var queueProcessingJob: Job? = null
@@ -224,7 +225,19 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
                         status: Int
                 ) {
                     super.onCharacteristicWrite(gatt, characteristic, status)
-                    // Queue processing will handle the result
+                    // Resolve the pending write operation's deferred based on status
+                    pendingWriteOperation?.let { operation ->
+                        if (status == BluetoothGatt.GATT_SUCCESS) {
+                            operation.deferred.complete(CosRayResult.Success(Unit))
+                        } else {
+                            operation.deferred.complete(
+                                CosRayResult.Error(
+                                    IllegalStateException("Write failed with status $status")
+                                )
+                            )
+                        }
+                        pendingWriteOperation = null
+                    }
                     Log.d(TAG, "Characteristic write completed with status: $status")
                 }
 
@@ -491,33 +504,21 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
 
             when (operation) {
                 is GattOperation.Write -> {
-                    val result =
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                val status =
-                                        gatt.writeCharacteristic(
-                                                operation.characteristic,
-                                                operation.data,
-                                                operation.writeType
-                                        )
-                                if (status == BluetoothGatt.GATT_SUCCESS) {
-                                    CosRayResult.Success(Unit)
-                                } else {
-                                    CosRayResult.Error(
-                                            IllegalStateException(
-                                                    "Write failed with status $status"
-                                            )
-                                    )
-                                }
-                            } else {
-                                operation.characteristic.value = operation.data
-                                operation.characteristic.writeType = operation.writeType
-                                if (gatt.writeCharacteristic(operation.characteristic)) {
-                                    CosRayResult.Success(Unit)
-                                } else {
-                                    CosRayResult.Error(IllegalStateException("Write failed"))
-                                }
-                            }
-                    operation.deferred.complete(result)
+                    // Store the operation to be completed in onCharacteristicWrite callback
+                    pendingWriteOperation = operation
+                    // Initiate the write
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        gatt.writeCharacteristic(
+                            operation.characteristic,
+                            operation.data,
+                            operation.writeType
+                        )
+                    } else {
+                        operation.characteristic.value = operation.data
+                        operation.characteristic.writeType = operation.writeType
+                        gatt.writeCharacteristic(operation.characteristic)
+                    }
+                    // Do not complete the deferred here; it will be resolved in onCharacteristicWrite
                 }
                 is GattOperation.Read -> {
                     // TODO: Implement read operation

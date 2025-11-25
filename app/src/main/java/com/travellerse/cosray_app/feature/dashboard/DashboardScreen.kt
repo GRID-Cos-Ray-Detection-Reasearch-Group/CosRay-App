@@ -207,8 +207,6 @@ fun DashboardScreen(
                                         }
                                 }
                         }
-
-                        SnackbarHost(hostState = snackbarHostState)
                 }
         }
 }
