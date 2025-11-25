@@ -1,4 +1,4 @@
-package com.travellerse.cosray_app.protocol
+package com.travellerse.cosray_app.domain.model
 
 import java.nio.ByteBuffer
 import java.nio.ByteOrder

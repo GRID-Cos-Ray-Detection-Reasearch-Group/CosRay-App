@@ -1,7 +1,11 @@
 package com.travellerse.cosray_app.core.network
 
 import com.travellerse.cosray_app.core.network.model.AuthResponse
+import com.travellerse.cosray_app.core.network.model.DeviceDto
 import com.travellerse.cosray_app.core.network.model.LoginRequest
+import com.travellerse.cosray_app.core.network.model.PacketUploadRequest
+import com.travellerse.cosray_app.core.network.model.PacketUploadResponse
+import com.travellerse.cosray_app.core.network.model.RegisterDeviceRequest
 import com.travellerse.cosray_app.core.network.model.RegisterRequest
 import com.travellerse.cosray_app.core.network.model.TelemetryPayloadDto
 import com.travellerse.cosray_app.core.network.model.TelemetrySampleDto
@@ -83,7 +87,41 @@ class CosRayApi(private val client: HttpClient) {
                     sessionToken(accessToken)
                     contentType(ContentType.Application.Json)
                     setBody(payload)
-                }
+    /**
+     * 注册新设备
+     */
+    suspend fun registerDevice(
+            accessToken: String,
+            macAddress: String,
+            name: String,
+            description: String? = null
+    ): DeviceDto =
+            withContext(Dispatchers.IO) {
+                val request = RegisterDeviceRequest(
+                    macAddress = macAddress,
+                    name = name,
+                    description = description
+                )
+                client.post("/api/devices/") {
+                    sessionToken(accessToken)
+                    contentType(ContentType.Application.Json)
+                    setBody(request)
+                }.body()
+            }
+
+    /**
+     * 上传μ子或时间线数据包
+     */
+    suspend fun uploadPacket(
+            accessToken: String,
+            request: PacketUploadRequest
+    ): PacketUploadResponse =
+            withContext(Dispatchers.IO) {
+                client.post("/api/mu-packets/") {
+                    sessionToken(accessToken)
+                    contentType(ContentType.Application.Json)
+                    setBody(request)
+                }.body()
             }
 
     private fun HttpRequestBuilder.sessionToken(currentToken: String) {
