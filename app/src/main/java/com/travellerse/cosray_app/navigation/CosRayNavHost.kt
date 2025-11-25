@@ -1,6 +1,5 @@
 package com.travellerse.cosray_app.navigation
 
-
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,6 +25,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.travellerse.cosray_app.R
@@ -48,6 +48,10 @@ fun CosRayNavHost(appState: CosRayAppState) {
                 appState.authState.collectAsStateWithLifecycle(initialValue = AuthState.Loading)
         val isAuthenticated = authState is AuthState.Authenticated
 
+        // Get current destination for highlighting
+        val currentDestination =
+                appState.navController.currentBackStackEntryAsState().value?.destination?.route
+
         ModalNavigationDrawer(
                 drawerState = drawerState,
                 drawerContent = {
@@ -64,13 +68,31 @@ fun CosRayNavHost(appState: CosRayAppState) {
                                 )
                                 NavigationDrawerItem(
                                         label = {
+                                                Text(stringResource(R.string.device_scan_title))
+                                        },
+                                        selected =
+                                                currentDestination ==
+                                                        CosRayDestination.Device.route,
+                                        onClick = {
+                                                scope.launch { drawerState.close() }
+                                                appState.navigateTo(CosRayDestination.Device)
+                                        },
+                                        modifier =
+                                                Modifier.padding(
+                                                        NavigationDrawerItemDefaults.ItemPadding
+                                                )
+                                )
+                                NavigationDrawerItem(
+                                        label = {
                                                 Text(
                                                         stringResource(
                                                                 R.string.device_dashboard_action
                                                         )
                                                 )
                                         },
-                                        selected = false,
+                                        selected =
+                                                currentDestination ==
+                                                        CosRayDestination.Dashboard.route,
                                         onClick = {
                                                 scope.launch { drawerState.close() }
                                                 appState.navigateTo(CosRayDestination.Dashboard)
