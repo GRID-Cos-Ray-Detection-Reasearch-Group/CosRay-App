@@ -28,6 +28,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.travellerse.cosray_app.BuildConfig
 import com.travellerse.cosray_app.R
 import com.travellerse.cosray_app.core.ui.viewModelFactory
 import com.travellerse.cosray_app.data.auth.AuthState
@@ -39,6 +40,7 @@ import com.travellerse.cosray_app.feature.dashboard.DashboardViewModel
 import com.travellerse.cosray_app.feature.device.DeviceScreen
 import com.travellerse.cosray_app.feature.device.DeviceViewModel
 import kotlinx.coroutines.launch
+
 
 @Composable
 fun CosRayNavHost(appState: CosRayAppState) {
@@ -102,6 +104,31 @@ fun CosRayNavHost(appState: CosRayAppState) {
                                                         NavigationDrawerItemDefaults.ItemPadding
                                                 )
                                 )
+
+                                // API Test menu (Debug only)
+                                if (BuildConfig.DEBUG) {
+                                        NavigationDrawerItem(
+                                                label = {
+                                                        Text(
+                                                                stringResource(
+                                                                        R.string.api_test_title
+                                                                )
+                                                        )
+                                                },
+                                                selected =
+                                                        currentDestination ==
+                                                                CosRayDestination.ApiTest.route,
+                                                onClick = {
+                                                        scope.launch { drawerState.close() }
+                                                        appState.navigateTo(CosRayDestination.ApiTest)
+                                                },
+                                                modifier =
+                                                        Modifier.padding(
+                                                                NavigationDrawerItemDefaults
+                                                                        .ItemPadding
+                                                        )
+                                        )
+                                }
 
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
@@ -172,6 +199,10 @@ fun CosRayNavHost(appState: CosRayAppState) {
                                 appState,
                                 onOpenDrawer = { scope.launch { drawerState.open() } }
                         )
+                        // API Test destination (Debug only)
+                        if (BuildConfig.DEBUG) {
+                                apiTestDestination(onOpenDrawer = { scope.launch { drawerState.open() } })
+                        }
                 }
         }
 }
@@ -299,6 +330,44 @@ private fun NavGraphBuilder.dashboardDestination(
                         state = state,
                         onUpload = viewModel::uploadBufferedTelemetry,
                         onMessageShown = viewModel::clearStatusMessage,
+                        onOpenDrawer = onOpenDrawer
+                )
+        }
+}
+
+private fun NavGraphBuilder.apiTestDestination(onOpenDrawer: () -> Unit) {
+        composable(CosRayDestination.ApiTest.route) {
+                val viewModel: com.travellerse.cosray_app.feature.apitest.ApiTestViewModel =
+                        viewModel(
+                                factory =
+                                        viewModelFactory {
+                                                com.travellerse.cosray_app.feature.apitest.ApiTestViewModel()
+                                        }
+                        )
+                val state by viewModel.uiState.collectAsStateWithLifecycle()
+                com.travellerse.cosray_app.feature.apitest.ApiTestScreen(
+                        state = state,
+                        onBaseUrlChange = viewModel::updateBaseUrl,
+                        onTokenChange = viewModel::updateToken,
+                        onUsernameChange = viewModel::updateUsername,
+                        onPasswordChange = viewModel::updatePassword,
+                        onEmailChange = viewModel::updateEmail,
+                        onDisplayNameChange = viewModel::updateDisplayName,
+                        onMacAddressChange = viewModel::updateMacAddress,
+                        onDeviceNameChange = viewModel::updateDeviceName,
+                        onDeviceDescriptionChange = viewModel::updateDeviceDescription,
+                        onDeviceIdChange = viewModel::updateDeviceId,
+                        onTestLogin = viewModel::testLogin,
+                        onTestRegister = viewModel::testRegister,
+                        onTestGetUserInfo = viewModel::testGetUserInfo,
+                        onTestRegisterDevice = viewModel::testRegisterDevice,
+                        onTestListDevices = viewModel::testListDevices,
+                        onTestGetDevice = viewModel::testGetDevice,
+                        onTestUpdateDevice = viewModel::testUpdateDevice,
+                        onTestDeleteDevice = viewModel::testDeleteDevice,
+                        onTestUploadMuonPacket = viewModel::testUploadMuonPacket,
+                        onTestUploadTimelinePacket = viewModel::testUploadTimelinePacket,
+                        onClearResponse = viewModel::clearResponse,
                         onOpenDrawer = onOpenDrawer
                 )
         }

@@ -62,4 +62,48 @@ object HttpClientFactory {
 
                 defaultRequest { url(NetworkConfig.baseUrl) }
             }
+
+    /**
+     * Create HttpClient with custom base URL for API testing
+     */
+    fun createWithBaseUrl(baseUrl: String): HttpClient =
+            HttpClient(Android) {
+                expectSuccess = true
+
+                install(HttpTimeout) {
+                    requestTimeoutMillis = REQUEST_TIMEOUT_MS
+                    connectTimeoutMillis = CONNECT_TIMEOUT_MS
+                    socketTimeoutMillis = SOCKET_TIMEOUT_MS
+                }
+
+                install(HttpRequestRetry) {
+                    retryOnServerErrors(maxRetries = MAX_RETRIES)
+                    exponentialDelay()
+                }
+
+                install(ContentNegotiation) {
+                    json(
+                            Json {
+                                ignoreUnknownKeys = true
+                                isLenient = true
+                                encodeDefaults = false
+                                prettyPrint = false
+                            }
+                    )
+                }
+
+                install(Logging) {
+                    logger =
+                            object : Logger {
+                                override fun log(message: String) {
+                                    if (BuildConfig.DEBUG) {
+                                        Log.d(TAG, message)
+                                    }
+                                }
+                            }
+                    level = if (BuildConfig.DEBUG) LogLevel.INFO else LogLevel.NONE
+                }
+
+                defaultRequest { url(baseUrl) }
+            }
 }

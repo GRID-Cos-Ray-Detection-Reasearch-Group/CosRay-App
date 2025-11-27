@@ -21,8 +21,10 @@ import com.travellerse.cosray_app.domain.model.UserId
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -125,6 +127,57 @@ class CosRayApi(private val client: HttpClient) {
                                         setBody(request)
                                 }
                                 .body()
+                }
+
+        /** 获取当前用户的所有设备 */
+        suspend fun getDevices(accessToken: String): List<DeviceDto> =
+                withContext(Dispatchers.IO) {
+                        client
+                                .get("/api/devices/") {
+                                        sessionToken(accessToken)
+                                }
+                                .body()
+                }
+
+        /** 获取指定设备的详情 */
+        suspend fun getDevice(accessToken: String, deviceId: Int): DeviceDto =
+                withContext(Dispatchers.IO) {
+                        client
+                                .get("/api/devices/$deviceId/") {
+                                        sessionToken(accessToken)
+                                }
+                                .body()
+                }
+
+        /** 更新设备信息 */
+        suspend fun updateDevice(
+                accessToken: String,
+                deviceId: Int,
+                name: String? = null,
+                description: String? = null,
+                isActive: Boolean? = null
+        ): DeviceDto =
+                withContext(Dispatchers.IO) {
+                        val updates = buildMap {
+                                name?.let { put("name", it) }
+                                description?.let { put("description", it) }
+                                isActive?.let { put("is_active", it) }
+                        }
+                        client
+                                .patch("/api/devices/$deviceId/") {
+                                        sessionToken(accessToken)
+                                        contentType(ContentType.Application.Json)
+                                        setBody(updates)
+                                }
+                                .body()
+                }
+
+        /** 删除设备 */
+        suspend fun deleteDevice(accessToken: String, deviceId: Int): Unit =
+                withContext(Dispatchers.IO) {
+                        client.delete("/api/devices/$deviceId/") {
+                                sessionToken(accessToken)
+                        }
                 }
 
         /** 上传μ子或时间线数据包 */
