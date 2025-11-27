@@ -67,7 +67,7 @@ fun ApiTestScreen(
                 onBaseUrlChange = onBaseUrlChange
             )
 
-            Divider()
+            HorizontalDivider()
 
             // Token Section
             TokenSection(
@@ -75,7 +75,7 @@ fun ApiTestScreen(
                 onTokenChange = onTokenChange
             )
 
-            Divider()
+            HorizontalDivider()
 
             // Authentication Test Section
             AuthTestSection(
@@ -93,7 +93,7 @@ fun ApiTestScreen(
                 isLoading = state.isLoading
             )
 
-            Divider()
+            HorizontalDivider()
 
             // Device Management Test Section
             DeviceTestSection(
@@ -113,7 +113,7 @@ fun ApiTestScreen(
                 isLoading = state.isLoading
             )
 
-            Divider()
+            HorizontalDivider()
 
             // Packet Upload Test Section
             PacketTestSection(
@@ -124,7 +124,7 @@ fun ApiTestScreen(
                 isLoading = state.isLoading
             )
 
-            Divider()
+            HorizontalDivider()
 
             // Response Section
             ResponseSection(
@@ -320,7 +320,7 @@ private fun DeviceTestSection(
                 Text(stringResource(R.string.api_test_test_register_device))
             }
 
-            Divider()
+            HorizontalDivider()
 
             Button(
                 onClick = onTestListDevices,
