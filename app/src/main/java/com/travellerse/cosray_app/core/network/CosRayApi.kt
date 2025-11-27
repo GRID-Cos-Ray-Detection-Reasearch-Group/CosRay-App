@@ -32,114 +32,132 @@ import kotlinx.coroutines.withContext
 
 class CosRayApi(private val client: HttpClient) {
 
-    // https://docs.allauth.org/en/dev/headless/openapi-specification/#tag/Authentication:-Account
-    suspend fun login(username: String, password: String): Pair<User, AuthTokens> =
-            withContext(Dispatchers.IO) {
-                val response: AuthResponse =
+        // https://docs.allauth.org/en/dev/headless/openapi-specification/#tag/Authentication:-Account
+        suspend fun login(username: String, password: String): Pair<User, AuthTokens> =
+                withContext(Dispatchers.IO) {
+                        val response: AuthResponse =
+                                client
+                                        .post("/_allauth/app/v1/auth/login") {
+                                                contentType(ContentType.Application.Json)
+                                                setBody(
+                                                        LoginRequest(
+                                                                username = username,
+                                                                password = password
+                                                        )
+                                                )
+                                        }
+                                        .body()
+                        val tokens = AuthTokens.fromSessionToken(response.meta.sessionToken)
+                        response.data.user.toDomain() to tokens
+                }
+
+        suspend fun register(
+                email: String,
+                password: String,
+                displayName: String
+        ): Pair<User, AuthTokens> =
+                withContext(Dispatchers.IO) {
+                        val response: AuthResponse =
+                                client
+                                        .post("/_allauth/app/v1/auth/signup") {
+                                                contentType(ContentType.Application.Json)
+                                                setBody(
+                                                        RegisterRequest(
+                                                                email = email,
+                                                                password = password,
+                                                                displayName = displayName
+                                                        )
+                                                )
+                                        }
+                                        .body()
+                        val tokens = AuthTokens.fromSessionToken(response.meta.sessionToken)
+                        response.data.user.toDomain() to tokens
+                }
+
+        suspend fun refreshToken(refreshToken: String): AuthTokens =
+                withContext(Dispatchers.IO) { AuthTokens.fromSessionToken(refreshToken) }
+
+        suspend fun fetchCurrentUser(accessToken: String): User =
+                withContext(Dispatchers.IO) {
+                        val response: AuthResponse =
+                                client
+                                        .get("/_allauth/app/v1/auth/session") {
+                                                sessionToken(accessToken)
+                                        }
+                                        .body()
+                        response.data.user.toDomain()
+                }
+
+        /**
+         * 上传遥测数据（旧版 API，用于 TelemetryRepository）
+         * @param accessToken 访问令牌
+         * @param payload 遥测数据负载
+         * @deprecated 使用 uploadPacket 替代
+         */
+        @Deprecated("Use uploadPacket instead", ReplaceWith("uploadPacket(accessToken, request)"))
+        suspend fun uploadTelemetry(accessToken: String, payload: TelemetryPayloadDto): Unit =
+                withContext(Dispatchers.IO) {
+                        client.post("/api/mu-packets/") {
+                                sessionToken(accessToken)
+                                contentType(ContentType.Application.Json)
+                                setBody(payload)
+                        }
+                }
+
+        /** 注册新设备 */
+        suspend fun registerDevice(
+                accessToken: String,
+                macAddress: String,
+                name: String,
+                description: String? = null
+        ): DeviceDto =
+                withContext(Dispatchers.IO) {
+                        val request =
+                                RegisterDeviceRequest(
+                                        macAddress = macAddress,
+                                        name = name,
+                                        description = description
+                                )
                         client
-                                .post("/_allauth/app/v1/auth/login") {
-                                    contentType(ContentType.Application.Json)
-                                    setBody(LoginRequest(username = username, password = password))
+                                .post("/api/devices/") {
+                                        sessionToken(accessToken)
+                                        contentType(ContentType.Application.Json)
+                                        setBody(request)
                                 }
                                 .body()
-                val tokens = AuthTokens.fromSessionToken(response.meta.sessionToken)
-                response.data.user.toDomain() to tokens
-            }
+                }
 
-    suspend fun register(
-            email: String,
-            password: String,
-            displayName: String
-    ): Pair<User, AuthTokens> =
-            withContext(Dispatchers.IO) {
-                val response: AuthResponse =
+        /** 上传μ子或时间线数据包 */
+        suspend fun uploadPacket(
+                accessToken: String,
+                request: PacketUploadRequest
+        ): PacketUploadResponse =
+                withContext(Dispatchers.IO) {
                         client
-                                .post("/_allauth/app/v1/auth/signup") {
-                                    contentType(ContentType.Application.Json)
-                                    setBody(
-                                            RegisterRequest(
-                                                    email = email,
-                                                    password = password,
-                                                    displayName = displayName
-                                            )
-                                    )
+                                .post("/api/mu-packets/") {
+                                        sessionToken(accessToken)
+                                        contentType(ContentType.Application.Json)
+                                        setBody(request)
                                 }
                                 .body()
-                val tokens = AuthTokens.fromSessionToken(response.meta.sessionToken)
-                response.data.user.toDomain() to tokens
-            }
+                }
 
-    suspend fun refreshToken(refreshToken: String): AuthTokens =
-            withContext(Dispatchers.IO) { AuthTokens.fromSessionToken(refreshToken) }
+        private fun HttpRequestBuilder.sessionToken(currentToken: String) {
+                header("X-Session-Token", currentToken)
+        }
 
-    suspend fun fetchCurrentUser(accessToken: String): User =
-            withContext(Dispatchers.IO) {
-                val response: AuthResponse =
-                        client
-                                .get("/_allauth/app/v1/auth/session") { sessionToken(accessToken) }
-                                .body()
-                response.data.user.toDomain()
-            }
-
-    suspend fun uploadTelemetry(accessToken: String, payload: TelemetryPayloadDto): Unit =
-            withContext(Dispatchers.IO) {
-                client.post("/api/mu-packets/") {
-                    sessionToken(accessToken)
-                    contentType(ContentType.Application.Json)
-                    setBody(payload)
-    /**
-     * 注册新设备
-     */
-    suspend fun registerDevice(
-            accessToken: String,
-            macAddress: String,
-            name: String,
-            description: String? = null
-    ): DeviceDto =
-            withContext(Dispatchers.IO) {
-                val request = RegisterDeviceRequest(
-                    macAddress = macAddress,
-                    name = name,
-                    description = description
+        fun TelemetrySample.toDto(deviceId: String): TelemetrySampleDto =
+                TelemetrySampleDto(
+                        detectorId = detectorId.value,
+                        deviceId = deviceId,
+                        telemetryId = id.value,
+                        recordedAt = recordedAt.toEpochMilli(),
+                        acquisition = acquisition.toDto(),
+                        radiation = radiation.toDto(),
+                        environment = environment.toDto(),
+                        power = power.toDto(),
+                        diagnostics = diagnostics.toDto()
                 )
-                client.post("/api/devices/") {
-                    sessionToken(accessToken)
-                    contentType(ContentType.Application.Json)
-                    setBody(request)
-                }.body()
-            }
-
-    /**
-     * 上传μ子或时间线数据包
-     */
-    suspend fun uploadPacket(
-            accessToken: String,
-            request: PacketUploadRequest
-    ): PacketUploadResponse =
-            withContext(Dispatchers.IO) {
-                client.post("/api/mu-packets/") {
-                    sessionToken(accessToken)
-                    contentType(ContentType.Application.Json)
-                    setBody(request)
-                }.body()
-            }
-
-    private fun HttpRequestBuilder.sessionToken(currentToken: String) {
-        header("X-Session-Token", currentToken)
-    }
-
-    fun TelemetrySample.toDto(deviceId: String): TelemetrySampleDto =
-            TelemetrySampleDto(
-                    detectorId = detectorId.value,
-                    deviceId = deviceId,
-                    telemetryId = id.value,
-                    recordedAt = recordedAt.toEpochMilli(),
-                    acquisition = acquisition.toDto(),
-                    radiation = radiation.toDto(),
-                    environment = environment.toDto(),
-                    power = power.toDto(),
-                    diagnostics = diagnostics.toDto()
-            )
 }
 
 fun UserResponse.toDomain(): User =
