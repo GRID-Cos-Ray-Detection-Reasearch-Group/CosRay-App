@@ -10,11 +10,10 @@ import com.travellerse.cosray_app.domain.model.PowerSnapshot
 import com.travellerse.cosray_app.domain.model.RadiationMetrics
 import com.travellerse.cosray_app.domain.model.TelemetryId
 import com.travellerse.cosray_app.domain.model.TelemetrySample
-import java.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import java.time.Instant
 
 object BleTelemetryParser {
 

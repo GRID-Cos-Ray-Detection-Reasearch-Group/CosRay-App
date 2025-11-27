@@ -18,7 +18,7 @@ private const val USER_PREFERENCES_NAME = "cosray_user_preferences"
 private val Context.dataStore: DataStore<Preferences> by
         preferencesDataStore(name = USER_PREFERENCES_NAME)
 
-class UserPreferencesDataSource(private val context: Context) {
+class UserPreferencesDataSource(context: Context) {
 
     private val store: DataStore<Preferences> = context.dataStore
 

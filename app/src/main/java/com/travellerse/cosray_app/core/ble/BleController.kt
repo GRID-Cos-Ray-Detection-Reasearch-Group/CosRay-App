@@ -372,16 +372,12 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
                 bluetoothGatt?.close()
 
                 bluetoothGatt =
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            device.connectGatt(
-                                    context,
-                                    false,
-                                    gattCallback,
-                                    BluetoothDevice.TRANSPORT_LE
-                            )
-                        } else {
-                            device.connectGatt(context, false, gattCallback)
-                        }
+                    device.connectGatt(
+                            context,
+                            false,
+                            gattCallback,
+                            BluetoothDevice.TRANSPORT_LE
+                    )
 
                 // Wait for connection
                 var attempts = 0

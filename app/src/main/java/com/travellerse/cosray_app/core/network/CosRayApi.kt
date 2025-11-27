@@ -49,7 +49,12 @@ class CosRayApi(private val client: HttpClient) {
                                                 )
                                         }
                                         .body()
-                        val tokens = AuthTokens.fromSessionToken(response.meta.sessionToken)
+                        val sessionToken =
+                                response.meta.sessionToken
+                                        ?: throw IllegalStateException(
+                                                "Session token not found in login response"
+                                        )
+                        val tokens = AuthTokens.fromSessionToken(sessionToken)
                         response.data.user.toDomain() to tokens
                 }
 
@@ -72,7 +77,12 @@ class CosRayApi(private val client: HttpClient) {
                                                 )
                                         }
                                         .body()
-                        val tokens = AuthTokens.fromSessionToken(response.meta.sessionToken)
+                        val sessionToken =
+                                response.meta.sessionToken
+                                        ?: throw IllegalStateException(
+                                                "Session token not found in register response"
+                                        )
+                        val tokens = AuthTokens.fromSessionToken(sessionToken)
                         response.data.user.toDomain() to tokens
                 }
 
@@ -132,21 +142,13 @@ class CosRayApi(private val client: HttpClient) {
         /** 获取当前用户的所有设备 */
         suspend fun getDevices(accessToken: String): List<DeviceDto> =
                 withContext(Dispatchers.IO) {
-                        client
-                                .get("/api/devices/") {
-                                        sessionToken(accessToken)
-                                }
-                                .body()
+                        client.get("/api/devices/") { sessionToken(accessToken) }.body()
                 }
 
         /** 获取指定设备的详情 */
         suspend fun getDevice(accessToken: String, deviceId: Int): DeviceDto =
                 withContext(Dispatchers.IO) {
-                        client
-                                .get("/api/devices/$deviceId/") {
-                                        sessionToken(accessToken)
-                                }
-                                .body()
+                        client.get("/api/devices/$deviceId/") { sessionToken(accessToken) }.body()
                 }
 
         /** 更新设备信息 */
@@ -175,9 +177,7 @@ class CosRayApi(private val client: HttpClient) {
         /** 删除设备 */
         suspend fun deleteDevice(accessToken: String, deviceId: Int): Unit =
                 withContext(Dispatchers.IO) {
-                        client.delete("/api/devices/$deviceId/") {
-                                sessionToken(accessToken)
-                        }
+                        client.delete("/api/devices/$deviceId/") { sessionToken(accessToken) }
                 }
 
         /** 上传μ子或时间线数据包 */

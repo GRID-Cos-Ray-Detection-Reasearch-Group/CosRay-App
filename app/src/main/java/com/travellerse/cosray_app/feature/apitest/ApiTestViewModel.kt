@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.travellerse.cosray_app.core.network.CosRayApi
 import com.travellerse.cosray_app.core.network.HttpClientFactory
-import com.travellerse.cosray_app.core.network.model.DeviceDto
 import com.travellerse.cosray_app.core.network.model.MuonEventDto
 import com.travellerse.cosray_app.core.network.model.MuonPacketDto
 import com.travellerse.cosray_app.core.network.model.PacketUploadRequest
@@ -16,7 +15,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 data class ApiTestUiState(

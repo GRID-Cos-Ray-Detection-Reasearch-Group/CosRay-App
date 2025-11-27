@@ -23,7 +23,7 @@ data class AuthMethod(val method: String, val username: String, val at: Double? 
 @Serializable
 data class AuthMeta(
         @SerialName("is_authenticated") val isAuthenticated: Boolean,
-        @SerialName("session_token") val sessionToken: String,
+        @SerialName("session_token") val sessionToken: String? = null,
         @SerialName("session_id") val sessionId: String? = null,
         @SerialName("csrf_token") val csrfToken: String? = null
 )
