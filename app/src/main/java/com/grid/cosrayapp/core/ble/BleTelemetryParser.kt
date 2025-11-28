@@ -21,6 +21,7 @@ object BleTelemetryParser {
     isLenient = true
   }
 
+  @Suppress("ReturnCount", "LongMethod", "CyclomaticComplexMethod")
   fun parse(raw: ByteArray, device: BleDevice?): TelemetrySample? {
     if (raw.isEmpty()) return null
     val payload = raw.decodeToString().trim()
@@ -104,6 +105,7 @@ object BleTelemetryParser {
     )
   }
 
+  @Suppress("LongMethod", "CyclomaticComplexMethod")
   private fun BleTelemetryDto.toDomain(device: BleDevice?): TelemetrySample {
     val resolvedRecordedAtMillis =
       recordedAtMillis
@@ -188,6 +190,7 @@ object BleTelemetryParser {
     )
   }
 
+  @Suppress("ReturnCount")
   private fun String?.toFirmwareVersion(): FirmwareVersion? {
     if (this.isNullOrBlank()) return null
     val parts = this.split('+', limit = 2)

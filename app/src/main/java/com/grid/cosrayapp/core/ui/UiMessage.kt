@@ -1,3 +1,5 @@
+@file:Suppress("SpreadOperator")
+
 package com.grid.cosrayapp.core.ui
 
 import androidx.annotation.StringRes

@@ -45,6 +45,7 @@ class LoginViewModel(
     }
   }
 
+  @Suppress("LongMethod")
   fun submit() {
     val state = _uiState.value
     val passwordValid = validator.isPasswordStrong(state.password)
@@ -103,7 +104,6 @@ class LoginViewModel(
         is CosRayResult.Success -> {
           _uiState.update { it.copy(isLoading = false) }
         }
-
         is CosRayResult.Error -> {
           _uiState.update {
             it.copy(

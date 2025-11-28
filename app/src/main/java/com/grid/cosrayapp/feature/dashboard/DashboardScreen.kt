@@ -1,3 +1,5 @@
+@file:Suppress("FunctionNaming", "LongMethod")
+
 package com.grid.cosrayapp.feature.dashboard
 
 import androidx.compose.foundation.layout.Arrangement

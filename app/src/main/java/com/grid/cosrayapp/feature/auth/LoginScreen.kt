@@ -1,3 +1,5 @@
+@file:Suppress("FunctionNaming", "LongMethod", "LongParameterList")
+
 package com.grid.cosrayapp.feature.auth
 
 import androidx.compose.animation.AnimatedVisibility

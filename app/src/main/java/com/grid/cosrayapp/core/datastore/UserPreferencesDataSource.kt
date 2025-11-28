@@ -29,14 +29,7 @@ class UserPreferencesDataSource(context: Context) {
       val userId = preferences[Keys.USER_ID]
       val email = preferences[Keys.USER_EMAIL]
       val name = preferences[Keys.USER_NAME]
-      if (
-        access != null &&
-          refresh != null &&
-          expires != null &&
-          userId != null &&
-          email != null &&
-          name != null
-      ) {
+      if (listOf(access, refresh, expires, userId, email, name).all { it != null }) {
         StoredAuthData(
           user =
             User(

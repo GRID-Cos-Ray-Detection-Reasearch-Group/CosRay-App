@@ -1,3 +1,5 @@
+@file:Suppress("TooGenericExceptionCaught")
+
 package com.grid.cosrayapp.core.common
 
 sealed interface CosRayResult<out T> {

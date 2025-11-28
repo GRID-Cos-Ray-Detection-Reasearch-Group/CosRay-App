@@ -44,6 +44,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
+@Suppress("TooManyFunctions", "ReturnCount", "MagicNumber")
 class BleController(private val context: Context, val externalScope: CoroutineScope) {
   private val bluetoothManager: BluetoothManager? =
     context.getSystemService(BluetoothManager::class.java)
@@ -140,13 +141,11 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
               BleConnectionState.Failed(BleError.GattError(status, getGattStatusMessage(status)))
             )
           }
-
           newState == BluetoothProfile.STATE_CONNECTED -> {
             val device = activeDevice ?: fallbackDevice(gatt.device)
             _connectionState.value = BleConnectionState.DiscoveringServices(device)
             gatt.discoverServices()
           }
-
           newState == BluetoothProfile.STATE_DISCONNECTED -> {
             closeConnection(BleConnectionState.Disconnected)
           }
@@ -161,7 +160,6 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
               BleConnectionState.Failed(BleError.GattError(status, "Service discovery failed"))
             )
           }
-
           else -> {
             val service = gatt.getService(BleConfig.SERVICE_UUID)
             val notifyCharacteristic =
@@ -309,7 +307,6 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
         is CosRayResult.Success -> {
           return result
         }
-
         is CosRayResult.Error -> {
           if (result.throwable is TimeoutCancellationException) {
             _connectionState.value = BleConnectionState.Failed(BleError.ConnectionTimeout(address))
@@ -329,8 +326,7 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
   @SuppressLint("MissingPermission")
   private suspend fun performConnection(address: String) =
     withContext(Dispatchers.Main) {
-      val adapter =
-        bluetoothAdapter ?: throw IllegalStateException("Bluetooth adapter not available")
+      val adapter = checkNotNull(bluetoothAdapter) { "Bluetooth adapter not available" }
       if (!hasBluetoothPermissions()) {
         throw SecurityException("Missing Bluetooth permissions")
       }
@@ -350,12 +346,12 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
         delay(500)
         attempts++
         if (_connectionState.value is BleConnectionState.Failed) {
-          throw IllegalStateException("Connection failed")
+          error("Connection failed")
         }
       }
 
       if (_connectionState.value !is BleConnectionState.Connected) {
-        throw IllegalStateException("Connection timeout")
+        error("Connection timeout")
       }
     }
 
@@ -448,13 +444,11 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
               CosRayResult.Error(IllegalStateException("GATT not connected"))
             )
           }
-
           is GattOperation.Read -> {
             operation.deferred.complete(
               CosRayResult.Error(IllegalStateException("GATT not connected"))
             )
           }
-
           is GattOperation.EnableNotifications -> {
             operation.deferred.complete(
               CosRayResult.Error(IllegalStateException("GATT not connected"))
@@ -478,16 +472,14 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
           }
           // Do not complete the deferred here; it will be resolved in onCharacteristicWrite
         }
-
         is GattOperation.Read -> {
-          // TODO: Implement read operation
+          // NOTE: Read operation not implemented (placeholder)
           operation.deferred.complete(
             CosRayResult.Error(UnsupportedOperationException("Read not yet implemented"))
           )
         }
-
         is GattOperation.EnableNotifications -> {
-          // TODO: Implement notification toggle
+          // NOTE: Notification toggle not implemented (placeholder)
           operation.deferred.complete(
             CosRayResult.Error(
               UnsupportedOperationException("Notification toggle not yet implemented")

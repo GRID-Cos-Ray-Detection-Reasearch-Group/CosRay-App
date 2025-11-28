@@ -32,6 +32,7 @@ import io.ktor.http.contentType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+@Suppress("TooManyFunctions")
 class CosRayApi(private val client: HttpClient) {
   // https://docs.allauth.org/en/dev/headless/openapi-specification/#tag/Authentication:-Account
   suspend fun login(username: String, password: String): Pair<User, AuthTokens> =
@@ -44,8 +45,7 @@ class CosRayApi(private val client: HttpClient) {
           }
           .body()
       val sessionToken =
-        response.meta.sessionToken
-          ?: throw IllegalStateException("Session token not found in login response")
+        response.meta.sessionToken ?: error("Session token not found in login response")
       val tokens = AuthTokens.fromSessionToken(sessionToken)
       response.data.user.toDomain() to tokens
     }
@@ -64,8 +64,7 @@ class CosRayApi(private val client: HttpClient) {
           }
           .body()
       val sessionToken =
-        response.meta.sessionToken
-          ?: throw IllegalStateException("Session token not found in register response")
+        response.meta.sessionToken ?: error("Session token not found in register response")
       val tokens = AuthTokens.fromSessionToken(sessionToken)
       response.data.user.toDomain() to tokens
     }

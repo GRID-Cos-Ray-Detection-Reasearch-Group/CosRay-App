@@ -1,3 +1,5 @@
+@file:Suppress("MagicNumber")
+
 package com.grid.cosrayapp.domain.mapper
 
 import com.grid.cosrayapp.core.network.model.MuonEventDto

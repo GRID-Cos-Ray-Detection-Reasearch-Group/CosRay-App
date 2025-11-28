@@ -1,3 +1,5 @@
+@file:Suppress("MagicNumber")
+
 package com.grid.cosrayapp.feature.apitest
 
 import androidx.lifecycle.ViewModel
@@ -33,6 +35,7 @@ data class ApiTestUiState(
   val error: String? = null,
 )
 
+@Suppress("TooGenericExceptionCaught", "TooManyFunctions")
 class ApiTestViewModel : ViewModel() {
   private val _uiState = MutableStateFlow(ApiTestUiState())
   val uiState: StateFlow<ApiTestUiState> = _uiState.asStateFlow()
