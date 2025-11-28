@@ -1,12 +1,35 @@
+@file:Suppress("FunctionNaming", "LongMethod", "LongParameterList")
+
 package com.grid.cosrayapp.feature.apitest
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -15,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.grid.cosrayapp.R
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Suppress("FunctionNaming")
 @Composable
 fun ApiTestScreen(
   state: ApiTestUiState,
@@ -72,6 +96,7 @@ fun ApiTestScreen(
       HorizontalDivider()
 
       // Authentication Test Section
+      @Suppress("FunctionNaming")
       AuthTestSection(
         username = state.username,
         password = state.password,
@@ -90,6 +115,7 @@ fun ApiTestScreen(
       HorizontalDivider()
 
       // Device Management Test Section
+      @Suppress("FunctionNaming")
       DeviceTestSection(
         macAddress = state.macAddress,
         deviceName = state.deviceName,
@@ -126,6 +152,7 @@ fun ApiTestScreen(
   }
 }
 
+@Suppress("FunctionNaming")
 @Composable
 private fun ServerConfigSection(baseUrl: String, onBaseUrlChange: (String) -> Unit) {
   Card(modifier = Modifier.fillMaxWidth()) {
@@ -145,6 +172,7 @@ private fun ServerConfigSection(baseUrl: String, onBaseUrlChange: (String) -> Un
   }
 }
 
+@Suppress("FunctionNaming")
 @Composable
 private fun TokenSection(token: String, onTokenChange: (String) -> Unit) {
   Card(modifier = Modifier.fillMaxWidth()) {
@@ -164,6 +192,7 @@ private fun TokenSection(token: String, onTokenChange: (String) -> Unit) {
   }
 }
 
+@Suppress("FunctionNaming")
 @Composable
 private fun AuthTestSection(
   username: String,
@@ -248,6 +277,7 @@ private fun AuthTestSection(
   }
 }
 
+@Suppress("FunctionNaming")
 @Composable
 private fun DeviceTestSection(
   macAddress: String,
@@ -342,6 +372,7 @@ private fun DeviceTestSection(
   }
 }
 
+@Suppress("FunctionNaming")
 @Composable
 private fun PacketTestSection(
   macAddress: String,
@@ -385,6 +416,7 @@ private fun PacketTestSection(
   }
 }
 
+@Suppress("FunctionNaming")
 @Composable
 private fun ResponseSection(response: String, error: String?, onClear: () -> Unit) {
   Card(

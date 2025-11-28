@@ -13,6 +13,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 class BleRepository(private val controller: BleController) {
+  companion object {
+    private const val SHARING_STARTED_TIMEOUT_MS = 5_000L
+  }
+
   val scanResults: StateFlow<List<BleDevice>> = controller.scanResults
   val isScanning: StateFlow<Boolean> = controller.isScanning
   val connectionState: StateFlow<BleConnectionState> = controller.connectionState
@@ -51,7 +55,7 @@ class BleRepository(private val controller: BleController) {
       .map { state -> state is BleConnectionState.Connected }
       .stateIn(
         scope = controller.externalScope,
-        started = SharingStarted.WhileSubscribed(5_000),
+        started = SharingStarted.WhileSubscribed(SHARING_STARTED_TIMEOUT_MS),
         initialValue = false,
       )
 
@@ -69,7 +73,7 @@ class BleRepository(private val controller: BleController) {
       }
       .stateIn(
         scope = controller.externalScope,
-        started = SharingStarted.WhileSubscribed(5_000),
+        started = SharingStarted.WhileSubscribed(SHARING_STARTED_TIMEOUT_MS),
         initialValue = null,
       )
 }

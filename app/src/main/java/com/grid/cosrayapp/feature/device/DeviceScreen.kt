@@ -1,3 +1,5 @@
+@file:Suppress("FunctionNaming", "LongMethod", "LongParameterList", "CyclomaticComplexMethod")
+
 package com.grid.cosrayapp.feature.device
 
 import androidx.compose.foundation.clickable
@@ -41,6 +43,7 @@ import java.util.Date
 import java.util.Locale
 
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
+@Suppress("UnusedParameter")
 @Composable
 fun DeviceScreen(
   state: DeviceUiState,
@@ -160,7 +163,6 @@ private fun ConnectionOverview(
           true,
         )
       }
-
       is BleConnectionState.Connecting -> {
         val deviceName = connection.device.name ?: connection.device.macAddress
         Triple(
@@ -169,17 +171,14 @@ private fun ConnectionOverview(
           false,
         )
       }
-
       is BleConnectionState.DiscoveringServices -> {
         val deviceName = connection.device.name ?: connection.device.macAddress
         Triple("Discovering services: $deviceName", "Enumerating GATT services...", false)
       }
-
       is BleConnectionState.Disconnecting -> {
         val deviceName = connection.device.name ?: connection.device.macAddress
         Triple("Disconnecting: $deviceName", "Closing connection...", false)
       }
-
       is BleConnectionState.Failed -> {
         Triple(
           connection.error.getErrorMessage(),
@@ -187,11 +186,9 @@ private fun ConnectionOverview(
           false,
         )
       }
-
       is BleConnectionState.ScanFailed -> {
         Triple(connection.error.getErrorMessage(), "Scan failed. Try again.", false)
       }
-
       BleConnectionState.Idle -> {
         Triple(
           stringResource(R.string.device_status_disconnected),
@@ -199,11 +196,9 @@ private fun ConnectionOverview(
           false,
         )
       }
-
       BleConnectionState.Scanning -> {
         Triple("Scanning...", "Searching for BLE devices nearby", false)
       }
-
       BleConnectionState.Disconnected -> {
         Triple(
           stringResource(R.string.device_status_disconnected),

@@ -1,3 +1,5 @@
+@file:Suppress("FunctionNaming")
+
 package com.grid.cosrayapp.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,11 +26,9 @@ fun CosRayApp(appState: CosRayAppState = rememberCosRayAppState()) {
         appState.exitGuestMode()
         appState.navigateTo(CosRayDestination.Device, popUpToStart = true)
       }
-
       AuthState.Loading -> {
         Unit
       }
-
       else -> {
         Unit
       }

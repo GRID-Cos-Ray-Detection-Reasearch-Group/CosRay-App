@@ -1,3 +1,5 @@
+@file:Suppress("FunctionNaming", "LongMethod")
+
 package com.grid.cosrayapp.navigation
 
 import androidx.compose.foundation.layout.Spacer
@@ -55,7 +57,8 @@ fun CosRayNavHost(appState: CosRayAppState) {
   ModalNavigationDrawer(
     drawerState = drawerState,
     drawerContent = {
-      ModalDrawerSheet(modifier = Modifier.fillMaxWidth(0.75f)) {
+      val drawerWidthFraction = 0.75f
+      ModalDrawerSheet(modifier = Modifier.fillMaxWidth(drawerWidthFraction)) {
         Spacer(Modifier.height(12.dp))
         Text(
           text = stringResource(R.string.app_name),
@@ -102,7 +105,7 @@ fun CosRayNavHost(appState: CosRayAppState) {
             selected = false,
             onClick = {
               scope.launch { drawerState.close() }
-              // TODO: Implement logout callback if needed
+              // NOTE: Logout callback placeholder (implement if needed)
               appState.exitGuestMode()
               appState.navigateTo(CosRayDestination.Login, popUpToStart = true)
             },

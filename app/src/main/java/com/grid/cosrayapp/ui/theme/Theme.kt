@@ -1,3 +1,5 @@
+@file:Suppress("FunctionNaming")
+
 package com.grid.cosrayapp.ui.theme
 
 import android.os.Build

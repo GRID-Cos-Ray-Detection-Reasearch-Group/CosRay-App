@@ -1,3 +1,5 @@
+@file:Suppress("MagicNumber")
+
 package com.grid.cosrayapp.domain.model
 
 import java.nio.ByteBuffer
