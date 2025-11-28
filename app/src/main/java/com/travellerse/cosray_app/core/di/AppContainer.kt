@@ -13,51 +13,44 @@ import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 
 val LocalAppContainer =
-        staticCompositionLocalOf<AppContainer> { error("AppContainer not provided") }
+  staticCompositionLocalOf<AppContainer> { error("AppContainer not provided") }
 
 interface AppContainer : AutoCloseable {
-    val authRepository: AuthRepository
-    val bleRepository: BleRepository
-    val telemetryRepository: TelemetryRepository
-    val api: CosRayApi
-    val httpClient: HttpClient
-    val applicationScope: CoroutineScope
+  val authRepository: AuthRepository
+  val bleRepository: BleRepository
+  val telemetryRepository: TelemetryRepository
+  val api: CosRayApi
+  val httpClient: HttpClient
+  val applicationScope: CoroutineScope
 }
 
 class AppContainerImpl(appContext: Context, externalScope: CoroutineScope) : AppContainer {
+  override val applicationScope: CoroutineScope = externalScope
+  override val httpClient: HttpClient = HttpClientFactory.create()
 
-    override val applicationScope: CoroutineScope = externalScope
-    override val httpClient: HttpClient = HttpClientFactory.create()
+  private val userPreferences = UserPreferencesDataSource(appContext)
+  private val bleController = BleController(appContext, externalScope)
 
-    private val userPreferences = UserPreferencesDataSource(appContext)
-    private val bleController = BleController(appContext, externalScope)
+  override val api: CosRayApi = CosRayApi(httpClient)
 
-    override val api: CosRayApi = CosRayApi(httpClient)
+  override val authRepository: AuthRepository by lazy {
+    AuthRepository(api = api, userPreferences = userPreferences, externalScope = externalScope)
+  }
 
-    override val authRepository: AuthRepository by lazy {
-        AuthRepository(
-            api = api,
-            userPreferences = userPreferences,
-            externalScope = externalScope
-        )
-    }
+  override val bleRepository: BleRepository by lazy { BleRepository(bleController) }
 
-    override val bleRepository: BleRepository by lazy {
-        BleRepository(bleController)
-    }
+  override val telemetryRepository: TelemetryRepository by lazy {
+    TelemetryRepository(
+      api = api,
+      bleRepository = bleRepository,
+      authRepository = authRepository,
+      externalScope = externalScope,
+    )
+  }
 
-    override val telemetryRepository: TelemetryRepository by lazy {
-        TelemetryRepository(
-            api = api,
-            bleRepository = bleRepository,
-            authRepository = authRepository,
-            externalScope = externalScope
-        )
-    }
-
-    override fun close() {
-        // Clean up resources in reverse order of initialization
-        bleController.shutdown()
-        httpClient.close()
-    }
+  override fun close() {
+    // Clean up resources in reverse order of initialization
+    bleController.shutdown()
+    httpClient.close()
+  }
 }

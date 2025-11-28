@@ -17,6 +17,19 @@ repos:
       - id: check-added-large-files
       - id: detect-private-key
 
+  - repo: https://github.com/travellerse/pre-commit-jvm
+    rev: b5d6d4458319e6128c896cb689a82b13abfa9ae8
+    hooks:
+      - id: ktfmt
+        args: [--google-style]
+
+  # - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+  #   rev: v2.15.0
+  #   hooks:
+  #     - id: pretty-format-kotlin
+  #       name: ktfmt (google style)
+  #       args: [--ktfmt, --ktfmt-style=google, --autofix]
+
   - repo: https://github.com/oxipng/oxipng
     rev: v9.1.5
     hooks:
@@ -24,9 +37,21 @@ repos:
         name: Image Compression
         args: ["-q", "-o", "2", "-s", "--ng"]
 
+  # - repo: local
+  #   hooks:
+  #     - id: ktlint
+  #       name: ktlint (cs launch)
+  #       entry: com.pinterest.ktlint:ktlint-cli:1.8.0 -M com.pinterest.ktlint.Main --
+  #       language: coursier
+  #       types: [kotlin]
+  #       args: [--format]
+  #       additional_dependencies:
+  #         - "com.pinterest.ktlint::ktlint-cli:1.8.0"
+
 # sets up .pre-commit-ci.yaml to ensure pre-commit dependencies stay up to date
 default_install_hook_types: [pre-commit, prepare-commit-msg]
 ci:
   autofix_commit_msg: "chore: Auto fix by pre-commit hooks [skip changelog]"
   autofix_prs: true
   autoupdate_commit_msg: "chore: Auto update by pre-commit hooks [skip changelog]"
+  skip: [ktfmt]

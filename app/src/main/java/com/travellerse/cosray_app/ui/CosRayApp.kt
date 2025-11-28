@@ -16,22 +16,28 @@ import com.travellerse.cosray_app.ui.theme.CosRayAppTheme
 
 @Composable
 fun CosRayApp(appState: CosRayAppState = rememberCosRayAppState()) {
-    val authState = rememberAuthState(appState)
+  val authState = rememberAuthState(appState)
 
-    LaunchedEffect(authState) {
-        when (authState) {
-            is AuthState.Authenticated -> {
-                appState.exitGuestMode()
-                appState.navigateTo(CosRayDestination.Device, popUpToStart = true)
-            }
-            AuthState.Loading -> Unit
-            else -> Unit
-        }
-    }
+  LaunchedEffect(authState) {
+    when (authState) {
+      is AuthState.Authenticated -> {
+        appState.exitGuestMode()
+        appState.navigateTo(CosRayDestination.Device, popUpToStart = true)
+      }
 
-    CosRayAppTheme {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            CosRayNavHost(appState = appState)
-        }
+      AuthState.Loading -> {
+        Unit
+      }
+
+      else -> {
+        Unit
+      }
     }
+  }
+
+  CosRayAppTheme {
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+      CosRayNavHost(appState = appState)
+    }
+  }
 }
