@@ -10,11 +10,11 @@ plugins {
 }
 
 android {
-  namespace = "com.travellerse.cosray_app"
+  namespace = "com.grid.cosrayapp"
   compileSdk { version = release(36) }
 
   defaultConfig {
-    applicationId = "com.travellerse.cosray_app"
+    applicationId = "com.grid.cosrayapp"
     minSdk = 26
     targetSdk = 36
     versionCode = 1
