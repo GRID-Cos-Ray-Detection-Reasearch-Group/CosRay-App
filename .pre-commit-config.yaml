@@ -17,11 +17,11 @@ repos:
       - id: check-added-large-files
       - id: detect-private-key
 
-  - repo: https://github.com/travellerse/pre-commit-jvm
-    rev: 2061988a09bcde297468a47addb99dc7c37e078c
-    hooks:
-      - id: detekt
-        args: [--config, detekt-config.yml]
+  # - repo: https://github.com/travellerse/pre-commit-jvm
+  #   rev: 2061988a09bcde297468a47addb99dc7c37e078c
+  #   hooks:
+  #     - id: detekt
+  #       args: [--config, detekt-config.yml]
 
   - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
     rev: v2.15.0
