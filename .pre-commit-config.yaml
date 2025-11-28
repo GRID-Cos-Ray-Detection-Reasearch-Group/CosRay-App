@@ -27,7 +27,7 @@ repos:
     rev: v2.15.0
     hooks:
       - id: pretty-format-kotlin
-        args: [--ktfmt, --ktfmt-style=google]
+        args: [--ktfmt, --ktfmt-style=google, --autofix]
 
   - repo: https://github.com/oxipng/oxipng
     rev: v9.1.5
