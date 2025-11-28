@@ -5,6 +5,7 @@ plugins {
   alias(libs.plugins.kotlin.android)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.kotlin.serialization)
+  alias(libs.plugins.ktfmt)
   id("io.gitlab.arturbosch.detekt") version "1.23.8"
 }
 
@@ -45,11 +46,16 @@ kotlin {
   compilerOptions {
     jvmTarget = JvmTarget.JVM_21
     freeCompilerArgs.addAll(
-      "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-      "-opt-in=kotlinx.coroutines.FlowPreview",
+        "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
+        "-opt-in=kotlinx.coroutines.FlowPreview",
     )
   }
   jvmToolchain(21)
+}
+
+ktfmt {
+    // Google style - 2 space indentation & automatically adds/removes trailing commas
+    googleStyle()
 }
 
 dependencies {

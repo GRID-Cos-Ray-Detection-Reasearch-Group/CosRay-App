@@ -54,3 +54,4 @@ ci:
   autofix_commit_msg: "chore: Auto fix by pre-commit hooks [skip changelog]"
   autofix_prs: true
   autoupdate_commit_msg: "chore: Auto update by pre-commit hooks [skip changelog]"
+  skip: [ktfmt]
