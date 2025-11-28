@@ -17,18 +17,18 @@ repos:
       - id: check-added-large-files
       - id: detect-private-key
 
-  # - repo: https://github.com/travellerse/pre-commit-jvm
-  #   rev: 2061988a09bcde297468a47addb99dc7c37e078c
-  #   hooks:
-  #     - id: detekt
-  #       args: [--config, detekt-config.yml]
-
-  - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-    rev: v2.15.0
+  - repo: https://github.com/travellerse/pre-commit-jvm
+    rev: 7e575f17f33a5cd6b3a60883e8e70620ef1b8419
     hooks:
-      - id: pretty-format-kotlin
-        name: ktfmt (google style)
-        args: [--ktfmt, --ktfmt-style=google, --autofix]
+      - id: ktfmt
+        args: [--google-style]
+
+  # - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+  #   rev: v2.15.0
+  #   hooks:
+  #     - id: pretty-format-kotlin
+  #       name: ktfmt (google style)
+  #       args: [--ktfmt, --ktfmt-style=google, --autofix]
 
   - repo: https://github.com/oxipng/oxipng
     rev: v9.1.5
