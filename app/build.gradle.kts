@@ -46,16 +46,16 @@ kotlin {
   compilerOptions {
     jvmTarget = JvmTarget.JVM_21
     freeCompilerArgs.addAll(
-        "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-        "-opt-in=kotlinx.coroutines.FlowPreview",
+      "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
+      "-opt-in=kotlinx.coroutines.FlowPreview",
     )
   }
   jvmToolchain(21)
 }
 
 ktfmt {
-    // Google style - 2 space indentation & automatically adds/removes trailing commas
-    googleStyle()
+  // Google style - 2 space indentation & automatically adds/removes trailing commas
+  googleStyle()
 }
 
 dependencies {
