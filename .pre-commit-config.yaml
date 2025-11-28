@@ -18,7 +18,7 @@ repos:
       - id: detect-private-key
 
   - repo: https://github.com/travellerse/pre-commit-jvm
-    rev: 7e575f17f33a5cd6b3a60883e8e70620ef1b8419
+    rev: b5d6d4458319e6128c896cb689a82b13abfa9ae8
     hooks:
       - id: ktfmt
         args: [--google-style]

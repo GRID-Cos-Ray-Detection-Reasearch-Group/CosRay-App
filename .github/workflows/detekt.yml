@@ -1,7 +1,7 @@
 name: Detekt Static Analysis
 
 on:
-  push:
+  workflow_dispatch:
 
 jobs:
   detekt:
