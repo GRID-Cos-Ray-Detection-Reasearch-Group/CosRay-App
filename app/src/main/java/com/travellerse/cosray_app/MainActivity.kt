@@ -10,17 +10,14 @@ import com.travellerse.cosray_app.ui.CosRayApp
 import com.travellerse.cosray_app.ui.theme.CosRayAppTheme
 
 class MainActivity : ComponentActivity() {
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        val appContainer = (application as CosRayApplication).appContainer
-        setContent {
-            CompositionLocalProvider(LocalAppContainer provides appContainer) {
-                CosRayAppTheme {
-                    CosRayApp()
-                }
-            }
-        }
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    enableEdgeToEdge()
+    val appContainer = (application as CosRayApplication).appContainer
+    setContent {
+      CompositionLocalProvider(LocalAppContainer provides appContainer) {
+        CosRayAppTheme { CosRayApp() }
+      }
     }
+  }
 }

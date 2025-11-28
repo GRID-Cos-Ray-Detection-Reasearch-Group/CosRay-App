@@ -11,30 +11,30 @@ import androidx.compose.ui.res.stringResource
 data class UiMessage
 @JvmOverloads
 constructor(
-        @param:StringRes val resId: Int? = null,
-        val args: List<Any> = emptyList(),
-        val rawMessage: String? = null
+  @param:StringRes val resId: Int? = null,
+  val args: List<Any> = emptyList(),
+  val rawMessage: String? = null,
 ) {
-    init {
-        require(resId != null || rawMessage != null) {
-            "UiMessage requires either a string resource id or a raw message"
-        }
+  init {
+    require(resId != null || rawMessage != null) {
+      "UiMessage requires either a string resource id or a raw message"
     }
+  }
 
-    companion object {
-        fun from(@StringRes resId: Int, vararg args: Any): UiMessage =
-                UiMessage(resId = resId, args = args.toList())
+  companion object {
+    fun from(@StringRes resId: Int, vararg args: Any): UiMessage =
+      UiMessage(resId = resId, args = args.toList())
 
-        fun fromRaw(message: String): UiMessage = UiMessage(rawMessage = message)
-    }
+    fun fromRaw(message: String): UiMessage = UiMessage(rawMessage = message)
+  }
 }
 
 @Composable
 fun UiMessage.asString(): String {
-    val resourceId = resId
-    return if (resourceId != null) {
-        stringResource(resourceId, *args.toTypedArray())
-    } else {
-        rawMessage.orEmpty()
-    }
+  val resourceId = resId
+  return if (resourceId != null) {
+    stringResource(resourceId, *args.toTypedArray())
+  } else {
+    rawMessage.orEmpty()
+  }
 }

@@ -15,59 +15,59 @@ import kotlinx.coroutines.launch
 
 @Stable
 class CosRayAppState(
-        val navController: NavHostController,
-        private val appContainer: AppContainer,
-        private val coroutineScope: CoroutineScope
+  val navController: NavHostController,
+  private val appContainer: AppContainer,
+  private val coroutineScope: CoroutineScope,
 ) {
-    val container: AppContainer
-        get() = appContainer
+  val container: AppContainer
+    get() = appContainer
 
-    val authRepository: AuthRepository = appContainer.authRepository
-    val authState = authRepository.authState
-    private var guestMode = false
+  val authRepository: AuthRepository = appContainer.authRepository
+  val authState = authRepository.authState
+  private var guestMode = false
 
-    val isGuestMode: Boolean
-        get() = guestMode
+  val isGuestMode: Boolean
+    get() = guestMode
 
-    fun enterGuestMode() {
-        guestMode = true
+  fun enterGuestMode() {
+    guestMode = true
+  }
+
+  fun exitGuestMode() {
+    guestMode = false
+  }
+
+  fun navigateTo(destination: CosRayDestination, popUpToStart: Boolean = false) {
+    navController.navigate(destination.route) {
+      if (popUpToStart) {
+        popUpTo(navController.graph.startDestinationId) { inclusive = true }
+      }
+      launchSingleTop = true
     }
+  }
 
-    fun exitGuestMode() {
-        guestMode = false
+  fun onLogout() {
+    coroutineScope.launch {
+      authRepository.logout()
+      exitGuestMode()
+      navController.navigate(CosRayDestination.Login.route) {
+        popUpTo(navController.graph.startDestinationId) { inclusive = true }
+        launchSingleTop = true
+      }
     }
-
-    fun navigateTo(destination: CosRayDestination, popUpToStart: Boolean = false) {
-        navController.navigate(destination.route) {
-            if (popUpToStart) {
-                popUpTo(navController.graph.startDestinationId) { inclusive = true }
-            }
-            launchSingleTop = true
-        }
-    }
-
-    fun onLogout() {
-        coroutineScope.launch {
-            authRepository.logout()
-            exitGuestMode()
-            navController.navigate(CosRayDestination.Login.route) {
-                popUpTo(navController.graph.startDestinationId) { inclusive = true }
-                launchSingleTop = true
-            }
-        }
-    }
+  }
 }
 
 @Composable
 fun rememberCosRayAppState(
-        navController: NavHostController = rememberNavController(),
-        appContainer: AppContainer = LocalAppContainer.current,
-        coroutineScope: CoroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+  navController: NavHostController = rememberNavController(),
+  appContainer: AppContainer = LocalAppContainer.current,
+  coroutineScope: CoroutineScope = androidx.compose.runtime.rememberCoroutineScope(),
 ): CosRayAppState =
-        remember(navController, appContainer, coroutineScope) {
-            CosRayAppState(navController, appContainer, coroutineScope)
-        }
+  remember(navController, appContainer, coroutineScope) {
+    CosRayAppState(navController, appContainer, coroutineScope)
+  }
 
 @Composable
 fun rememberAuthState(appState: CosRayAppState): AuthState =
-        appState.authState.collectAsStateWithLifecycle(initialValue = AuthState.Loading).value
+  appState.authState.collectAsStateWithLifecycle(initialValue = AuthState.Loading).value

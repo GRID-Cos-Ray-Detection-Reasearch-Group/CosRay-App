@@ -8,14 +8,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 
 class CosRayApplication : Application() {
+  lateinit var appContainer: AppContainer
+    private set
 
-    lateinit var appContainer: AppContainer
-        private set
+  private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-    override fun onCreate() {
-        super.onCreate()
-        appContainer = AppContainerImpl(appContext = this, externalScope = applicationScope)
-    }
+  override fun onCreate() {
+    super.onCreate()
+    appContainer = AppContainerImpl(appContext = this, externalScope = applicationScope)
+  }
 }

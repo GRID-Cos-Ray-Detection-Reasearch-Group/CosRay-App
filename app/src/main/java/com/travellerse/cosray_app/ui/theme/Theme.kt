@@ -11,52 +11,52 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme =
-        darkColorScheme(
-                primary = HorizonTeal,
-                onPrimary = Onyx,
-                secondary = EmberGlow,
-                onSecondary = Onyx,
-                tertiary = Frost,
-                background = PolarNight,
-                surface = StormGray,
-                onSurface = CloudWhite,
-                surfaceVariant = SlateMidnight,
-                onSurfaceVariant = MistGray,
-                error = EmberGlow,
-                onError = Onyx
-        )
+  darkColorScheme(
+    primary = HorizonTeal,
+    onPrimary = Onyx,
+    secondary = EmberGlow,
+    onSecondary = Onyx,
+    tertiary = Frost,
+    background = PolarNight,
+    surface = StormGray,
+    onSurface = CloudWhite,
+    surfaceVariant = SlateMidnight,
+    onSurfaceVariant = MistGray,
+    error = EmberGlow,
+    onError = Onyx,
+  )
 
 private val LightColorScheme =
-        lightColorScheme(
-                primary = HorizonTeal,
-                onPrimary = Onyx,
-                secondary = EmberGlow,
-                onSecondary = Onyx,
-                tertiary = Sunray,
-                background = CloudWhite,
-                surface = CloudWhite,
-                onSurface = StormGray,
-                surfaceVariant = Frost,
-                onSurfaceVariant = MistGray,
-                error = EmberGlow,
-                onError = Onyx
-        )
+  lightColorScheme(
+    primary = HorizonTeal,
+    onPrimary = Onyx,
+    secondary = EmberGlow,
+    onSecondary = Onyx,
+    tertiary = Sunray,
+    background = CloudWhite,
+    surface = CloudWhite,
+    onSurface = StormGray,
+    surfaceVariant = Frost,
+    onSurfaceVariant = MistGray,
+    error = EmberGlow,
+    onError = Onyx,
+  )
 
 @Composable
 fun CosRayAppTheme(
-        darkTheme: Boolean = isSystemInDarkTheme(),
-        dynamicColor: Boolean = true,
-        content: @Composable () -> Unit
+  darkTheme: Boolean = isSystemInDarkTheme(),
+  dynamicColor: Boolean = true,
+  content: @Composable () -> Unit,
 ) {
-    val colorScheme =
-            if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val context = LocalContext.current
-                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-            } else if (darkTheme) {
-                DarkColorScheme
-            } else {
-                LightColorScheme
-            }
+  val colorScheme =
+    if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      val context = LocalContext.current
+      if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    } else if (darkTheme) {
+      DarkColorScheme
+    } else {
+      LightColorScheme
+    }
 
-    MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+  MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
 }
