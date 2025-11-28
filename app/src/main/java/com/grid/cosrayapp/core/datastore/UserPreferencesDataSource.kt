@@ -21,6 +21,7 @@ private val Context.dataStore: DataStore<Preferences> by
 class UserPreferencesDataSource(context: Context) {
   private val store: DataStore<Preferences> = context.dataStore
 
+  @Suppress("ComplexCondition")
   val authData: Flow<StoredAuthData?> =
     store.data.map { preferences ->
       val access = preferences[Keys.ACCESS_TOKEN]
