@@ -55,6 +55,14 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 
+// Energy level thresholds for muon event classification (ADC counts)
+private const val HIGH_ENERGY_THRESHOLD = 40000
+private const val MEDIUM_ENERGY_THRESHOLD = 20000
+
+// Reusable DateTimeFormatter for timestamp display
+private val TIME_FORMATTER: DateTimeFormatter =
+  DateTimeFormatter.ofPattern("MM-dd HH:mm:ss").withZone(ZoneId.systemDefault())
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(state: DashboardUiState, onMessageShown: () -> Unit, onOpenDrawer: () -> Unit) {
@@ -355,8 +363,8 @@ private fun MuonEventCard(sample: TelemetrySample) {
   val energy = sample.acquisition.particleCount
   val energyLevel =
     when {
-      energy > 40000 -> EnergyLevel.HIGH
-      energy > 20000 -> EnergyLevel.MEDIUM
+      energy > HIGH_ENERGY_THRESHOLD -> EnergyLevel.HIGH
+      energy > MEDIUM_ENERGY_THRESHOLD -> EnergyLevel.MEDIUM
       else -> EnergyLevel.LOW
     }
 
@@ -524,10 +532,7 @@ private fun MetricItem(label: String, value: String) {
   }
 }
 
-private fun formatInstant(instant: Instant): String {
-  val formatter = DateTimeFormatter.ofPattern("MM-dd HH:mm:ss").withZone(ZoneId.systemDefault())
-  return formatter.format(instant)
-}
+private fun formatInstant(instant: Instant): String = TIME_FORMATTER.format(instant)
 
 private enum class EnergyLevel {
   LOW,

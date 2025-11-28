@@ -67,16 +67,25 @@ class DashboardViewModel(
   }
 
   private fun calculatePacketStatistics(samples: List<TelemetrySample>): PacketStatistics {
-    val muonCount = samples.count { it.packetMetadata?.packetType == PacketType.MUON }
-    val timelineCount = samples.count { it.packetMetadata?.packetType == PacketType.TIMELINE }
-    val lastPacket = samples.firstOrNull()?.recordedAt
+    var muonCount = 0
+    var timelineCount = 0
+    var energySum = 0.0
+    var muonEnergyCount = 0
 
-    // Calculate average energy from muon events (using particleCount as proxy for energy)
-    val muonEnergies =
-      samples
-        .filter { it.packetMetadata?.packetType == PacketType.MUON }
-        .map { it.acquisition.particleCount.toDouble() }
-    val avgEnergy = if (muonEnergies.isNotEmpty()) muonEnergies.average() else null
+    samples.forEach { sample ->
+      when (sample.packetMetadata?.packetType) {
+        PacketType.MUON -> {
+          muonCount++
+          energySum += sample.acquisition.particleCount.toDouble()
+          muonEnergyCount++
+        }
+        PacketType.TIMELINE -> timelineCount++
+        null -> {} // Skip samples without packet metadata
+      }
+    }
+
+    val avgEnergy = if (muonEnergyCount > 0) energySum / muonEnergyCount else null
+    val lastPacket = samples.maxByOrNull { it.recordedAt }?.recordedAt
 
     return PacketStatistics(
       muonPacketCount = muonCount,
