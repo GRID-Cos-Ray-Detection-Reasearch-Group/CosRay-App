@@ -17,12 +17,35 @@ repos:
       - id: check-added-large-files
       - id: detect-private-key
 
+  - repo: https://github.com/travellerse/pre-commit-jvm
+    rev: 2061988a09bcde297468a47addb99dc7c37e078c
+    hooks:
+      - id: detekt
+        args: [--config, detekt-config.yml]
+
+  - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+    rev: v2.15.0
+    hooks:
+      - id: pretty-format-kotlin
+        args: [--ktfmt, --ktfmt-style=google]
+
   - repo: https://github.com/oxipng/oxipng
     rev: v9.1.5
     hooks:
       - id: oxipng
         name: Image Compression
         args: ["-q", "-o", "2", "-s", "--ng"]
+
+  # - repo: local
+  #   hooks:
+  #     - id: ktlint
+  #       name: ktlint (cs launch)
+  #       entry: com.pinterest.ktlint:ktlint-cli:1.8.0 -M com.pinterest.ktlint.Main --
+  #       language: coursier
+  #       types: [kotlin]
+  #       args: [--format]
+  #       additional_dependencies:
+  #         - "com.pinterest.ktlint::ktlint-cli:1.8.0"
 
 # sets up .pre-commit-ci.yaml to ensure pre-commit dependencies stay up to date
 default_install_hook_types: [pre-commit, prepare-commit-msg]
