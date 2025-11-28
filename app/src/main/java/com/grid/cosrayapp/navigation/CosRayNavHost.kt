@@ -239,7 +239,6 @@ private fun NavGraphBuilder.dashboardDestination(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     DashboardScreen(
       state = state,
-      onUpload = viewModel::uploadBufferedTelemetry,
       onMessageShown = viewModel::clearStatusMessage,
       onOpenDrawer = onOpenDrawer,
     )
