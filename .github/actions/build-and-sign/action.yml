@@ -1,0 +1,120 @@
+name: "Build and sign APK"
+description: "Composite action to build release APK and optionally sign it with provided keystore."
+author: "Copilot"
+runs:
+  using: "composite"
+  steps:
+    - name: Extract compileSdk version
+      id: extract_sdk
+      shell: bash
+      run: |
+        set -euo pipefail
+        file=app/build.gradle.kts
+        if [ -f "$file" ]; then
+          # Extract number in release(N) or compileSdk N pattern
+          sdk=$(grep -E "compileSdk|release\(" "$file" | grep -Eo 'release\([0-9]+\)|compileSdk \{[^}]*version = release\([0-9]+\)' || true)
+          if [ -n "$sdk" ]; then
+            # Extract digits
+            num=$(echo "$sdk" | grep -Eo '[0-9]+' | head -n1)
+            echo "COMPILE_SDK=$num" >> $GITHUB_ENV
+            echo "COMPILE_SDK=$num" >> $GITHUB_OUTPUT
+          fi
+        fi
+
+    - name: Set up JDK
+      uses: actions/setup-java@v5
+      with:
+        java-version: ${{ inputs.java-version }}
+        distribution: temurin
+        cache: gradle
+
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v2
+      with:
+        api-level: ${{ inputs.api-level }}
+
+    - name: Determine build-tools version
+      run: |
+        set -euo pipefail
+        # If build-tools-version input provided use it; otherwise derive from COMPILE_SDK
+        if [ -n "${{ inputs.build-tools-version }}" ]; then
+          echo "BUILD_TOOLS=${{ inputs.build-tools-version }}" >> $GITHUB_ENV
+        else
+          if [ -n "${COMPILE_SDK:-}" ]; then
+            echo "BUILD_TOOLS=${COMPILE_SDK}.0.0" >> $GITHUB_ENV
+          else
+            echo "BUILD_TOOLS=36.0.0" >> $GITHUB_ENV
+          fi
+        fi
+        echo "Build tools version set to: ${BUILD_TOOLS}"
+      shell: bash
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x ./gradlew
+
+    - name: Build release APK
+      run: ./gradlew assembleRelease -PciBuild=true
+
+    - name: Find unsigned APK
+      id: find_unsigned
+      run: |
+        set -euo pipefail
+        apk=$(ls -1t app/build/outputs/apk/release/*.apk 2>/dev/null | head -n1 || true)
+        if [ -n "$apk" ]; then
+          echo "unsignedFile=$apk" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Sign APK (optional)
+      id: sign
+      if: ${{ inputs.run-sign == 'true' }}
+      uses: ilharp/sign-android-release@v2
+      with:
+        releaseDir: app/build/outputs/apk/release
+        signingKey: ${{ inputs.signing-key }}
+        keyAlias: ${{ inputs.key-alias }}
+        keyStorePassword: ${{ inputs.key-store-password }}
+        keyPassword: ${{ inputs.key-password }}
+        buildToolsVersion: ${{ env.BUILD_TOOLS }}
+
+    - name: Set outputs
+      run: |
+        echo "signedFile=${{ steps.sign.outputs.signedFile || '' }}" >> $GITHUB_OUTPUT
+        echo "unsignedFile=${{ steps.find_unsigned.outputs.unsignedFile || '' }}" >> $GITHUB_OUTPUT
+
+inputs:
+  run-sign:
+    description: "Whether to sign the APK"
+    required: false
+    default: "false"
+  signing-key:
+    description: "Base64 encoded keystore"
+    required: false
+  key-alias:
+    description: "Keystore alias"
+    required: false
+  key-store-password:
+    description: "Keystore password"
+    required: false
+  key-password:
+    description: "Key password"
+    required: false
+  build-tools-version:
+    description: "Android build-tools version to use"
+    required: false
+    default: ""
+  api-level:
+    description: "Android SDK API level"
+    required: false
+    default: "33"
+  java-version:
+    description: "Java version to use"
+    required: false
+    default: "21"
+
+outputs:
+  signedFile:
+    description: "Path to the signed file"
+    value: ${{ steps.sign.outputs.signedFile }}
+  unsignedFile:
+    description: "Path to the unsigned file"
+    value: ${{ steps.find_unsigned.outputs.unsignedFile }}

@@ -13,7 +13,12 @@ on:
   pull_request:
     types: [closed]
     branches: [main]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release tag (vX.Y.Z) to use when manually running the workflow"
+        required: false
+        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -46,27 +51,32 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build release APK
-        run: ./gradlew assembleRelease -PciBuild=true
-
-      - name: Sign app APK
-        id: sign_app
-        if: >-
-          startsWith(github.ref, 'refs/tags/') ||
-          (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'dev') ||
-          github.event_name == 'workflow_dispatch'
-        uses: ilharp/sign-android-release@v2
+      - name: Build and (optionally) sign APK
+        id: build_sign
+        uses: ./.github/actions/build-and-sign
         with:
-          releaseDir: app/build/outputs/apk/release
-          signingKey: ${{ secrets.ANDROID_SIGNING_KEY }}
-          keyAlias: ${{ secrets.ANDROID_KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          buildToolsVersion: 36.0.0
+          run-sign: ${{ startsWith(github.ref, 'refs/tags/') || (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'dev') || github.event_name == 'workflow_dispatch' }}
+          signing-key: ${{ secrets.ANDROID_SIGNING_KEY }}
+          key-alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          key-store-password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          key-password: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          api-level: 36
 
       - name: Determine APK to release
         run: |
           set -euo pipefail
+          # Prefer signed file from build_sign if present
+          signed=${{ steps.build_sign.outputs.signedFile }}
+          unsigned=${{ steps.build_sign.outputs.unsignedFile }}
+          if [ -n "$signed" ]; then
+            echo "RELEASE_APK=$signed" >> $GITHUB_ENV
+            exit 0
+          fi
+          if [ -n "$unsigned" ]; then
+            echo "RELEASE_APK=$unsigned" >> $GITHUB_ENV
+            exit 0
+          fi
+          # fallback: pick latest file
           apk=$(ls -1t app/build/outputs/apk/release/*.apk 2>/dev/null | head -n 1 || true)
           if [ -z "$apk" ]; then
             echo "No APK found to upload" && exit 1
@@ -96,6 +106,12 @@ jobs:
             VERSION=$(echo "$PR_TITLE" | grep -Eo 'v[0-9]+\.[0-9]+\.[0-9]+' || true)
             if [ -z "$VERSION" ]; then
               echo "No version tag found in PR title: $PR_TITLE" && exit 1
+            fi
+          fi
+          if [ -z "$VERSION" ] && [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION='${{ github.event.inputs.version }}'
+            if [ -z "$VERSION" ]; then
+              echo "No version provided for workflow_dispatch; aborting." && exit 1
             fi
           fi
           if [ -z "$VERSION" ]; then
