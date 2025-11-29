@@ -58,6 +58,10 @@ ktfmt {
   googleStyle()
 }
 
+detekt{
+    config.setFrom("detekt-config.yml")
+}
+
 dependencies {
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.lifecycle.runtime.ktx)

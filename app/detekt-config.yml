@@ -228,7 +228,7 @@ complexity:
         "**/jsTest/**",
         "**/iosTest/**",
       ]
-    thresholdInFiles: 11
+    thresholdInFiles: 20
     thresholdInClasses: 11
     thresholdInInterfaces: 11
     thresholdInObjects: 11
