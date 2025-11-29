@@ -1,0 +1,145 @@
+# Release workflow
+# Triggers a release when:
+# - a tag v* is pushed (push tag)
+# - a pull request into main is closed and merged from dev
+# - manual dispatch
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  pull_request:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: 33
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build release APK
+        run: ./gradlew assembleRelease -PciBuild=true
+
+      - name: Sign app APK
+        id: sign_app
+        if: >-
+          startsWith(github.ref, 'refs/tags/') ||
+          (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'dev') ||
+          github.event_name == 'workflow_dispatch'
+        uses: ilharp/sign-android-release@v2
+        with:
+          releaseDir: app/build/outputs/apk/release
+          signingKey: ${{ secrets.ANDROID_SIGNING_KEY }}
+          keyAlias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          buildToolsVersion: 36.0.0
+
+      - name: Determine APK to release
+        run: |
+          set -euo pipefail
+          apk=$(ls -1t app/build/outputs/apk/release/*.apk 2>/dev/null | head -n 1 || true)
+          if [ -z "$apk" ]; then
+            echo "No APK found to upload" && exit 1
+          fi
+          echo "RELEASE_APK=$apk" >> $GITHUB_ENV
+
+      - name: Determine version/tag
+        id: determine_version
+        run: |
+          set -euo pipefail
+          VERSION=""
+          if [ "${{ github.event_name }}" = "push" ]; then
+            if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+              VERSION=${GITHUB_REF#refs/tags/}
+            fi
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            if [ "${{ github.event.pull_request.merged }}" != "true" ]; then
+              echo "PR not merged; aborting release." && exit 1
+            fi
+            if [ "${{ github.event.pull_request.base.ref }}" != "main" ]; then
+              echo "PR not targeting main; skipping release." && exit 1
+            fi
+            if [ "${{ github.event.pull_request.head.ref }}" != "dev" ]; then
+              echo "PR not from dev; skipping release." && exit 1
+            fi
+            PR_TITLE='${{ github.event.pull_request.title }}'
+            VERSION=$(echo "$PR_TITLE" | grep -Eo 'v[0-9]+\.[0-9]+\.[0-9]+' || true)
+            if [ -z "$VERSION" ]; then
+              echo "No version tag found in PR title: $PR_TITLE" && exit 1
+            fi
+          fi
+          if [ -z "$VERSION" ]; then
+            echo "No version determined from event; aborting." && exit 1
+          fi
+          echo "RELEASE_TAG=$VERSION" >> $GITHUB_ENV
+
+      - name: Create tag if missing (PR merge)
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.merged == true }}
+        env:
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          COMMIT=${{ github.event.pull_request.merge_commit_sha }}
+          if [ -z "$COMMIT" ] || [ "$COMMIT" = "null" ]; then
+            COMMIT=${GITHUB_SHA}
+          fi
+          if ! git rev-parse -q --verify "refs/tags/$RELEASE_TAG" >/dev/null; then
+            git tag -a "$RELEASE_TAG" "$COMMIT" -m "Release $RELEASE_TAG"
+            git push origin "$RELEASE_TAG"
+          else
+            echo "Tag $RELEASE_TAG already exists; skipping tag creation."
+          fi
+
+      - name: Generate changelog
+        id: generate_changelog
+        run: |
+          set -euo pipefail
+          TAG=${{ env.RELEASE_TAG }}
+          git fetch --prune --unshallow --tags || true
+          PREV_TAG=$(git tag --sort=-v:refname | grep -E 'v[0-9]+\.[0-9]+\.[0-9]+' | grep -v "^$TAG$" | head -n1 || true)
+          if [ -n "$PREV_TAG" ]; then
+            git log $PREV_TAG..HEAD --pretty=format:"- %s (%an)" > CHANGELOG.md
+          else
+            git log --pretty=format:"- %s (%an)" > CHANGELOG.md
+          fi
+          echo "Generated changelog:" && echo "-----" && cat CHANGELOG.md && echo "-----"
+
+      - name: Create GitHub Release and upload APK
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ env.RELEASE_TAG }}
+          bodyFile: CHANGELOG.md
+          artifacts: ${{ env.RELEASE_APK }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
