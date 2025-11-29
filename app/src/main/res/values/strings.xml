@@ -65,7 +65,7 @@
 
     <!-- Dashboard -->
     <string name="dashboard_title_default">CosRay 操作台</string>
-    <string name="dashboard_device_connected">连接设备：%1$s</string>
+    <string name="dashboard_device_connected">连接设备:%1$s</string>
     <string name="dashboard_device_disconnected">尚未连接设备</string>
     <string name="dashboard_live_data">实时数据</string>
     <string name="dashboard_uploading">上传中…</string>
@@ -80,6 +80,32 @@
     <string name="dashboard_battery_value">%1$d%%</string>
     <string name="dashboard_upload_success">上传成功</string>
     <string name="dashboard_upload_failed">上传失败</string>
+
+    <!-- Enhanced Dashboard Features -->
+    <string name="dashboard_muon_events_tab">μ子事件 (%1$d)</string>
+    <string name="dashboard_timeline_events_tab">时间线 (%1$d)</string>
+    <string name="dashboard_gps_location">GPS位置</string>
+    <string name="dashboard_altitude_meters">海拔 %1$d m</string>
+    <string name="dashboard_orientation">设备姿态</string>
+    <string name="dashboard_sipm_monitoring">SiPM监测</string>
+    <string name="dashboard_sipm_voltage">偏压</string>
+    <string name="dashboard_sipm_voltage_value">%1$d mV</string>
+    <string name="dashboard_sipm_current">漏电流</string>
+    <string name="dashboard_sipm_current_value">%1$d µA</string>
+    <string name="dashboard_packet_statistics">数据包统计</string>
+    <string name="dashboard_muon_packets">μ子包</string>
+    <string name="dashboard_timeline_packets">时间线包</string>
+    <string name="dashboard_total_events">总事件数</string>
+    <string name="dashboard_average_energy">平均能量: %1$d ADC</string>
+    <string name="dashboard_no_muon_events">暂无μ子事件记录</string>
+    <string name="dashboard_no_timeline_events">暂无时间线事件记录</string>
+    <string name="dashboard_event_index">事件 %1$d/%2$d</string>
+    <string name="dashboard_energy_adc">%1$d ADC</string>
+    <string name="dashboard_sipm_temp">SiPM温度</string>
+    <string name="dashboard_mcu_temp">MCU温度</string>
+    <string name="dashboard_location_coords">位置: %.6f°, %.6f° (海拔 %3$d m)</string>
+    <string name="dashboard_acceleration_xyz">加速度: X=%1$d, Y=%2$d, Z=%3$d</string>
+    <string name="dashboard_packet_counter">数据包#%1$d</string>
 
     <!-- API Test -->
     <string name="api_test_title">API 测试</string>
