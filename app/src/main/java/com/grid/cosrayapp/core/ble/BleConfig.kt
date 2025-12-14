@@ -4,8 +4,8 @@ import java.util.UUID
 
 object BleConfig {
   // Default Nordic UART Service identifiers. Replace with detector-specific UUIDs when available.
-  val SERVICE_UUID: UUID = UUID.fromString("6e400001-b5a3-f393-e0a9-e50e24dcca9e")
-  val NOTIFY_CHARACTERISTIC_UUID: UUID = UUID.fromString("6e400003-b5a3-f393-e0a9-e50e24dcca9e")
-  val WRITE_CHARACTERISTIC_UUID: UUID = UUID.fromString("6e400002-b5a3-f393-e0a9-e50e24dcca9e")
+  val SERVICE_UUID: UUID = UUID.fromString("08070605-0403-0201-efcd-ab8967452301")
+  val NOTIFY_CHARACTERISTIC_UUID: UUID = UUID.fromString("09070605-0403-0201-efcd-ab8967452301")
+  val WRITE_CHARACTERISTIC_UUID: UUID = UUID.fromString("01090706-0504-0302-01ef-cdab89674523")
   val CLIENT_DESCRIPTOR_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 }
