@@ -53,9 +53,6 @@ class DeviceViewModel(
 
   fun onPermissionsChanged(granted: Boolean) {
     _uiState.update { it.copy(hasPermissions = granted) }
-    if (granted && _uiState.value.isScanning.not()) {
-      startScan()
-    }
   }
 
   fun startScan() {
