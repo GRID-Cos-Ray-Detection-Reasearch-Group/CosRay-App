@@ -70,6 +70,12 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
   private var connectionJob: Job? = null
   private var scanJob: Job? = null
 
+  private var serviceDiscoveryJob: Job? = null
+
+  // Service discovery on Android can be flaky due to GATT caching/race conditions.
+  // Track retries per device address so we can refresh cache + re-discover before failing.
+  private val serviceDiscoveryRetriesByAddress = mutableMapOf<String, Int>()
+
   // GATT operation queue
   private var pendingWriteOperation: GattOperation.Write? = null
   private val gattOperationQueue = Channel<GattOperation>(Channel.UNLIMITED)
@@ -144,7 +150,29 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
           newState == BluetoothProfile.STATE_CONNECTED -> {
             val device = activeDevice ?: fallbackDevice(gatt.device)
             _connectionState.value = BleConnectionState.DiscoveringServices(device)
-            gatt.discoverServices()
+            serviceDiscoveryRetriesByAddress[gatt.device.address] = 0
+
+            // Improve stability on some stacks.
+            try {
+              gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH)
+            } catch (_: Throwable) {
+              // Best-effort
+            }
+
+            // MTU negotiation is not required for service discovery, but it tends to reduce
+            // flaky
+            // behaviour on some peripherals/phones. We still trigger discovery after a short
+            // delay.
+            val mtuRequested =
+              try {
+                gatt.requestMtu(PREFERRED_MTU)
+              } catch (_: Throwable) {
+                false
+              }
+
+            // Whether MTU request succeeds or not, kick off discovery after a brief delay.
+            // (See Android GATT caching/refresh issues: a small delay can help.)
+            startServiceDiscovery(gatt, reason = if (mtuRequested) "connected+mtu" else "connected")
           }
           newState == BluetoothProfile.STATE_DISCONNECTED -> {
             closeConnection(BleConnectionState.Disconnected)
@@ -152,22 +180,48 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
         }
       }
 
+      override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
+        super.onMtuChanged(gatt, mtu, status)
+        Log.d(TAG, "MTU changed: mtu=$mtu status=$status")
+        // Some stacks behave better if we (re)attempt discovery after MTU negotiation.
+        startServiceDiscovery(gatt, reason = "mtuChanged")
+      }
+
       override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
         super.onServicesDiscovered(gatt, status)
         when {
           status != BluetoothGatt.GATT_SUCCESS -> {
+            if (retryServiceDiscoveryIfPossible(gatt, reason = "discoverStatus=$status")) {
+              return
+            }
             closeConnection(
               BleConnectionState.Failed(BleError.GattError(status, "Service discovery failed"))
             )
           }
           else -> {
             val service = gatt.getService(BleConfig.SERVICE_UUID)
+            if (service == null) {
+              if (retryServiceDiscoveryIfPossible(gatt, reason = "serviceMissing")) {
+                return
+              }
+              closeConnection(
+                BleConnectionState.Failed(BleError.ServiceNotFound(BleConfig.SERVICE_UUID))
+              )
+              return
+            }
+
             val notifyCharacteristic =
               service?.getCharacteristic(BleConfig.NOTIFY_CHARACTERISTIC_UUID)
 
             if (notifyCharacteristic == null) {
+              // Prefer a characteristic-specific error.
+              if (retryServiceDiscoveryIfPossible(gatt, reason = "notifyCharMissing")) {
+                return
+              }
               closeConnection(
-                BleConnectionState.Failed(BleError.ServiceNotFound(BleConfig.SERVICE_UUID))
+                BleConnectionState.Failed(
+                  BleError.CharacteristicNotFound(BleConfig.NOTIFY_CHARACTERISTIC_UUID)
+                )
               )
               return
             }
@@ -518,9 +572,107 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
     bluetoothGatt?.close()
     bluetoothGatt = null
     activeDevice = null
+    serviceDiscoveryRetriesByAddress.clear()
+    serviceDiscoveryJob?.cancel()
+    serviceDiscoveryJob = null
     queueProcessingJob?.cancel()
     isProcessingQueue = false
     _connectionState.value = state
+  }
+
+  private fun startServiceDiscovery(gatt: BluetoothGatt, reason: String) {
+    // Consolidate multiple triggers (connected + mtuChanged) into one pending discovery.
+    serviceDiscoveryJob?.cancel()
+    serviceDiscoveryJob =
+      externalScope.launch(Dispatchers.Main) {
+        // Small delay helps avoid hitting cached/empty services on some Android stacks.
+        delay(SERVICE_DISCOVERY_INITIAL_DELAY_MS)
+        if (bluetoothGatt != gatt) return@launch
+
+        val ok =
+          try {
+            gatt.discoverServices()
+          } catch (t: Throwable) {
+            Log.e(TAG, "discoverServices threw ($reason)", t)
+            false
+          }
+        Log.d(TAG, "discoverServices($reason) -> $ok")
+        if (!ok) {
+          // If the stack refuses immediately, schedule a retry.
+          retryServiceDiscoveryIfPossible(gatt, reason = "discoverReturnedFalse")
+        }
+      }
+  }
+
+  private fun retryServiceDiscoveryIfPossible(gatt: BluetoothGatt, reason: String): Boolean {
+    val address = gatt.device.address
+    val attempt = (serviceDiscoveryRetriesByAddress[address] ?: 0) + 1
+    serviceDiscoveryRetriesByAddress[address] = attempt
+
+    // Log what we currently see (even if empty) to help diagnose mismatched UUIDs/firmware.
+    logDiscoveredServices(
+      gatt,
+      contextLabel = "retry#$attempt/$MAX_SERVICE_DISCOVERY_RETRIES reason=$reason",
+    )
+
+    if (attempt > MAX_SERVICE_DISCOVERY_RETRIES) {
+      Log.w(TAG, "Service discovery retries exhausted for $address")
+      return false
+    }
+
+    externalScope.launch(Dispatchers.Main) {
+      // Progressive backoff. Some devices/phones need ~1-2s after connect before the cache clears.
+      val backoff = SERVICE_DISCOVERY_RETRY_BASE_DELAY_MS * attempt
+      delay(backoff)
+      if (bluetoothGatt != gatt) return@launch
+
+      val refreshed = refreshGattCache(gatt)
+      Log.d(TAG, "refreshGattCache -> $refreshed (attempt=$attempt)")
+
+      val ok =
+        try {
+          gatt.discoverServices()
+        } catch (t: Throwable) {
+          Log.e(TAG, "discoverServices retry threw", t)
+          false
+        }
+      Log.d(TAG, "discoverServices retry (attempt=$attempt) -> $ok")
+    }
+
+    return true
+  }
+
+  private fun refreshGattCache(gatt: BluetoothGatt): Boolean {
+    // Hidden API used as a pragmatic workaround for Android GATT caching issues.
+    return try {
+      val refresh = gatt.javaClass.getMethod("refresh")
+      (refresh.invoke(gatt) as? Boolean) ?: false
+    } catch (t: Throwable) {
+      Log.w(TAG, "Gatt refresh() not available", t)
+      false
+    }
+  }
+
+  private fun logDiscoveredServices(gatt: BluetoothGatt, contextLabel: String) {
+    val services =
+      try {
+        gatt.services
+      } catch (t: Throwable) {
+        Log.w(TAG, "Unable to read gatt.services ($contextLabel)", t)
+        emptyList()
+      }
+
+    val serviceUuids = services.joinToString(prefix = "[", postfix = "]") { it.uuid.toString() }
+    Log.d(TAG, "Services $contextLabel count=${services.size} uuids=$serviceUuids")
+
+    // If needed, dump characteristics too (kept concise).
+    services.forEach { service ->
+      val chars =
+        service.characteristics.joinToString(prefix = "[", postfix = "]") { c ->
+          "${c.uuid} props=${c.properties}"
+        }
+      Log.v(TAG, "Service ${service.uuid} chars=$chars")
+    }
   }
 
   @SuppressLint("MissingPermission")
@@ -587,6 +739,12 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
 
   companion object {
     private const val TAG = "BleController"
+
+    // Values based on common Android BLE stability workarounds (delay + retries).
+    private const val PREFERRED_MTU = 247
+    private const val SERVICE_DISCOVERY_INITIAL_DELAY_MS = 600L
+    private const val SERVICE_DISCOVERY_RETRY_BASE_DELAY_MS = 600L
+    private const val MAX_SERVICE_DISCOVERY_RETRIES = 4
 
     private val REQUIRED_PERMISSIONS = buildList {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
