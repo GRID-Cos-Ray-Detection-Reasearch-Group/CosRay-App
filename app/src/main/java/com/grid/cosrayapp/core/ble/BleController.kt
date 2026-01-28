@@ -27,6 +27,7 @@ import com.grid.cosrayapp.domain.model.SignalStrength
 import com.grid.cosrayapp.domain.model.TelemetrySample
 import java.time.Instant
 import java.util.Locale
+import java.util.UUID
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -67,6 +68,7 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
 
   private var bluetoothGatt: BluetoothGatt? = null
   private var activeDevice: BleDevice? = null
+  private var activeServiceUuid: UUID? = null // Store the UUID of the service we're connected to
   private var connectionJob: Job? = null
   private var scanJob: Job? = null
 
@@ -199,9 +201,14 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
             )
           }
           else -> {
-            val service = gatt.getService(BleConfig.SERVICE_UUID)
+            // Try to find a supported service
+            val service =
+              BleConfig.SUPPORTED_SERVICE_UUIDS.firstNotNullOfOrNull { uuid ->
+                gatt.getService(uuid)
+              }
+
             if (service == null) {
-              if (retryServiceDiscoveryIfPossible(gatt, reason = "serviceMissing")) {
+              if (retryServiceDiscoveryIfPossible(gatt, reason = "noSupportedService")) {
                 return
               }
               closeConnection(
@@ -210,8 +217,14 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
               return
             }
 
+            // Log which service we found
+            Log.d(TAG, "Found supported service: ${service.uuid}")
+
+            // Store the service UUID for later use
+            activeServiceUuid = service.uuid
+
             val notifyCharacteristic =
-              service?.getCharacteristic(BleConfig.NOTIFY_CHARACTERISTIC_UUID)
+              service.getCharacteristic(BleConfig.NOTIFY_CHARACTERISTIC_UUID)
 
             if (notifyCharacteristic == null) {
               // Prefer a characteristic-specific error.
@@ -421,6 +434,8 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
   /** Send command using GATT operation queue */
   suspend fun sendCommandQueued(command: ByteArray): CosRayResult<Unit> {
     val gatt = bluetoothGatt ?: return CosRayResult.Error(IllegalStateException("Not connected"))
+    val serviceUuid =
+      activeServiceUuid ?: return CosRayResult.Error(IllegalStateException("No active service"))
 
     if (!hasBluetoothPermissions()) {
       return CosRayResult.Error(SecurityException("Missing Bluetooth permissions"))
@@ -431,7 +446,7 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
     }
 
     val service =
-      gatt.getService(BleConfig.SERVICE_UUID)
+      gatt.getService(serviceUuid)
         ?: return CosRayResult.Error(IllegalStateException("Service not found"))
 
     val writeCharacteristic =
@@ -456,10 +471,11 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
   @Suppress("DEPRECATION")
   fun sendCommand(command: ByteArray): Boolean {
     val gatt = bluetoothGatt ?: return false
+    val serviceUuid = activeServiceUuid ?: return false
     if (!hasBluetoothPermissions()) return false
     if (_connectionState.value !is BleConnectionState.Connected) return false
 
-    val service = gatt.getService(BleConfig.SERVICE_UUID) ?: return false
+    val service = gatt.getService(serviceUuid) ?: return false
     val writeCharacteristic =
       service.getCharacteristic(BleConfig.WRITE_CHARACTERISTIC_UUID) ?: return false
 
@@ -572,6 +588,7 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
     bluetoothGatt?.close()
     bluetoothGatt = null
     activeDevice = null
+    activeServiceUuid = null
     serviceDiscoveryRetriesByAddress.clear()
     serviceDiscoveryJob?.cancel()
     serviceDiscoveryJob = null
