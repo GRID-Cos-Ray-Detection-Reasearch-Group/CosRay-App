@@ -38,12 +38,15 @@ runs:
         set -euo pipefail
         # If build-tools-version input provided use it; otherwise derive from COMPILE_SDK
         if [ -n "${{ inputs.build-tools-version }}" ]; then
-          echo "BUILD_TOOLS=${{ inputs.build-tools-version }}" >> $GITHUB_ENV
+          export BUILD_TOOLS="${{ inputs.build-tools-version }}"
+          echo "BUILD_TOOLS=$BUILD_TOOLS" >> $GITHUB_ENV
         else
           if [ -n "${COMPILE_SDK:-}" ]; then
-            echo "BUILD_TOOLS=${COMPILE_SDK}.0.0" >> $GITHUB_ENV
+            export BUILD_TOOLS="${COMPILE_SDK}.0.0"
+            echo "BUILD_TOOLS=$BUILD_TOOLS" >> $GITHUB_ENV
           else
-            echo "BUILD_TOOLS=36.0.0" >> $GITHUB_ENV
+            export BUILD_TOOLS="36.0.0"
+            echo "BUILD_TOOLS=$BUILD_TOOLS" >> $GITHUB_ENV
           fi
         fi
         echo "Build tools version set to: ${BUILD_TOOLS}"
