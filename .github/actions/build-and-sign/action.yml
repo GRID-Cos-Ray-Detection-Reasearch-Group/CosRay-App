@@ -26,7 +26,7 @@ runs:
       with:
         java-version: ${{ inputs.java-version }}
         distribution: temurin
-        cache: gradle
+        cache: "gradle"
 
     - name: Set up Android SDK
       uses: android-actions/setup-android@v2
@@ -87,13 +87,6 @@ runs:
         keyPassword: ${{ inputs.key-password }}
         buildToolsVersion: ${{ env.BUILD_TOOLS }}
 
-    - name: Cleanup Gradle cache
-      if: always()
-      run: |
-        rm -rf ~/.gradle/caches/
-        echo "Cleaned up Gradle cache to save storage"
-      shell: bash
-
     - name: Set outputs
       run: |
         echo "signedFile=${{ steps.sign.outputs.signedFile || '' }}" >> $GITHUB_OUTPUT
@@ -102,7 +95,7 @@ runs:
 
 inputs:
   run-sign:
-    description: "Whether to sign the APK"
+    description: "Whether to sign APK"
     required: false
     default: "false"
   signing-key:
@@ -132,8 +125,8 @@ inputs:
 
 outputs:
   signedFile:
-    description: "Path to the signed file"
+    description: "Path to signed file"
     value: ${{ steps.sign.outputs.signedFile }}
   unsignedFile:
-    description: "Path to the unsigned file"
+    description: "Path to unsigned file"
     value: ${{ steps.find_unsigned.outputs.unsignedFile }}
