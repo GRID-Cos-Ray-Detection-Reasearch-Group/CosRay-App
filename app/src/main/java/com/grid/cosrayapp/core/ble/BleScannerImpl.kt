@@ -36,8 +36,10 @@ class BleScannerImpl(private val context: Context, private val scope: CoroutineS
 
   private val bluetoothManager: BluetoothManager? =
     context.getSystemService(BluetoothManager::class.java)
-  private val bluetoothAdapter: BluetoothAdapter? = bluetoothManager?.adapter
-  private val bluetoothScanner = bluetoothAdapter?.bluetoothLeScanner
+  
+  /** Resolve scanner on demand to handle Bluetooth being enabled after construction. */
+  private val currentScanner
+    get() = bluetoothManager?.adapter?.bluetoothLeScanner
 
   private val deviceCache = mutableMapOf<String, DiscoveredDevice>()
 
@@ -106,13 +108,14 @@ class BleScannerImpl(private val context: Context, private val scope: CoroutineS
         return@withContext Result.failure(SecurityException("Missing Bluetooth permissions"))
       }
 
-      if (bluetoothAdapter?.isEnabled != true) {
+      val adapter = bluetoothManager?.adapter
+      if (adapter?.isEnabled != true) {
         val error = BleError.BluetoothDisabled()
         _scanState.value = ScanState.Failed(error)
         return@withContext Result.failure(IllegalStateException("Bluetooth is disabled"))
       }
 
-      val scanner = bluetoothScanner
+      val scanner = currentScanner
       if (scanner == null) {
         val error = BleError.BluetoothDisabled("Scanner not available")
         _scanState.value = ScanState.Failed(error)
@@ -149,7 +152,7 @@ class BleScannerImpl(private val context: Context, private val scope: CoroutineS
       }
 
       scanJob?.cancel()
-      bluetoothScanner?.stopScan(scanCallback)
+      currentScanner?.stopScan(scanCallback)
       _scanState.value = ScanState.Idle
 
       Result.success(Unit)

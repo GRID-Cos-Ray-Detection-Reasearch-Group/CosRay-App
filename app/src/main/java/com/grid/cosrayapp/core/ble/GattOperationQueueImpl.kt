@@ -24,26 +24,50 @@ class GattOperationQueueImpl(
 
   private val operationChannel = Channel<GattOperation<*>>(Channel.UNLIMITED)
   private var _isProcessing = false
+  private var _isShutdown = false
   override val isProcessing: Boolean
     get() = _isProcessing
 
   private var pendingWriteOperation: GattOperation.Write? = null
 
-  /** Start processing the operation queue. Should be called after connection is established. */
+  /**
+   * Start processing the operation queue.
+   * Should be called after connection is established.
+   */
   fun startProcessing() {
     if (_isProcessing) return
+    _isShutdown = false
     scope.launch { processQueue() }
   }
 
   override suspend fun <T> enqueue(operation: GattOperation<T>): CosRayResult<T> {
+    // Fail fast if queue is not processing or has been shutdown
+    if (_isShutdown || !_isProcessing) {
+      val error = CosRayResult.Error<T>(
+        IllegalStateException("GATT operation queue is not active. Call startProcessing() first.")
+      )
+      @Suppress("UNCHECKED_CAST")
+      return error as CosRayResult<T>
+    }
     operationChannel.send(operation)
     return operation.deferred.await()
   }
 
   override fun clear() {
-    // Drain the channel
-    while (operationChannel.tryReceive().isSuccess) {
-      // Discard operations
+    _isShutdown = true
+    
+    // Drain the channel and complete all pending deferreds with error
+    val cancelError = IllegalStateException("GATT operation queue was cleared")
+    while (true) {
+      val result = operationChannel.tryReceive()
+      if (result.isFailure) break
+      val operation = result.getOrNull() ?: break
+      completeWithError(operation, cancelError.message ?: "Queue cleared")
+    }
+    
+    // Complete any pending write operation
+    pendingWriteOperation?.let { operation ->
+      operation.deferred.complete(CosRayResult.Error(cancelError))
     }
     pendingWriteOperation = null
   }
