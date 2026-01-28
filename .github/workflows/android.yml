@@ -30,11 +30,14 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
 
+    env:
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
+
     steps:
-      - uses: actions/checkout@v6
       - name: Build and (optionally) sign APK
         id: build_sign
         uses: ./.github/actions/build-and-sign

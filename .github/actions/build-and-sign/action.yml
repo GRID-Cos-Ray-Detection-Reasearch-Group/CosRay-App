@@ -56,8 +56,13 @@ runs:
       run: chmod +x ./gradlew
       shell: bash
 
-    - name: Build release APK
-      run: ./gradlew assembleRelease -PciBuild=true
+    - name: Build release APK with optimizations
+      run: |
+        ./gradlew assembleRelease \
+          -PciBuild=true \
+          --configuration-cache \
+          --build-cache \
+          --scan
       shell: bash
 
     - name: Find unsigned APK
@@ -81,6 +86,13 @@ runs:
         keyStorePassword: ${{ inputs.key-store-password }}
         keyPassword: ${{ inputs.key-password }}
         buildToolsVersion: ${{ env.BUILD_TOOLS }}
+
+    - name: Cleanup Gradle cache
+      if: always()
+      run: |
+        rm -rf ~/.gradle/caches/
+        echo "Cleaned up Gradle cache to save storage"
+      shell: bash
 
     - name: Set outputs
       run: |
