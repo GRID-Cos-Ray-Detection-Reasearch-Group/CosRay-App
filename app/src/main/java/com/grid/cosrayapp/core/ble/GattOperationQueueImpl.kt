@@ -55,7 +55,7 @@ class GattOperationQueueImpl(
 
   override fun clear() {
     _isShutdown = true
-    
+
     // Drain the channel and complete all pending deferreds with error
     val cancelError = IllegalStateException("GATT operation queue was cleared")
     while (true) {
@@ -64,7 +64,7 @@ class GattOperationQueueImpl(
       val operation = result.getOrNull() ?: break
       completeWithError(operation, cancelError.message ?: "Queue cleared")
     }
-    
+
     // Complete any pending write operation
     pendingWriteOperation?.let { operation ->
       operation.deferred.complete(CosRayResult.Error(cancelError))

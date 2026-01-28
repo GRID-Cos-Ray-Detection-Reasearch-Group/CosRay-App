@@ -36,7 +36,7 @@ class BleScannerImpl(private val context: Context, private val scope: CoroutineS
 
   private val bluetoothManager: BluetoothManager? =
     context.getSystemService(BluetoothManager::class.java)
-  
+
   /** Resolve scanner on demand to handle Bluetooth being enabled after construction. */
   private val currentScanner
     get() = bluetoothManager?.adapter?.bluetoothLeScanner
