@@ -5,8 +5,8 @@ import kotlinx.coroutines.flow.StateFlow
 /**
  * Interface for BLE device scanning operations.
  *
- * Implementations handle device discovery, scan lifecycle management,
- * and expose discovered devices through reactive flows.
+ * Implementations handle device discovery, scan lifecycle management, and expose discovered devices
+ * through reactive flows.
  */
 interface BleScanner {
   /** Current state of the scanning operation. */

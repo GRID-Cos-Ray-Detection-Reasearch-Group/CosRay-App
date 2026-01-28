@@ -35,15 +35,14 @@ data class RawPacket(
 /**
  * Interface for BLE data communication channel.
  *
- * Handles sending commands and receiving notifications/indications
- * from connected BLE devices.
+ * Handles sending commands and receiving notifications/indications from connected BLE devices.
  */
 interface BleDataChannel {
   /**
    * Flow of incoming data packets from the connected device.
    *
-   * Subscribers receive [RawPacket] instances whenever the device
-   * sends a notification or indication.
+   * Subscribers receive [RawPacket] instances whenever the device sends a notification or
+   * indication.
    */
   val incomingData: SharedFlow<RawPacket>
 

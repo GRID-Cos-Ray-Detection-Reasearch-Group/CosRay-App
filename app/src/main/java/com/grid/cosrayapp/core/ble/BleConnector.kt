@@ -8,7 +8,8 @@ import kotlinx.coroutines.flow.StateFlow
  *
  * @property retries Number of connection attempts before failing.
  * @property timeoutMs Maximum time to wait for connection in milliseconds.
- * @property autoConnect Whether to use autoConnect mode (slower but more reliable for bonded devices).
+ * @property autoConnect Whether to use autoConnect mode (slower but more reliable for bonded
+ *   devices).
  * @property requestHighPriority Whether to request high priority connection.
  * @property preferredMtu Preferred MTU size to negotiate.
  */
@@ -27,8 +28,8 @@ data class ConnectionConfig(
 /**
  * Interface for BLE device connection operations.
  *
- * Implementations handle connection establishment, MTU negotiation,
- * and connection lifecycle management.
+ * Implementations handle connection establishment, MTU negotiation, and connection lifecycle
+ * management.
  */
 interface BleConnector {
   /** Current connection state. */

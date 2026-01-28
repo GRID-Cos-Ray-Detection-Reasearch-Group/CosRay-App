@@ -8,9 +8,8 @@ import kotlinx.coroutines.CompletableDeferred
 /**
  * Represents a GATT operation to be queued and executed sequentially.
  *
- * BLE GATT operations must be serialized - only one operation can be
- * in-flight at a time. This sealed class hierarchy represents all
- * supported operation types.
+ * BLE GATT operations must be serialized - only one operation can be in-flight at a time. This
+ * sealed class hierarchy represents all supported operation types.
  */
 sealed class GattOperation<T> {
   /** Deferred result that will be completed when the operation finishes. */
@@ -72,15 +71,14 @@ sealed class GattOperation<T> {
 /**
  * Interface for managing GATT operation queue.
  *
- * Ensures BLE operations are executed sequentially as required by
- * the Android BLE stack.
+ * Ensures BLE operations are executed sequentially as required by the Android BLE stack.
  */
 interface GattOperationQueue {
   /**
    * Enqueue a GATT operation for execution.
    *
-   * The operation will be executed when all previously queued operations
-   * have completed. Results are returned through the operation's deferred.
+   * The operation will be executed when all previously queued operations have completed. Results
+   * are returned through the operation's deferred.
    *
    * @param operation The operation to enqueue.
    * @return Result of the operation.

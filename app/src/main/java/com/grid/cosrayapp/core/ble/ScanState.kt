@@ -3,9 +3,7 @@ package com.grid.cosrayapp.core.ble
 import java.time.Instant
 import java.util.UUID
 
-/**
- * Represents the current state of BLE scanning.
- */
+/** Represents the current state of BLE scanning. */
 sealed class ScanState {
   /** No scan is in progress. */
   data object Idle : ScanState()
@@ -20,8 +18,8 @@ sealed class ScanState {
 /**
  * Represents a discovered BLE device during scanning.
  *
- * This is a lightweight data class focused on scan-time information,
- * separate from the domain [BleDevice] model.
+ * This is a lightweight data class focused on scan-time information, separate from the domain
+ * [BleDevice] model.
  */
 data class DiscoveredDevice(
   /** MAC address of the device. */

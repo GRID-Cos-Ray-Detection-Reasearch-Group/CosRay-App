@@ -2,10 +2,8 @@ package com.grid.cosrayapp.core.ble
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothGatt
-import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.os.Build
-import android.util.Log
 import com.grid.cosrayapp.core.common.CosRayResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -15,8 +13,7 @@ import kotlinx.coroutines.launch
 /**
  * Implementation of [GattOperationQueue] for serializing BLE GATT operations.
  *
- * Ensures only one GATT operation is in-flight at a time, as required
- * by the Android BLE stack.
+ * Ensures only one GATT operation is in-flight at a time, as required by the Android BLE stack.
  */
 @Suppress("TooManyFunctions")
 class GattOperationQueueImpl(
@@ -27,14 +24,12 @@ class GattOperationQueueImpl(
 
   private val operationChannel = Channel<GattOperation<*>>(Channel.UNLIMITED)
   private var _isProcessing = false
-  override val isProcessing: Boolean get() = _isProcessing
+  override val isProcessing: Boolean
+    get() = _isProcessing
 
   private var pendingWriteOperation: GattOperation.Write? = null
 
-  /**
-   * Start processing the operation queue.
-   * Should be called after connection is established.
-   */
+  /** Start processing the operation queue. Should be called after connection is established. */
   fun startProcessing() {
     if (_isProcessing) return
     scope.launch { processQueue() }
@@ -53,9 +48,7 @@ class GattOperationQueueImpl(
     pendingWriteOperation = null
   }
 
-  /**
-   * Called from GATT callback when a characteristic write completes.
-   */
+  /** Called from GATT callback when a characteristic write completes. */
   fun onCharacteristicWriteComplete(status: Int) {
     pendingWriteOperation?.let { operation ->
       if (status == BluetoothGatt.GATT_SUCCESS) {
@@ -98,17 +91,20 @@ class GattOperationQueueImpl(
   private fun handleWrite(gatt: BluetoothGatt, operation: GattOperation.Write) {
     pendingWriteOperation = operation
 
-    val success = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-      gatt.writeCharacteristic(operation.characteristic, operation.data, operation.writeType) ==
-        BluetoothGatt.GATT_SUCCESS
-    } else {
-      operation.characteristic.value = operation.data
-      operation.characteristic.writeType = operation.writeType
-      gatt.writeCharacteristic(operation.characteristic)
-    }
+    val success =
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        gatt.writeCharacteristic(operation.characteristic, operation.data, operation.writeType) ==
+          BluetoothGatt.GATT_SUCCESS
+      } else {
+        operation.characteristic.value = operation.data
+        operation.characteristic.writeType = operation.writeType
+        gatt.writeCharacteristic(operation.characteristic)
+      }
 
     if (!success) {
-      operation.deferred.complete(CosRayResult.Error(IllegalStateException("Write initiation failed")))
+      operation.deferred.complete(
+        CosRayResult.Error(IllegalStateException("Write initiation failed"))
+      )
       pendingWriteOperation = null
     }
     // If success, wait for onCharacteristicWrite callback to complete the deferred
@@ -123,7 +119,10 @@ class GattOperationQueueImpl(
 
   @SuppressLint("MissingPermission")
   @Suppress("DEPRECATION")
-  private fun handleNotifications(gatt: BluetoothGatt, operation: GattOperation.EnableNotifications) {
+  private fun handleNotifications(
+    gatt: BluetoothGatt,
+    operation: GattOperation.EnableNotifications,
+  ) {
     val serviceUuid = serviceUuidProvider()
     if (serviceUuid == null) {
       operation.deferred.complete(CosRayResult.Error(IllegalStateException("No active service")))
@@ -138,7 +137,9 @@ class GattOperationQueueImpl(
 
     val characteristic = service.getCharacteristic(operation.characteristicUuid)
     if (characteristic == null) {
-      operation.deferred.complete(CosRayResult.Error(IllegalStateException("Characteristic not found")))
+      operation.deferred.complete(
+        CosRayResult.Error(IllegalStateException("Characteristic not found"))
+      )
       return
     }
 
@@ -146,23 +147,27 @@ class GattOperationQueueImpl(
 
     val descriptor = characteristic.getDescriptor(BleConfig.CLIENT_DESCRIPTOR_UUID)
     if (descriptor != null) {
-      val value = if (operation.enable) {
-        BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-      } else {
-        BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
-      }
+      val value =
+        if (operation.enable) {
+          BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+        } else {
+          BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
+        }
 
-      val success = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        gatt.writeDescriptor(descriptor, value) == BluetoothGatt.GATT_SUCCESS
-      } else {
-        descriptor.setValue(value)
-        gatt.writeDescriptor(descriptor)
-      }
+      val success =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+          gatt.writeDescriptor(descriptor, value) == BluetoothGatt.GATT_SUCCESS
+        } else {
+          descriptor.setValue(value)
+          gatt.writeDescriptor(descriptor)
+        }
 
       if (success) {
         operation.deferred.complete(CosRayResult.Success(Unit))
       } else {
-        operation.deferred.complete(CosRayResult.Error(IllegalStateException("Descriptor write failed")))
+        operation.deferred.complete(
+          CosRayResult.Error(IllegalStateException("Descriptor write failed"))
+        )
       }
     } else {
       // No descriptor, but notification was set
@@ -173,9 +178,12 @@ class GattOperationQueueImpl(
   private fun <T> completeWithError(operation: GattOperation<T>, message: String) {
     @Suppress("UNCHECKED_CAST")
     when (operation) {
-      is GattOperation.Write -> operation.deferred.complete(CosRayResult.Error(IllegalStateException(message)))
-      is GattOperation.Read -> operation.deferred.complete(CosRayResult.Error(IllegalStateException(message)))
-      is GattOperation.EnableNotifications -> operation.deferred.complete(CosRayResult.Error(IllegalStateException(message)))
+      is GattOperation.Write ->
+        operation.deferred.complete(CosRayResult.Error(IllegalStateException(message)))
+      is GattOperation.Read ->
+        operation.deferred.complete(CosRayResult.Error(IllegalStateException(message)))
+      is GattOperation.EnableNotifications ->
+        operation.deferred.complete(CosRayResult.Error(IllegalStateException(message)))
     }
   }
 

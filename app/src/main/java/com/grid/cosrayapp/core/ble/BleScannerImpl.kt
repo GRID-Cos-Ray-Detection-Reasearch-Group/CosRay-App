@@ -28,14 +28,11 @@ import kotlinx.coroutines.withContext
 /**
  * Implementation of [BleScanner] for Android BLE scanning.
  *
- * Handles device discovery with configurable filters, scan modes,
- * and automatic scan duration management.
+ * Handles device discovery with configurable filters, scan modes, and automatic scan duration
+ * management.
  */
 @Suppress("TooManyFunctions")
-class BleScannerImpl(
-  private val context: Context,
-  private val scope: CoroutineScope,
-) : BleScanner {
+class BleScannerImpl(private val context: Context, private val scope: CoroutineScope) : BleScanner {
 
   private val bluetoothManager: BluetoothManager? =
     context.getSystemService(BluetoothManager::class.java)
@@ -48,7 +45,8 @@ class BleScannerImpl(
   override val scanState: StateFlow<ScanState> = _scanState.asStateFlow()
 
   private val _discoveredDevices = MutableStateFlow<List<DiscoveredDevice>>(emptyList())
-  override val discoveredDevices: StateFlow<List<DiscoveredDevice>> = _discoveredDevices.asStateFlow()
+  override val discoveredDevices: StateFlow<List<DiscoveredDevice>> =
+    _discoveredDevices.asStateFlow()
 
   private var scanJob: Job? = null
 
@@ -65,7 +63,9 @@ class BleScannerImpl(
         val resolvedName = scanResult.scanRecord?.deviceName ?: device.name ?: existing?.name
 
         val advertisedServices =
-          scanResult.scanRecord?.serviceUuids?.map { it.uuid } ?: existing?.advertisedServices ?: emptyList()
+          scanResult.scanRecord?.serviceUuids?.map { it.uuid }
+            ?: existing?.advertisedServices
+            ?: emptyList()
 
         val detectorId = existing?.detectorId ?: deriveDetectorId(device.address, resolvedName)
 
@@ -86,71 +86,74 @@ class BleScannerImpl(
 
       override fun onScanFailed(errorCode: Int) {
         super.onScanFailed(errorCode)
-        _scanState.value = ScanState.Failed(BleError.GattError(errorCode, "Scan failed with error code $errorCode"))
+        _scanState.value =
+          ScanState.Failed(BleError.GattError(errorCode, "Scan failed with error code $errorCode"))
         Log.e(TAG, "Scan failed with error code: $errorCode")
       }
     }
 
   @SuppressLint("MissingPermission")
-  override suspend fun startScan(config: ScanConfig): Result<Unit> = withContext(Dispatchers.Main) {
-    if (_scanState.value is ScanState.Scanning) {
-      Log.w(TAG, "Scan already in progress")
-      return@withContext Result.success(Unit)
-    }
-
-    if (!hasBluetoothPermissions()) {
-      val error = BleError.PermissionDenied(REQUIRED_PERMISSIONS)
-      _scanState.value = ScanState.Failed(error)
-      return@withContext Result.failure(SecurityException("Missing Bluetooth permissions"))
-    }
-
-    if (bluetoothAdapter?.isEnabled != true) {
-      val error = BleError.BluetoothDisabled()
-      _scanState.value = ScanState.Failed(error)
-      return@withContext Result.failure(IllegalStateException("Bluetooth is disabled"))
-    }
-
-    val scanner = bluetoothScanner
-    if (scanner == null) {
-      val error = BleError.BluetoothDisabled("Scanner not available")
-      _scanState.value = ScanState.Failed(error)
-      return@withContext Result.failure(IllegalStateException("BLE scanner not available"))
-    }
-
-    deviceCache.clear()
-    _discoveredDevices.value = emptyList()
-    _scanState.value = ScanState.Scanning
-
-    val settings = ScanSettings.Builder().setScanMode(config.scanMode).build()
-    val filters = buildScanFilters(config)
-
-    scanner.startScan(filters, settings, scanCallback)
-
-    // Auto-stop scan after duration
-    scanJob?.cancel()
-    scanJob =
-      scope.launch {
-        delay(config.scanDuration)
-        if (_scanState.value is ScanState.Scanning) {
-          stopScan()
-        }
+  override suspend fun startScan(config: ScanConfig): Result<Unit> =
+    withContext(Dispatchers.Main) {
+      if (_scanState.value is ScanState.Scanning) {
+        Log.w(TAG, "Scan already in progress")
+        return@withContext Result.success(Unit)
       }
 
-    Result.success(Unit)
-  }
+      if (!hasBluetoothPermissions()) {
+        val error = BleError.PermissionDenied(REQUIRED_PERMISSIONS)
+        _scanState.value = ScanState.Failed(error)
+        return@withContext Result.failure(SecurityException("Missing Bluetooth permissions"))
+      }
 
-  @SuppressLint("MissingPermission")
-  override suspend fun stopScan(): Result<Unit> = withContext(Dispatchers.Main) {
-    if (_scanState.value !is ScanState.Scanning) {
-      return@withContext Result.success(Unit)
+      if (bluetoothAdapter?.isEnabled != true) {
+        val error = BleError.BluetoothDisabled()
+        _scanState.value = ScanState.Failed(error)
+        return@withContext Result.failure(IllegalStateException("Bluetooth is disabled"))
+      }
+
+      val scanner = bluetoothScanner
+      if (scanner == null) {
+        val error = BleError.BluetoothDisabled("Scanner not available")
+        _scanState.value = ScanState.Failed(error)
+        return@withContext Result.failure(IllegalStateException("BLE scanner not available"))
+      }
+
+      deviceCache.clear()
+      _discoveredDevices.value = emptyList()
+      _scanState.value = ScanState.Scanning
+
+      val settings = ScanSettings.Builder().setScanMode(config.scanMode).build()
+      val filters = buildScanFilters(config)
+
+      scanner.startScan(filters, settings, scanCallback)
+
+      // Auto-stop scan after duration
+      scanJob?.cancel()
+      scanJob =
+        scope.launch {
+          delay(config.scanDuration)
+          if (_scanState.value is ScanState.Scanning) {
+            stopScan()
+          }
+        }
+
+      Result.success(Unit)
     }
 
-    scanJob?.cancel()
-    bluetoothScanner?.stopScan(scanCallback)
-    _scanState.value = ScanState.Idle
+  @SuppressLint("MissingPermission")
+  override suspend fun stopScan(): Result<Unit> =
+    withContext(Dispatchers.Main) {
+      if (_scanState.value !is ScanState.Scanning) {
+        return@withContext Result.success(Unit)
+      }
 
-    Result.success(Unit)
-  }
+      scanJob?.cancel()
+      bluetoothScanner?.stopScan(scanCallback)
+      _scanState.value = ScanState.Idle
+
+      Result.success(Unit)
+    }
 
   override fun clearCache() {
     deviceCache.clear()
@@ -158,9 +161,7 @@ class BleScannerImpl(
   }
 
   private fun updateDeviceList() {
-    _discoveredDevices.update {
-      deviceCache.values.sortedBy { it.name ?: it.address }
-    }
+    _discoveredDevices.update { deviceCache.values.sortedBy { it.name ?: it.address } }
   }
 
   private fun hasBluetoothPermissions(): Boolean =

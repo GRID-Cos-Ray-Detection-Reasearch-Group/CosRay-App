@@ -18,8 +18,8 @@ import kotlinx.coroutines.SupervisorJob
 /**
  * Application-level dependency injection module.
  *
- * Provides singleton instances of core application dependencies.
- * In a production app, consider using a DI framework like Hilt or Koin.
+ * Provides singleton instances of core application dependencies. In a production app, consider
+ * using a DI framework like Hilt or Koin.
  */
 object AppModule {
   private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -31,28 +31,19 @@ object AppModule {
   private var _bleScanner: BleScanner? = null
   private var _tokenStore: TokenStore? = null
 
-  /**
-   * Initialize the module with application context.
-   * Must be called from Application.onCreate().
-   */
+  /** Initialize the module with application context. Must be called from Application.onCreate(). */
   fun initialize(context: Context) {
     _context = context.applicationContext
   }
 
-  /**
-   * Provide the application context.
-   */
+  /** Provide the application context. */
   fun provideContext(): Context =
     _context ?: throw IllegalStateException("AppModule not initialized. Call initialize() first.")
 
-  /**
-   * Provide the application-scoped CoroutineScope.
-   */
+  /** Provide the application-scoped CoroutineScope. */
   fun provideApplicationScope(): CoroutineScope = applicationScope
 
-  /**
-   * Provide the HTTP client for network requests.
-   */
+  /** Provide the HTTP client for network requests. */
   fun provideHttpClient(): HttpClient {
     if (_httpClient == null) {
       _httpClient = HttpClientFactory.create(provideTokenStore())
@@ -60,9 +51,7 @@ object AppModule {
     return _httpClient!!
   }
 
-  /**
-   * Provide the TokenStore for managing authentication tokens.
-   */
+  /** Provide the TokenStore for managing authentication tokens. */
   fun provideTokenStore(): TokenStore {
     if (_tokenStore == null) {
       _tokenStore = TokenStore(provideContext())
@@ -70,9 +59,7 @@ object AppModule {
     return _tokenStore!!
   }
 
-  /**
-   * Provide the CosRayApi instance.
-   */
+  /** Provide the CosRayApi instance. */
   fun provideCosRayApi(): CosRayApi {
     if (_cosRayApi == null) {
       _cosRayApi = CosRayApi(provideHttpClient())
@@ -80,9 +67,7 @@ object AppModule {
     return _cosRayApi!!
   }
 
-  /**
-   * Provide the BleController instance.
-   */
+  /** Provide the BleController instance. */
   fun provideBleController(): BleController {
     if (_bleController == null) {
       _bleController = BleController(provideContext(), applicationScope)
@@ -90,9 +75,7 @@ object AppModule {
     return _bleController!!
   }
 
-  /**
-   * Provide the BleScanner instance.
-   */
+  /** Provide the BleScanner instance. */
   fun provideBleScanner(): BleScanner {
     if (_bleScanner == null) {
       _bleScanner = BleScannerImpl(provideContext(), applicationScope)
@@ -103,8 +86,8 @@ object AppModule {
   /**
    * Provide the AuthApi interface.
    *
-   * Currently delegates to CosRayApi implementation.
-   * In the future, this could be a standalone implementation.
+   * Currently delegates to CosRayApi implementation. In the future, this could be a standalone
+   * implementation.
    */
   fun provideAuthApi(): AuthApi {
     return AuthApiAdapter(provideCosRayApi())
@@ -128,10 +111,7 @@ object AppModule {
     return TelemetryApiAdapter(provideCosRayApi())
   }
 
-  /**
-   * Clear all cached instances.
-   * Useful for testing or logout scenarios.
-   */
+  /** Clear all cached instances. Useful for testing or logout scenarios. */
   fun reset() {
     _httpClient?.close()
     _httpClient = null
@@ -143,9 +123,7 @@ object AppModule {
   }
 }
 
-/**
- * Adapter to bridge CosRayApi to AuthApi interface.
- */
+/** Adapter to bridge CosRayApi to AuthApi interface. */
 private class AuthApiAdapter(private val api: CosRayApi) : AuthApi {
   override suspend fun login(username: String, password: String) =
     com.grid.cosrayapp.core.network.apiResultOf { api.login(username, password) }
@@ -163,16 +141,15 @@ private class AuthApiAdapter(private val api: CosRayApi) : AuthApi {
     com.grid.cosrayapp.core.network.apiResultOf { /* CosRayApi doesn't have logout yet */ }
 }
 
-/**
- * Adapter to bridge CosRayApi to DeviceApi interface.
- */
+/** Adapter to bridge CosRayApi to DeviceApi interface. */
 private class DeviceApiAdapter(private val api: CosRayApi) : DeviceApi {
   override suspend fun registerDevice(
     accessToken: String,
     request: com.grid.cosrayapp.core.network.RegisterDeviceRequest,
-  ) = com.grid.cosrayapp.core.network.apiResultOf {
-    api.registerDevice(accessToken, request.macAddress, request.name, request.description)
-  }
+  ) =
+    com.grid.cosrayapp.core.network.apiResultOf {
+      api.registerDevice(accessToken, request.macAddress, request.name, request.description)
+    }
 
   override suspend fun getDevices(accessToken: String) =
     com.grid.cosrayapp.core.network.apiResultOf { api.getDevices(accessToken) }
@@ -184,17 +161,16 @@ private class DeviceApiAdapter(private val api: CosRayApi) : DeviceApi {
     accessToken: String,
     deviceId: Int,
     request: com.grid.cosrayapp.core.network.UpdateDeviceRequest,
-  ) = com.grid.cosrayapp.core.network.apiResultOf {
-    api.updateDevice(accessToken, deviceId, request.name, request.description, request.isActive)
-  }
+  ) =
+    com.grid.cosrayapp.core.network.apiResultOf {
+      api.updateDevice(accessToken, deviceId, request.name, request.description, request.isActive)
+    }
 
   override suspend fun deleteDevice(accessToken: String, deviceId: Int) =
     com.grid.cosrayapp.core.network.apiResultOf { api.deleteDevice(accessToken, deviceId) }
 }
 
-/**
- * Adapter to bridge CosRayApi to TelemetryApi interface.
- */
+/** Adapter to bridge CosRayApi to TelemetryApi interface. */
 private class TelemetryApiAdapter(private val api: CosRayApi) : TelemetryApi {
   override suspend fun uploadPacket(
     accessToken: String,
@@ -204,23 +180,24 @@ private class TelemetryApiAdapter(private val api: CosRayApi) : TelemetryApi {
   override suspend fun uploadBatch(
     accessToken: String,
     requests: List<com.grid.cosrayapp.core.network.model.PacketUploadRequest>,
-  ) = com.grid.cosrayapp.core.network.apiResultOf {
-    var successCount = 0
-    val errors = mutableListOf<String>()
+  ) =
+    com.grid.cosrayapp.core.network.apiResultOf {
+      var successCount = 0
+      val errors = mutableListOf<String>()
 
-    requests.forEach { request ->
-      try {
-        api.uploadPacket(accessToken, request)
-        successCount++
-      } catch (e: Exception) {
-        errors.add(e.message ?: "Unknown error")
+      requests.forEach { request ->
+        try {
+          api.uploadPacket(accessToken, request)
+          successCount++
+        } catch (e: Exception) {
+          errors.add(e.message ?: "Unknown error")
+        }
       }
-    }
 
-    com.grid.cosrayapp.core.network.BatchUploadResponse(
-      successCount = successCount,
-      failedCount = requests.size - successCount,
-      errors = errors,
-    )
-  }
+      com.grid.cosrayapp.core.network.BatchUploadResponse(
+        successCount = successCount,
+        failedCount = requests.size - successCount,
+        errors = errors,
+      )
+    }
 }
