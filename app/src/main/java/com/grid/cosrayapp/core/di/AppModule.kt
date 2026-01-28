@@ -137,11 +137,13 @@ private class AuthApiAdapter(private val api: CosRayApi) : AuthApi {
   override suspend fun fetchCurrentUser(accessToken: String) =
     com.grid.cosrayapp.core.network.apiResultOf { api.fetchCurrentUser(accessToken) }
 
-  override suspend fun logout(accessToken: String): com.grid.cosrayapp.core.network.ApiResult<Unit> {
+  override suspend fun logout(
+    accessToken: String
+  ): com.grid.cosrayapp.core.network.ApiResult<Unit> {
     // TODO: Implement when CosRayApi adds logout endpoint
     return com.grid.cosrayapp.core.network.ApiResult.Error(
       code = 501,
-      message = "Logout endpoint not implemented in backend yet"
+      message = "Logout endpoint not implemented in backend yet",
     )
   }
 }

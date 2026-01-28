@@ -16,8 +16,8 @@ data class RawPacket(
   val timestamp: Long = System.currentTimeMillis(),
 ) {
   /**
-   * Equality based on characteristicId and data content only.
-   * Timestamp is excluded to allow meaningful collection/diffing operations.
+   * Equality based on characteristicId and data content only. Timestamp is excluded to allow
+   * meaningful collection/diffing operations.
    */
   override fun equals(other: Any?): Boolean {
     if (this === other) return true

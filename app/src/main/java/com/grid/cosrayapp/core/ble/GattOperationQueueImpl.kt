@@ -30,10 +30,7 @@ class GattOperationQueueImpl(
 
   private var pendingWriteOperation: GattOperation.Write? = null
 
-  /**
-   * Start processing the operation queue.
-   * Should be called after connection is established.
-   */
+  /** Start processing the operation queue. Should be called after connection is established. */
   fun startProcessing() {
     if (_isProcessing) return
     _isShutdown = false
@@ -43,9 +40,10 @@ class GattOperationQueueImpl(
   override suspend fun <T> enqueue(operation: GattOperation<T>): CosRayResult<T> {
     // Fail fast if queue is not processing or has been shutdown
     if (_isShutdown || !_isProcessing) {
-      val error = CosRayResult.Error<T>(
-        IllegalStateException("GATT operation queue is not active. Call startProcessing() first.")
-      )
+      val error =
+        CosRayResult.Error<T>(
+          IllegalStateException("GATT operation queue is not active. Call startProcessing() first.")
+        )
       @Suppress("UNCHECKED_CAST")
       return error as CosRayResult<T>
     }
