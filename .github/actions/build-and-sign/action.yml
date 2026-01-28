@@ -51,9 +51,11 @@ runs:
 
     - name: Grant execute permission for gradlew
       run: chmod +x ./gradlew
+      shell: bash
 
     - name: Build release APK
       run: ./gradlew assembleRelease -PciBuild=true
+      shell: bash
 
     - name: Find unsigned APK
       id: find_unsigned
@@ -63,6 +65,7 @@ runs:
         if [ -n "$apk" ]; then
           echo "unsignedFile=$apk" >> $GITHUB_OUTPUT
         fi
+      shell: bash
 
     - name: Sign APK (optional)
       id: sign
@@ -80,6 +83,7 @@ runs:
       run: |
         echo "signedFile=${{ steps.sign.outputs.signedFile || '' }}" >> $GITHUB_OUTPUT
         echo "unsignedFile=${{ steps.find_unsigned.outputs.unsignedFile || '' }}" >> $GITHUB_OUTPUT
+      shell: bash
 
 inputs:
   run-sign:
