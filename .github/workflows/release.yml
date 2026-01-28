@@ -102,14 +102,14 @@ jobs:
             if [ "${{ github.event.pull_request.head.ref }}" != "dev" ]; then
               echo "PR not from dev; skipping release." && exit 1
             fi
-            PR_TITLE='${{ github.event.pull_request.title }}'
+            PR_TITLE="${{ github.event.pull_request.title }}"
             VERSION=$(echo "$PR_TITLE" | grep -Eo 'v[0-9]+\.[0-9]+\.[0-9]+' || true)
             if [ -z "$VERSION" ]; then
               echo "No version tag found in PR title: $PR_TITLE" && exit 1
             fi
           fi
           if [ -z "$VERSION" ] && [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION='${{ github.event.inputs.version }}'
+            VERSION="${{ github.event.inputs.version }}"
             if [ -z "$VERSION" ]; then
               echo "No version provided for workflow_dispatch; aborting." && exit 1
             fi
