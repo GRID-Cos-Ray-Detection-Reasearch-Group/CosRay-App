@@ -80,7 +80,7 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
 
   // GATT operation queue
   private var pendingWriteOperation: GattOperation.Write? = null
-  private val gattOperationQueue = Channel<GattOperation>(Channel.UNLIMITED)
+  private val gattOperationQueue = Channel<GattOperation<*>>(Channel.UNLIMITED)
   private var isProcessingQueue = false
   private var queueProcessingJob: Job? = null
 

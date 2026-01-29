@@ -41,7 +41,7 @@ class GattOperationQueueImpl(
     // Fail fast if queue is not processing or has been shutdown
     if (_isShutdown || !_isProcessing) {
       val error =
-        CosRayResult.Error<T>(
+        CosRayResult.Error(
           IllegalStateException("GATT operation queue is not active. Call startProcessing() first.")
         )
       @Suppress("UNCHECKED_CAST")

@@ -46,7 +46,7 @@ object AppModule {
   /** Provide the HTTP client for network requests. */
   fun provideHttpClient(): HttpClient {
     if (_httpClient == null) {
-      _httpClient = HttpClientFactory.create(provideTokenStore())
+      _httpClient = HttpClientFactory.create()
     }
     return _httpClient!!
   }
