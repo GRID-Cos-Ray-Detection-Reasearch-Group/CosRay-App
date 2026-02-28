@@ -74,18 +74,17 @@ class TelemetryRepository(
     return if (requests.isEmpty()) {
       CosRayResult.Success(Unit)
     } else {
-      val uploadResult: CosRayResult<Unit> =
-        runCosRayCatching {
-          requests.forEach { request ->
-            val tokenResult = authRepository.ensureValidToken()
-            val accessToken =
-              when (tokenResult) {
-                is CosRayResult.Success -> tokenResult.data
-                is CosRayResult.Error -> throw tokenResult.throwable
-              }
-            api.uploadPacket(accessToken, request)
-          }
+      val uploadResult: CosRayResult<Unit> = runCosRayCatching {
+        requests.forEach { request ->
+          val tokenResult = authRepository.ensureValidToken()
+          val accessToken =
+            when (tokenResult) {
+              is CosRayResult.Success -> tokenResult.data
+              is CosRayResult.Error -> throw tokenResult.throwable
+            }
+          api.uploadPacket(accessToken, request)
         }
+      }
 
       if (uploadResult is CosRayResult.Success) {
         _buffer.value = emptyList()
@@ -191,15 +190,14 @@ internal class FirmwarePacketAssembler {
   }
 
   private fun hasHeader(packetBytes: ByteArray, header: ByteString): Boolean {
-    return packetBytes[0] == header[0] &&
-      packetBytes[1] == header[1] &&
-      packetBytes[2] == header[2]
+    return packetBytes[0] == header[0] && packetBytes[1] == header[1] && packetBytes[2] == header[2]
   }
 
   companion object {
     private const val PACKET_SIZE = 512
     private const val HEADER_SIZE = 3
-    private val MUON_HEAD: ByteString = byteArrayOf(0xAA.toByte(), 0xBB.toByte(), 0xCC.toByte()).toByteString()
+    private val MUON_HEAD: ByteString =
+      byteArrayOf(0xAA.toByte(), 0xBB.toByte(), 0xCC.toByte()).toByteString()
     private val TIMELINE_HEAD: ByteString = byteArrayOf(0x12, 0x34, 0x56).toByteString()
   }
 }

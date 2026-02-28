@@ -18,11 +18,11 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class DeviceViewModel
-  @Inject
-  constructor(
-    private val bleRepository: BleRepository,
-    private val telemetryRepository: TelemetryRepository,
-  ) : ViewModel() {
+@Inject
+constructor(
+  private val bleRepository: BleRepository,
+  private val telemetryRepository: TelemetryRepository,
+) : ViewModel() {
   private val _uiState = MutableStateFlow(DeviceUiState())
   val uiState: StateFlow<DeviceUiState> = _uiState.asStateFlow()
 

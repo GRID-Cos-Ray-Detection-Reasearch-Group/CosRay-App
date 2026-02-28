@@ -70,7 +70,8 @@ class CosRayApiBackendIntegrationTest {
                 "name": "IntegrationDevice",
                 "description": "app-integration-test"
               }
-              """.trimIndent()
+              """
+                .trimIndent()
             )
           }
           .body()

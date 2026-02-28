@@ -27,11 +27,11 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class DashboardViewModel
-  @Inject
-  constructor(
-    private val telemetryRepository: TelemetryRepository,
-    private val authRepository: AuthRepository,
-  ) : ViewModel() {
+@Inject
+constructor(
+  private val telemetryRepository: TelemetryRepository,
+  private val authRepository: AuthRepository,
+) : ViewModel() {
   private val _uiState = MutableStateFlow(DashboardUiState())
   val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 

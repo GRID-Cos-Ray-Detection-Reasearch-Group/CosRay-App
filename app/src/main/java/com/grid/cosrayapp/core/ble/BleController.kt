@@ -84,9 +84,7 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
           externalScope.launch { _telemetry.emit(sample) }
         }
       },
-      onServiceResolved = { uuid ->
-        activeServiceUuid = uuid
-      },
+      onServiceResolved = { uuid -> activeServiceUuid = uuid },
     )
 
   private val scanCallback =
@@ -99,7 +97,8 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
         val existing = deviceCache[device.address]
         val signal = SignalStrength(result.rssi, now)
         val resolvedName = result.scanRecord?.deviceName ?: device.name ?: existing?.name
-        val advertisedFromScan = result.scanRecord?.serviceUuids?.map { it.uuid.toString() }.orEmpty()
+        val advertisedFromScan =
+          result.scanRecord?.serviceUuids?.map { it.uuid.toString() }.orEmpty()
         val advertisedServices =
           advertisedFromScan.ifEmpty { existing?.advertisedServices ?: emptyList() }
         val detectorId = existing?.id ?: deriveDetectorId(device, result)

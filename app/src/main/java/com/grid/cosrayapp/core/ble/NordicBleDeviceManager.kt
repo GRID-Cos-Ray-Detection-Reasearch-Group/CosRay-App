@@ -56,7 +56,11 @@ internal class NordicBleDeviceManager(
   }
 
   suspend fun writeCommand(command: ByteArray) {
-    writeCharacteristic(writeCharacteristic, command, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
+    writeCharacteristic(
+        writeCharacteristic,
+        command,
+        BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
+      )
       .suspend()
   }
 

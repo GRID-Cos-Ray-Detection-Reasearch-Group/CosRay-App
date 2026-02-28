@@ -16,11 +16,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @HiltViewModel
-class LoginViewModel
-  @Inject
-  constructor(
-    private val authRepository: AuthRepository,
-  ) : ViewModel() {
+class LoginViewModel @Inject constructor(private val authRepository: AuthRepository) : ViewModel() {
   private val _uiState = MutableStateFlow(LoginUiState())
   val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
@@ -75,7 +71,6 @@ class LoginViewModel
       }
     }
   }
-
 }
 
 data class LoginUiState(

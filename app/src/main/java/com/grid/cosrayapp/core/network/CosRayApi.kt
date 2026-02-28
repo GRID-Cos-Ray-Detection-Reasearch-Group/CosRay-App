@@ -56,8 +56,7 @@ class CosRayApi(private val client: HttpClient) {
 
   suspend fun fetchCurrentUser(accessToken: String): User =
     withContext(Dispatchers.IO) {
-      val response: UserResponse =
-        client.get("/api/users/me") { bearerToken(accessToken) }.body()
+      val response: UserResponse = client.get("/api/users/me") { bearerToken(accessToken) }.body()
       response.toDomain()
     }
 
@@ -80,12 +79,7 @@ class CosRayApi(private val client: HttpClient) {
     isActive: Boolean? = null,
   ): DeviceDto =
     withContext(Dispatchers.IO) {
-      val updates =
-        UpdateDeviceRequest(
-          name = name,
-          description = description,
-          isActive = isActive,
-        )
+      val updates = UpdateDeviceRequest(name = name, description = description, isActive = isActive)
       client
         .patch("/api/devices/$deviceId/") {
           bearerToken(accessToken)
@@ -122,8 +116,4 @@ class CosRayApi(private val client: HttpClient) {
 }
 
 fun UserResponse.toDomain(): User =
-  User(
-    id = UserId(id.toString()),
-    email = email,
-    displayName = username,
-  )
+  User(id = UserId(id.toString()), email = email, displayName = username)

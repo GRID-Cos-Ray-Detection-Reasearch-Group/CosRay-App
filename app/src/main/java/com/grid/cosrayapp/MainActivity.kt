@@ -12,18 +12,11 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-  @Inject
-  lateinit var authRepository: AuthRepository
+  @Inject lateinit var authRepository: AuthRepository
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
-    setContent {
-      CosRayAppTheme {
-        CosRayApp(
-          authRepository = authRepository,
-        )
-      }
-    }
+    setContent { CosRayAppTheme { CosRayApp(authRepository = authRepository) } }
   }
 }

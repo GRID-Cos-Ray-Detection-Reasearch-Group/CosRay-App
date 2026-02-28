@@ -26,18 +26,15 @@ object HiltModules {
   @Singleton
   fun provideApplicationScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-  @Provides
-  @Singleton
-  fun provideHttpClient(): HttpClient = HttpClientFactory.create()
+  @Provides @Singleton fun provideHttpClient(): HttpClient = HttpClientFactory.create()
+
+  @Provides @Singleton fun provideCosRayApi(client: HttpClient): CosRayApi = CosRayApi(client)
 
   @Provides
   @Singleton
-  fun provideCosRayApi(client: HttpClient): CosRayApi = CosRayApi(client)
-
-  @Provides
-  @Singleton
-  fun provideUserPreferencesDataSource(@ApplicationContext context: Context): UserPreferencesDataSource =
-    UserPreferencesDataSource(context)
+  fun provideUserPreferencesDataSource(
+    @ApplicationContext context: Context
+  ): UserPreferencesDataSource = UserPreferencesDataSource(context)
 
   @Provides
   @Singleton
@@ -53,11 +50,7 @@ object HiltModules {
     userPreferences: UserPreferencesDataSource,
     applicationScope: CoroutineScope,
   ): AuthRepository =
-    AuthRepository(
-      api = api,
-      userPreferences = userPreferences,
-      externalScope = applicationScope,
-    )
+    AuthRepository(api = api, userPreferences = userPreferences, externalScope = applicationScope)
 
   @Provides
   @Singleton

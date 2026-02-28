@@ -18,13 +18,8 @@ import com.grid.cosrayapp.navigation.rememberCosRayAppState
 import com.grid.cosrayapp.ui.theme.CosRayAppTheme
 
 @Composable
-fun CosRayApp(
-  authRepository: AuthRepository,
-) {
-  val appState: CosRayAppState =
-    rememberCosRayAppState(
-      authRepository = authRepository,
-    )
+fun CosRayApp(authRepository: AuthRepository) {
+  val appState: CosRayAppState = rememberCosRayAppState(authRepository = authRepository)
   val authState = rememberAuthState(appState)
 
   LaunchedEffect(authState) {

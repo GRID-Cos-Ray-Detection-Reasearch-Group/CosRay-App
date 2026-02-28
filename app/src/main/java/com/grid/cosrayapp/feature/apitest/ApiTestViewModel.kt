@@ -37,9 +37,7 @@ data class ApiTestUiState(
 
 @Suppress("TooGenericExceptionCaught", "TooManyFunctions")
 @HiltViewModel
-class ApiTestViewModel
-  @Inject
-  constructor() : ViewModel() {
+class ApiTestViewModel @Inject constructor() : ViewModel() {
   private val _uiState = MutableStateFlow(ApiTestUiState())
   val uiState: StateFlow<ApiTestUiState> = _uiState.asStateFlow()
 

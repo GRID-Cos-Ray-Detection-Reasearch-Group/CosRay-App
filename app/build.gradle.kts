@@ -1,5 +1,5 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.gradle.testing.jacoco.tasks.JacocoReport
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
   alias(libs.plugins.android.application)
@@ -131,21 +131,14 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
 
   classDirectories.setFrom(
     files(
-      fileTree("$buildDir/tmp/kotlin-classes/debug") {
-        exclude(excludes)
-      },
+      fileTree("$buildDir/tmp/kotlin-classes/debug") { exclude(excludes) },
       fileTree("$buildDir/intermediates/javac/debug/compileDebugJavaWithJavac/classes") {
         exclude(excludes)
       },
     )
   )
 
-  sourceDirectories.setFrom(
-    files(
-      "src/main/java",
-      "src/main/kotlin",
-    )
-  )
+  sourceDirectories.setFrom(files("src/main/java", "src/main/kotlin"))
 
   executionData.setFrom(
     fileTree(buildDir) {
