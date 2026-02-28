@@ -11,19 +11,19 @@ data class DeviceDto(
   @SerialName("name") val name: String,
   @SerialName("description") val description: String? = null,
   @SerialName("is_active") val isActive: Boolean,
-  @SerialName("owner") val ownerId: Int,
+  @SerialName("owner_id") val ownerId: Int,
   @SerialName("owner_username") val ownerUsername: String,
   @SerialName("created_at") val createdAt: String,
   @SerialName("updated_at") val updatedAt: String,
   @SerialName("last_seen_at") val lastSeenAt: String?,
 )
 
-/** 设备注册请求 */
+/** 设备更新请求 */
 @Serializable
-data class RegisterDeviceRequest(
-  @SerialName("mac_address") val macAddress: String,
-  @SerialName("name") val name: String,
+data class UpdateDeviceRequest(
+  @SerialName("name") val name: String? = null,
   @SerialName("description") val description: String? = null,
+  @SerialName("is_active") val isActive: Boolean? = null,
 )
 
 /** μ子事件DTO */
@@ -61,10 +61,10 @@ data class TimelineEventDto(
   @SerialName("acc_x") val accX: Int,
   @SerialName("acc_y") val accY: Int,
   @SerialName("acc_z") val accZ: Int,
-  @SerialName("SiPMTmp") val siPMTmp: Int,
-  @SerialName("MCUTmp") val mcuTmp: Int,
-  @SerialName("SiPMImon") val siPMImon: Int,
-  @SerialName("SiPMVmon") val siPMVmon: Int,
+  @SerialName("sipm_tmp") val sipmTmp: Int,
+  @SerialName("mcu_tmp") val mcuTmp: Int,
+  @SerialName("sipm_imon") val sipmImon: Int,
+  @SerialName("sipm_vmon") val sipmVmon: Int,
   @SerialName("timestamp") val timestamp: Long? = null,
 )
 
@@ -92,7 +92,8 @@ data class PacketUploadRequest(
 @Serializable
 data class PacketUploadResponse(
   @SerialName("device") val device: String,
-  @SerialName("device_name") val deviceName: String,
+  @SerialName("device_name") val deviceName: String? = null,
   @SerialName("packet_type") val packetType: String,
   @SerialName("records_written") val recordsWritten: Int,
+  @SerialName("message") val message: String? = null,
 )
