@@ -12,7 +12,7 @@ data class AuthTokens(val accessToken: String, val refreshToken: String, val exp
 
   companion object {
     private const val EXPIRY_LEEWAY_SECONDS = 90L
-    private val INFINITE_EXPIRY: Instant = Instant.ofEpochMilli(Long.MAX_VALUE / 2)
+    private const val DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 15L * 60L
 
     fun fromEpochMillis(
       accessToken: String,
@@ -20,7 +20,11 @@ data class AuthTokens(val accessToken: String, val refreshToken: String, val exp
       expiresAtMillis: Long,
     ): AuthTokens = AuthTokens(accessToken, refreshToken, Instant.ofEpochMilli(expiresAtMillis))
 
-    fun fromSessionToken(sessionToken: String): AuthTokens =
-      AuthTokens(sessionToken, sessionToken, INFINITE_EXPIRY)
+    fun fromJwtTokens(accessToken: String, refreshToken: String): AuthTokens =
+      AuthTokens(
+        accessToken = accessToken,
+        refreshToken = refreshToken,
+        expiresAt = Instant.now().plusSeconds(DEFAULT_ACCESS_TOKEN_TTL_SECONDS),
+      )
   }
 }

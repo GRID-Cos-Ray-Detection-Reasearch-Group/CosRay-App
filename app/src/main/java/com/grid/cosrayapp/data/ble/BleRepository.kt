@@ -2,6 +2,7 @@ package com.grid.cosrayapp.data.ble
 
 import com.grid.cosrayapp.core.ble.BleConnectionState
 import com.grid.cosrayapp.core.ble.BleController
+import com.grid.cosrayapp.core.ble.RawPacket
 import com.grid.cosrayapp.core.ble.ScanConfig
 import com.grid.cosrayapp.core.common.CosRayResult
 import com.grid.cosrayapp.domain.model.BleDevice
@@ -21,6 +22,7 @@ class BleRepository(private val controller: BleController) {
   val isScanning: StateFlow<Boolean> = controller.isScanning
   val connectionState: StateFlow<BleConnectionState> = controller.connectionState
   val telemetry: SharedFlow<TelemetrySample> = controller.telemetry
+  val rawPackets: SharedFlow<RawPacket> = controller.rawPackets
 
   /** Start BLE scan with optional configuration */
   suspend fun startScan(config: ScanConfig = ScanConfig.Default) =
@@ -45,9 +47,6 @@ class BleRepository(private val controller: BleController) {
   /** Send command to connected device (queued) */
   suspend fun sendCommand(command: ByteArray): CosRayResult<Unit> =
     controller.sendCommandQueued(command)
-
-  /** Send command to connected device (legacy, direct write) */
-  fun sendCommandDirect(command: ByteArray): Boolean = controller.sendCommand(command)
 
   /** Check if currently connected to a device */
   val isConnected: StateFlow<Boolean> =

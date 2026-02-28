@@ -4,17 +4,10 @@
     <!-- Authentication -->
     <string name="login_brand_title">CosRay</string>
     <string name="auth_welcome_back">欢迎回来</string>
-    <string name="auth_register_title">注册账户</string>
-    <string name="auth_email_label">邮箱地址</string>
     <string name="auth_username_label">用户名</string>
     <string name="auth_password_label">密码</string>
-    <string name="auth_display_name_label">昵称</string>
     <string name="auth_login_action">登录</string>
-    <string name="auth_register_action">注册</string>
-    <string name="auth_create_account_action">创建新账户</string>
-    <string name="auth_have_account_action">已有账号？立即登录</string>
     <string name="auth_skip_login_action">暂不登录</string>
-    <string name="auth_error_invalid_email">请输入有效的邮箱</string>
     <string name="auth_error_invalid_username">请输入用户名</string>
     <string name="auth_error_weak_password">密码至少8位，包含数字和大写字母</string>
     <string name="error_unknown">发生未知错误</string>
@@ -26,7 +19,7 @@
     <string name="device_scan_title">查找附近设备</string>
     <string name="device_scan_subtitle">授予权限后即可连接采样器</string>
     <string name="device_login_hint">登录后可同步设备数据</string>
-    <string name="device_login_action">登录 / 注册</string>
+    <string name="device_login_action">登录</string>
     <string name="device_permissions_request_action">重新请求权限</string>
     <string name="device_logout_action">退出登录</string>
     <string name="device_permissions_missing">蓝牙权限未授予，无法扫描设备</string>
@@ -103,7 +96,7 @@
     <string name="dashboard_energy_adc">%1$d ADC</string>
     <string name="dashboard_sipm_temp">SiPM温度</string>
     <string name="dashboard_mcu_temp">MCU温度</string>
-    <string name="dashboard_location_coords">位置: %.6f°, %.6f° (海拔 %3$d m)</string>
+    <string name="dashboard_location_coords">位置: %1$.6f°, %2$.6f° (海拔 %3$d m)</string>
     <string name="dashboard_acceleration_xyz">加速度: X=%1$d, Y=%2$d, Z=%3$d</string>
     <string name="dashboard_packet_counter">数据包#%1$d</string>
 
@@ -116,18 +109,14 @@
     <string name="api_test_device_section">设备管理测试</string>
     <string name="api_test_packet_section">数据包测试</string>
     <string name="api_test_response">API 响应</string>
-    <string name="api_test_test_button">测试</string>
     <string name="api_test_clear_button">清空</string>
     <string name="api_test_login_subtitle">登录</string>
-    <string name="api_test_register_subtitle">注册</string>
     <string name="api_test_test_login">测试登录</string>
-    <string name="api_test_test_register">测试注册</string>
     <string name="api_test_test_get_user">获取用户信息</string>
     <string name="api_test_mac_address_label">MAC 地址</string>
     <string name="api_test_device_name_label">设备名称</string>
     <string name="api_test_device_description_label">设备描述</string>
     <string name="api_test_device_id_label">设备 ID</string>
-    <string name="api_test_test_register_device">注册设备</string>
     <string name="api_test_test_list_devices">获取设备列表</string>
     <string name="api_test_test_get_device">获取设备</string>
     <string name="api_test_test_update_device">更新设备</string>

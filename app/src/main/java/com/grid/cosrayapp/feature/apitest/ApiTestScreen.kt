@@ -46,16 +46,12 @@ fun ApiTestScreen(
   onTokenChange: (String) -> Unit,
   onUsernameChange: (String) -> Unit,
   onPasswordChange: (String) -> Unit,
-  onEmailChange: (String) -> Unit,
-  onDisplayNameChange: (String) -> Unit,
   onMacAddressChange: (String) -> Unit,
   onDeviceNameChange: (String) -> Unit,
   onDeviceDescriptionChange: (String) -> Unit,
   onDeviceIdChange: (String) -> Unit,
   onTestLogin: () -> Unit,
-  onTestRegister: () -> Unit,
   onTestGetUserInfo: () -> Unit,
-  onTestRegisterDevice: () -> Unit,
   onTestListDevices: () -> Unit,
   onTestGetDevice: () -> Unit,
   onTestUpdateDevice: () -> Unit,
@@ -100,14 +96,9 @@ fun ApiTestScreen(
       AuthTestSection(
         username = state.username,
         password = state.password,
-        email = state.email,
-        displayName = state.displayName,
         onUsernameChange = onUsernameChange,
         onPasswordChange = onPasswordChange,
-        onEmailChange = onEmailChange,
-        onDisplayNameChange = onDisplayNameChange,
         onTestLogin = onTestLogin,
-        onTestRegister = onTestRegister,
         onTestGetUserInfo = onTestGetUserInfo,
         isLoading = state.isLoading,
       )
@@ -125,7 +116,6 @@ fun ApiTestScreen(
         onDeviceNameChange = onDeviceNameChange,
         onDeviceDescriptionChange = onDeviceDescriptionChange,
         onDeviceIdChange = onDeviceIdChange,
-        onTestRegisterDevice = onTestRegisterDevice,
         onTestListDevices = onTestListDevices,
         onTestGetDevice = onTestGetDevice,
         onTestUpdateDevice = onTestUpdateDevice,
@@ -197,14 +187,9 @@ private fun TokenSection(token: String, onTokenChange: (String) -> Unit) {
 private fun AuthTestSection(
   username: String,
   password: String,
-  email: String,
-  displayName: String,
   onUsernameChange: (String) -> Unit,
   onPasswordChange: (String) -> Unit,
-  onEmailChange: (String) -> Unit,
-  onDisplayNameChange: (String) -> Unit,
   onTestLogin: () -> Unit,
-  onTestRegister: () -> Unit,
   onTestGetUserInfo: () -> Unit,
   isLoading: Boolean,
 ) {
@@ -240,31 +225,6 @@ private fun AuthTestSection(
 
       Spacer(modifier = Modifier.height(8.dp))
 
-      // Register fields
-      Text(
-        text = stringResource(R.string.api_test_register_subtitle),
-        style = MaterialTheme.typography.labelLarge,
-      )
-      OutlinedTextField(
-        value = email,
-        onValueChange = onEmailChange,
-        label = { Text(stringResource(R.string.auth_email_label)) },
-        modifier = Modifier.fillMaxWidth(),
-        singleLine = true,
-      )
-      OutlinedTextField(
-        value = displayName,
-        onValueChange = onDisplayNameChange,
-        label = { Text(stringResource(R.string.auth_display_name_label)) },
-        modifier = Modifier.fillMaxWidth(),
-        singleLine = true,
-      )
-      Button(onClick = onTestRegister, modifier = Modifier.fillMaxWidth(), enabled = !isLoading) {
-        Text(stringResource(R.string.api_test_test_register))
-      }
-
-      Spacer(modifier = Modifier.height(8.dp))
-
       // Get user info
       Button(
         onClick = onTestGetUserInfo,
@@ -288,7 +248,6 @@ private fun DeviceTestSection(
   onDeviceNameChange: (String) -> Unit,
   onDeviceDescriptionChange: (String) -> Unit,
   onDeviceIdChange: (String) -> Unit,
-  onTestRegisterDevice: () -> Unit,
   onTestListDevices: () -> Unit,
   onTestGetDevice: () -> Unit,
   onTestUpdateDevice: () -> Unit,
@@ -324,15 +283,6 @@ private fun DeviceTestSection(
         modifier = Modifier.fillMaxWidth(),
         maxLines = 3,
       )
-      Button(
-        onClick = onTestRegisterDevice,
-        modifier = Modifier.fillMaxWidth(),
-        enabled = !isLoading,
-      ) {
-        Text(stringResource(R.string.api_test_test_register_device))
-      }
-
-      HorizontalDivider()
 
       Button(
         onClick = onTestListDevices,

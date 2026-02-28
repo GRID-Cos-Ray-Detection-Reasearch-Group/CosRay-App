@@ -3,16 +3,7 @@ package com.grid.cosrayapp.core.ble
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothGatt
-import android.bluetooth.BluetoothGattCallback
-import android.bluetooth.BluetoothGattCharacteristic
-import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
-import android.bluetooth.BluetoothProfile
-import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanFilter
-import android.bluetooth.le.ScanResult
-import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -28,12 +19,10 @@ import com.grid.cosrayapp.domain.model.TelemetrySample
 import java.time.Instant
 import java.util.Locale
 import java.util.UUID
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,14 +32,19 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
+import no.nordicsemi.android.ble.observer.ConnectionObserver
+import no.nordicsemi.android.support.v18.scanner.BluetoothLeScannerCompat
+import no.nordicsemi.android.support.v18.scanner.ScanCallback
+import no.nordicsemi.android.support.v18.scanner.ScanFilter
+import no.nordicsemi.android.support.v18.scanner.ScanResult
+import no.nordicsemi.android.support.v18.scanner.ScanSettings
 
 @Suppress("TooManyFunctions", "ReturnCount", "MagicNumber")
 class BleController(private val context: Context, val externalScope: CoroutineScope) {
   private val bluetoothManager: BluetoothManager? =
     context.getSystemService(BluetoothManager::class.java)
   private val bluetoothAdapter: BluetoothAdapter? = bluetoothManager?.adapter
-  private val bluetoothScanner = bluetoothAdapter?.bluetoothLeScanner
+  private val bluetoothScanner = BluetoothLeScannerCompat.getScanner()
 
   private val deviceCache = mutableMapOf<String, BleDevice>()
 
@@ -66,40 +60,49 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
   private val _telemetry = MutableSharedFlow<TelemetrySample>(extraBufferCapacity = 16)
   val telemetry = _telemetry.asSharedFlow()
 
-  private var bluetoothGatt: BluetoothGatt? = null
+  private val _rawPackets = MutableSharedFlow<RawPacket>(extraBufferCapacity = 32)
+  val rawPackets = _rawPackets.asSharedFlow()
+
   private var activeDevice: BleDevice? = null
-  private var activeServiceUuid: UUID? = null // Store the UUID of the service we're connected to
-  private var connectionJob: Job? = null
+  private var activeServiceUuid: UUID? = null
   private var scanJob: Job? = null
 
-  private var serviceDiscoveryJob: Job? = null
-
-  // Service discovery on Android can be flaky due to GATT caching/race conditions.
-  // Track retries per device address so we can refresh cache + re-discover before failing.
-  private val serviceDiscoveryRetriesByAddress = mutableMapOf<String, Int>()
-
-  // GATT operation queue
-  private var pendingWriteOperation: GattOperation.Write? = null
-  private val gattOperationQueue = Channel<GattOperation<*>>(Channel.UNLIMITED)
-  private var isProcessingQueue = false
-  private var queueProcessingJob: Job? = null
+  private val deviceManager =
+    NordicBleDeviceManager(
+      context = context,
+      onPacketReceived = { value ->
+        externalScope.launch {
+          _rawPackets.emit(
+            RawPacket(
+              characteristicId = BleConfig.NOTIFY_CHARACTERISTIC_UUID,
+              data = value.copyOf(),
+            )
+          )
+        }
+        val sample = BleTelemetryParser.parse(value, activeDevice)
+        if (sample != null) {
+          externalScope.launch { _telemetry.emit(sample) }
+        }
+      },
+      onServiceResolved = { uuid ->
+        activeServiceUuid = uuid
+      },
+    )
 
   private val scanCallback =
     object : ScanCallback() {
       @SuppressLint("MissingPermission")
-      override fun onScanResult(callbackType: Int, result: ScanResult?) {
+      override fun onScanResult(callbackType: Int, result: ScanResult) {
         super.onScanResult(callbackType, result)
-        val scanResult = result ?: return
-        val device = scanResult.device ?: return
+        val device = result.device ?: return
         val now = Instant.now()
         val existing = deviceCache[device.address]
-        val signal = SignalStrength(scanResult.rssi, now)
-        val resolvedName = scanResult.scanRecord?.deviceName ?: device.name ?: existing?.name
-        val advertisedFromScan =
-          scanResult.scanRecord?.serviceUuids?.map { it.uuid.toString() }.orEmpty()
+        val signal = SignalStrength(result.rssi, now)
+        val resolvedName = result.scanRecord?.deviceName ?: device.name ?: existing?.name
+        val advertisedFromScan = result.scanRecord?.serviceUuids?.map { it.uuid.toString() }.orEmpty()
         val advertisedServices =
           advertisedFromScan.ifEmpty { existing?.advertisedServices ?: emptyList() }
-        val detectorId = existing?.id ?: deriveDetectorId(device, scanResult)
+        val detectorId = existing?.id ?: deriveDetectorId(device, result)
         val bleDevice =
           existing?.copy(
             name = resolvedName,
@@ -115,6 +118,7 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
               lastSeen = now,
               advertisedServices = advertisedServices,
             )
+
         deviceCache[bleDevice.macAddress] = bleDevice
         _scanResults.update { devices ->
           devices
@@ -137,170 +141,54 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
       }
     }
 
-  private val gattCallback =
-    object : BluetoothGattCallback() {
-      @SuppressLint("MissingPermission")
-      override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
-        super.onConnectionStateChange(gatt, status, newState)
-        when {
-          status != BluetoothGatt.GATT_SUCCESS -> {
-            handleGattError(status, "Connection state change failed")
-            closeConnection(
-              BleConnectionState.Failed(BleError.GattError(status, getGattStatusMessage(status)))
+  init {
+    deviceManager.setConnectionObserver(
+      object : ConnectionObserver {
+        override fun onDeviceConnecting(device: BluetoothDevice) {
+          val resolved = activeDevice ?: deviceCache[device.address] ?: fallbackDevice(device)
+          activeDevice = resolved
+          _connectionState.value = BleConnectionState.Connecting(resolved)
+        }
+
+        override fun onDeviceConnected(device: BluetoothDevice) {
+          val resolved = activeDevice ?: deviceCache[device.address] ?: fallbackDevice(device)
+          activeDevice = resolved
+          _connectionState.value = BleConnectionState.DiscoveringServices(resolved)
+        }
+
+        override fun onDeviceReady(device: BluetoothDevice) {
+          val resolved = activeDevice ?: deviceCache[device.address] ?: fallbackDevice(device)
+          activeDevice = resolved
+          _connectionState.value =
+            BleConnectionState.Connected(device = resolved, services = emptyList())
+        }
+
+        override fun onDeviceFailedToConnect(device: BluetoothDevice, reason: Int) {
+          _connectionState.value =
+            BleConnectionState.Failed(
+              BleError.GattError(reason, "Failed to connect: ${getGattStatusMessage(reason)}")
             )
-          }
-          newState == BluetoothProfile.STATE_CONNECTED -> {
-            val device = activeDevice ?: fallbackDevice(gatt.device)
-            _connectionState.value = BleConnectionState.DiscoveringServices(device)
-            serviceDiscoveryRetriesByAddress[gatt.device.address] = 0
+        }
 
-            // Improve stability on some stacks.
-            try {
-              gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH)
-            } catch (_: Throwable) {
-              // Best-effort
-            }
+        override fun onDeviceDisconnecting(device: BluetoothDevice) {
+          val resolved = activeDevice ?: deviceCache[device.address] ?: fallbackDevice(device)
+          _connectionState.value = BleConnectionState.Disconnecting(resolved)
+        }
 
-            // MTU negotiation is not required for service discovery, but it tends to reduce
-            // flaky
-            // behaviour on some peripherals/phones. We still trigger discovery after a short
-            // delay.
-            val mtuRequested =
-              try {
-                gatt.requestMtu(PREFERRED_MTU)
-              } catch (_: Throwable) {
-                false
-              }
-
-            // Whether MTU request succeeds or not, kick off discovery after a brief delay.
-            // (See Android GATT caching/refresh issues: a small delay can help.)
-            startServiceDiscovery(gatt, reason = if (mtuRequested) "connected+mtu" else "connected")
-          }
-          newState == BluetoothProfile.STATE_DISCONNECTED -> {
-            closeConnection(BleConnectionState.Disconnected)
-          }
+        override fun onDeviceDisconnected(device: BluetoothDevice, reason: Int) {
+          activeDevice = null
+          activeServiceUuid = null
+          _connectionState.value = BleConnectionState.Disconnected
         }
       }
-
-      override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
-        super.onMtuChanged(gatt, mtu, status)
-        Log.d(TAG, "MTU changed: mtu=$mtu status=$status")
-        // Some stacks behave better if we (re)attempt discovery after MTU negotiation.
-        startServiceDiscovery(gatt, reason = "mtuChanged")
-      }
-
-      override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-        super.onServicesDiscovered(gatt, status)
-        when {
-          status != BluetoothGatt.GATT_SUCCESS -> {
-            if (retryServiceDiscoveryIfPossible(gatt, reason = "discoverStatus=$status")) {
-              return
-            }
-            closeConnection(
-              BleConnectionState.Failed(BleError.GattError(status, "Service discovery failed"))
-            )
-          }
-          else -> {
-            // Try to find a supported service
-            val service =
-              BleConfig.SUPPORTED_SERVICE_UUIDS.firstNotNullOfOrNull { uuid ->
-                gatt.getService(uuid)
-              }
-
-            if (service == null) {
-              if (retryServiceDiscoveryIfPossible(gatt, reason = "noSupportedService")) {
-                return
-              }
-              closeConnection(
-                BleConnectionState.Failed(BleError.ServiceNotFound(BleConfig.SERVICE_UUID))
-              )
-              return
-            }
-
-            // Log which service we found
-            Log.d(TAG, "Found supported service: ${service.uuid}")
-
-            // Store the service UUID for later use
-            activeServiceUuid = service.uuid
-
-            val notifyCharacteristic =
-              service.getCharacteristic(BleConfig.NOTIFY_CHARACTERISTIC_UUID)
-
-            if (notifyCharacteristic == null) {
-              // Prefer a characteristic-specific error.
-              if (retryServiceDiscoveryIfPossible(gatt, reason = "notifyCharMissing")) {
-                return
-              }
-              closeConnection(
-                BleConnectionState.Failed(
-                  BleError.CharacteristicNotFound(BleConfig.NOTIFY_CHARACTERISTIC_UUID)
-                )
-              )
-              return
-            }
-
-            enableNotifications(gatt, notifyCharacteristic)
-            val device = activeDevice ?: fallbackDevice(gatt.device)
-            activeDevice = device
-            _connectionState.value =
-              BleConnectionState.Connected(device = device, services = gatt.services)
-
-            // Start GATT operation queue processing
-            startQueueProcessing()
-          }
-        }
-      }
-
-      override fun onCharacteristicChanged(
-        gatt: BluetoothGatt,
-        characteristic: BluetoothGattCharacteristic,
-        value: ByteArray,
-      ) {
-        super.onCharacteristicChanged(gatt, characteristic, value)
-        val sample = BleTelemetryParser.parse(value, activeDevice)
-        if (sample != null) {
-          externalScope.launch { _telemetry.emit(sample) }
-        }
-      }
-
-      override fun onCharacteristicWrite(
-        gatt: BluetoothGatt,
-        characteristic: BluetoothGattCharacteristic,
-        status: Int,
-      ) {
-        super.onCharacteristicWrite(gatt, characteristic, status)
-        // Resolve the pending write operation's deferred based on status
-        pendingWriteOperation?.let { operation ->
-          if (status == BluetoothGatt.GATT_SUCCESS) {
-            operation.deferred.complete(CosRayResult.Success(Unit))
-          } else {
-            operation.deferred.complete(
-              CosRayResult.Error(IllegalStateException("Write failed with status $status"))
-            )
-          }
-          pendingWriteOperation = null
-        }
-        Log.d(TAG, "Characteristic write completed with status: $status")
-      }
-
-      override fun onDescriptorWrite(
-        gatt: BluetoothGatt,
-        descriptor: BluetoothGattDescriptor,
-        status: Int,
-      ) {
-        super.onDescriptorWrite(gatt, descriptor, status)
-        if (status != BluetoothGatt.GATT_SUCCESS) {
-          Log.e(TAG, "Descriptor write failed with status: $status")
-        }
-      }
-    }
+    )
+  }
 
   fun hasBluetoothPermissions(): Boolean =
     REQUIRED_PERMISSIONS.all { permission ->
       ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
     }
 
-  /** Start BLE scan with configuration */
   @SuppressLint("MissingPermission")
   suspend fun startScanWithConfig(config: ScanConfig = ScanConfig.Default) =
     withContext(Dispatchers.Main) {
@@ -320,25 +208,16 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
         return@withContext
       }
 
-      val scanner = bluetoothScanner
-      if (scanner == null) {
-        _connectionState.value =
-          BleConnectionState.ScanFailed(BleError.BluetoothDisabled("Scanner not available"))
-        return@withContext
-      }
-
       deviceCache.clear()
       _scanResults.value = emptyList()
       _connectionState.value = BleConnectionState.Scanning
 
       val settings = ScanSettings.Builder().setScanMode(config.scanMode).build()
-
       val filters = buildScanFilters(config)
 
-      scanner.startScan(filters, settings, scanCallback)
+      bluetoothScanner.startScan(filters, settings, scanCallback)
       _isScanning.value = true
 
-      // Auto-stop scan after duration
       scanJob?.cancel()
       scanJob =
         externalScope.launch {
@@ -353,14 +232,13 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
   fun stopScan() {
     if (!_isScanning.value) return
     scanJob?.cancel()
-    bluetoothScanner?.stopScan(scanCallback)
+    bluetoothScanner.stopScan(scanCallback)
     _isScanning.value = false
     if (_connectionState.value is BleConnectionState.Scanning) {
       _connectionState.value = BleConnectionState.Idle
     }
   }
 
-  /** Connect to device with timeout and retry support */
   @SuppressLint("MissingPermission")
   suspend fun connectWithTimeout(
     address: String,
@@ -368,19 +246,17 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
     timeoutMs: Long = 30_000L,
   ): CosRayResult<Unit> {
     repeat(retries) { attempt ->
-      val result = runCosRayCatching { withTimeout(timeoutMs) { performConnection(address) } }
+      val result = runCosRayCatching { performConnection(address, timeoutMs) }
 
       when (result) {
-        is CosRayResult.Success -> {
-          return result
-        }
+        is CosRayResult.Success -> return result
         is CosRayResult.Error -> {
           if (result.throwable is TimeoutCancellationException) {
             _connectionState.value = BleConnectionState.Failed(BleError.ConnectionTimeout(address))
           }
 
           if (attempt < retries - 1) {
-            delay(1000L * (attempt + 1)) // Exponential backoff
+            delay(1000L * (attempt + 1))
             Log.d(TAG, "Connection attempt ${attempt + 1} failed, retrying...")
           }
         }
@@ -391,7 +267,7 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
   }
 
   @SuppressLint("MissingPermission")
-  private suspend fun performConnection(address: String) =
+  private suspend fun performConnection(address: String, timeoutMs: Long) =
     withContext(Dispatchers.Main) {
       val adapter = checkNotNull(bluetoothAdapter) { "Bluetooth adapter not available" }
       if (!hasBluetoothPermissions()) {
@@ -403,22 +279,11 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
       activeDevice = bleDevice
       _connectionState.value = BleConnectionState.Connecting(bleDevice)
       stopScan()
-      bluetoothGatt?.close()
 
-      bluetoothGatt = device.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
-
-      // Wait for connection
-      var attempts = 0
-      while (attempts < 60 && _connectionState.value !is BleConnectionState.Connected) {
-        delay(500)
-        attempts++
-        if (_connectionState.value is BleConnectionState.Failed) {
-          error("Connection failed")
-        }
-      }
+      deviceManager.connectDevice(device, timeoutMs)
 
       if (_connectionState.value !is BleConnectionState.Connected) {
-        error("Connection timeout")
+        error("Connection was not ready after connect request")
       }
     }
 
@@ -426,17 +291,10 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
   fun disconnect() {
     _connectionState.value =
       activeDevice?.let { BleConnectionState.Disconnecting(it) } ?: BleConnectionState.Disconnected
-
-    bluetoothGatt?.disconnect()
-    closeConnection(BleConnectionState.Disconnected)
+    deviceManager.disconnectDevice()
   }
 
-  /** Send command using GATT operation queue */
   suspend fun sendCommandQueued(command: ByteArray): CosRayResult<Unit> {
-    val gatt = bluetoothGatt ?: return CosRayResult.Error(IllegalStateException("Not connected"))
-    val serviceUuid =
-      activeServiceUuid ?: return CosRayResult.Error(IllegalStateException("No active service"))
-
     if (!hasBluetoothPermissions()) {
       return CosRayResult.Error(SecurityException("Missing Bluetooth permissions"))
     }
@@ -445,251 +303,26 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
       return CosRayResult.Error(IllegalStateException("Device not connected"))
     }
 
-    val service =
-      gatt.getService(serviceUuid)
-        ?: return CosRayResult.Error(IllegalStateException("Service not found"))
+    if (activeServiceUuid == null) {
+      return CosRayResult.Error(IllegalStateException("No active service"))
+    }
 
-    val writeCharacteristic =
-      service.getCharacteristic(BleConfig.WRITE_CHARACTERISTIC_UUID)
-        ?: return CosRayResult.Error(IllegalStateException("Write characteristic not found"))
-
-    val deferred = CompletableDeferred<CosRayResult<Unit>>()
-    val operation =
-      GattOperation.Write(
-        characteristic = writeCharacteristic,
-        data = command,
-        writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
-        deferred = deferred,
-      )
-
-    gattOperationQueue.send(operation)
-    return deferred.await()
-  }
-
-  /** Legacy sendCommand for backward compatibility */
-  @SuppressLint("MissingPermission")
-  @Suppress("DEPRECATION")
-  fun sendCommand(command: ByteArray): Boolean {
-    val gatt = bluetoothGatt ?: return false
-    val serviceUuid = activeServiceUuid ?: return false
-    if (!hasBluetoothPermissions()) return false
-    if (_connectionState.value !is BleConnectionState.Connected) return false
-
-    val service = gatt.getService(serviceUuid) ?: return false
-    val writeCharacteristic =
-      service.getCharacteristic(BleConfig.WRITE_CHARACTERISTIC_UUID) ?: return false
-
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-      val result =
-        gatt.writeCharacteristic(
-          writeCharacteristic,
-          command,
-          BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
-        )
-      result == BluetoothGatt.GATT_SUCCESS
-    } else {
-      writeCharacteristic.value = command
-      gatt.writeCharacteristic(writeCharacteristic)
+    return runCosRayCatching {
+      deviceManager.writeCommand(command)
+      Unit
     }
   }
 
-  private fun startQueueProcessing() {
-    if (isProcessingQueue) return
-
-    queueProcessingJob?.cancel()
-    queueProcessingJob = externalScope.launch { processGattQueue() }
-  }
-
-  @SuppressLint("MissingPermission")
-  @Suppress("DEPRECATION")
-  private suspend fun processGattQueue() {
-    isProcessingQueue = true
-
-    for (operation in gattOperationQueue) {
-      val gatt = bluetoothGatt
-      if (gatt == null) {
-        when (operation) {
-          is GattOperation.Write -> {
-            operation.deferred.complete(
-              CosRayResult.Error(IllegalStateException("GATT not connected"))
-            )
-          }
-          is GattOperation.Read -> {
-            operation.deferred.complete(
-              CosRayResult.Error(IllegalStateException("GATT not connected"))
-            )
-          }
-          is GattOperation.EnableNotifications -> {
-            operation.deferred.complete(
-              CosRayResult.Error(IllegalStateException("GATT not connected"))
-            )
-          }
-        }
-        continue
-      }
-
-      when (operation) {
-        is GattOperation.Write -> {
-          // Store the operation to be completed in onCharacteristicWrite callback
-          pendingWriteOperation = operation
-          // Initiate the write
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            gatt.writeCharacteristic(operation.characteristic, operation.data, operation.writeType)
-          } else {
-            operation.characteristic.value = operation.data
-            operation.characteristic.writeType = operation.writeType
-            gatt.writeCharacteristic(operation.characteristic)
-          }
-          // Do not complete the deferred here; it will be resolved in onCharacteristicWrite
-        }
-        is GattOperation.Read -> {
-          // NOTE: Read operation not implemented (placeholder)
-          operation.deferred.complete(
-            CosRayResult.Error(UnsupportedOperationException("Read not yet implemented"))
-          )
-        }
-        is GattOperation.EnableNotifications -> {
-          // NOTE: Notification toggle not implemented (placeholder)
-          operation.deferred.complete(
-            CosRayResult.Error(
-              UnsupportedOperationException("Notification toggle not yet implemented")
-            )
-          )
-        }
-      }
-
-      delay(100) // Small delay between operations
-    }
-
-    isProcessingQueue = false
-  }
-
-  @SuppressLint("MissingPermission")
-  @Suppress("DEPRECATION")
-  private fun enableNotifications(
-    gatt: BluetoothGatt,
-    characteristic: BluetoothGattCharacteristic,
-  ) {
-    gatt.setCharacteristicNotification(characteristic, true)
-    val descriptor = characteristic.getDescriptor(BleConfig.CLIENT_DESCRIPTOR_UUID)
-    descriptor?.let {
-      val notificationValue = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        gatt.writeDescriptor(it, notificationValue)
-      } else {
-        it.setValue(notificationValue)
-        gatt.writeDescriptor(it)
-      }
-    }
-  }
-
-  @SuppressLint("MissingPermission")
-  private fun closeConnection(state: BleConnectionState) {
-    bluetoothGatt?.close()
-    bluetoothGatt = null
+  fun shutdown() {
+    stopScan()
+    scanJob?.cancel()
+    deviceManager.disconnectDevice()
+    deviceManager.close()
+    deviceCache.clear()
     activeDevice = null
     activeServiceUuid = null
-    serviceDiscoveryRetriesByAddress.clear()
-    serviceDiscoveryJob?.cancel()
-    serviceDiscoveryJob = null
-    queueProcessingJob?.cancel()
-    isProcessingQueue = false
-    _connectionState.value = state
-  }
-
-  private fun startServiceDiscovery(gatt: BluetoothGatt, reason: String) {
-    // Consolidate multiple triggers (connected + mtuChanged) into one pending discovery.
-    serviceDiscoveryJob?.cancel()
-    serviceDiscoveryJob =
-      externalScope.launch(Dispatchers.Main) {
-        // Small delay helps avoid hitting cached/empty services on some Android stacks.
-        delay(SERVICE_DISCOVERY_INITIAL_DELAY_MS)
-        if (bluetoothGatt != gatt) return@launch
-
-        val ok =
-          try {
-            gatt.discoverServices()
-          } catch (t: Throwable) {
-            Log.e(TAG, "discoverServices threw ($reason)", t)
-            false
-          }
-        Log.d(TAG, "discoverServices($reason) -> $ok")
-        if (!ok) {
-          // If the stack refuses immediately, schedule a retry.
-          retryServiceDiscoveryIfPossible(gatt, reason = "discoverReturnedFalse")
-        }
-      }
-  }
-
-  private fun retryServiceDiscoveryIfPossible(gatt: BluetoothGatt, reason: String): Boolean {
-    val address = gatt.device.address
-    val attempt = (serviceDiscoveryRetriesByAddress[address] ?: 0) + 1
-    serviceDiscoveryRetriesByAddress[address] = attempt
-
-    // Log what we currently see (even if empty) to help diagnose mismatched UUIDs/firmware.
-    logDiscoveredServices(
-      gatt,
-      contextLabel = "retry#$attempt/$MAX_SERVICE_DISCOVERY_RETRIES reason=$reason",
-    )
-
-    if (attempt > MAX_SERVICE_DISCOVERY_RETRIES) {
-      Log.w(TAG, "Service discovery retries exhausted for $address")
-      return false
-    }
-
-    externalScope.launch(Dispatchers.Main) {
-      // Progressive backoff. Some devices/phones need ~1-2s after connect before the cache clears.
-      val backoff = SERVICE_DISCOVERY_RETRY_BASE_DELAY_MS * attempt
-      delay(backoff)
-      if (bluetoothGatt != gatt) return@launch
-
-      val refreshed = refreshGattCache(gatt)
-      Log.d(TAG, "refreshGattCache -> $refreshed (attempt=$attempt)")
-
-      val ok =
-        try {
-          gatt.discoverServices()
-        } catch (t: Throwable) {
-          Log.e(TAG, "discoverServices retry threw", t)
-          false
-        }
-      Log.d(TAG, "discoverServices retry (attempt=$attempt) -> $ok")
-    }
-
-    return true
-  }
-
-  private fun refreshGattCache(gatt: BluetoothGatt): Boolean {
-    // Hidden API used as a pragmatic workaround for Android GATT caching issues.
-    return try {
-      val refresh = gatt.javaClass.getMethod("refresh")
-      (refresh.invoke(gatt) as? Boolean) ?: false
-    } catch (t: Throwable) {
-      Log.w(TAG, "Gatt refresh() not available", t)
-      false
-    }
-  }
-
-  private fun logDiscoveredServices(gatt: BluetoothGatt, contextLabel: String) {
-    val services =
-      try {
-        gatt.services
-      } catch (t: Throwable) {
-        Log.w(TAG, "Unable to read gatt.services ($contextLabel)", t)
-        emptyList()
-      }
-
-    val serviceUuids = services.joinToString(prefix = "[", postfix = "]") { it.uuid.toString() }
-    Log.d(TAG, "Services $contextLabel count=${services.size} uuids=$serviceUuids")
-
-    // If needed, dump characteristics too (kept concise).
-    services.forEach { service ->
-      val chars =
-        service.characteristics.joinToString(prefix = "[", postfix = "]") { c ->
-          "${c.uuid} props=${c.properties}"
-        }
-      Log.v(TAG, "Service ${service.uuid} chars=$chars")
-    }
+    _scanResults.value = emptyList()
+    _connectionState.value = BleConnectionState.Idle
   }
 
   @SuppressLint("MissingPermission")
@@ -727,11 +360,6 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
     return filters.ifEmpty { emptyList() }
   }
 
-  private fun handleGattError(status: Int, message: String) {
-    val errorMessage = getGattStatusMessage(status)
-    Log.e(TAG, "$message: $errorMessage")
-  }
-
   private fun getGattStatusMessage(status: Int): String =
     when (status) {
       133 -> "GATT Error 133: Connection lost or device out of range"
@@ -743,25 +371,8 @@ class BleController(private val context: Context, val externalScope: CoroutineSc
       else -> "GATT Error $status: Unknown error"
     }
 
-  fun shutdown() {
-    stopScan()
-    connectionJob?.cancel()
-    scanJob?.cancel()
-    queueProcessingJob?.cancel()
-    disconnect()
-    deviceCache.clear()
-    _scanResults.value = emptyList()
-    _connectionState.value = BleConnectionState.Idle
-  }
-
   companion object {
     private const val TAG = "BleController"
-
-    // Values based on common Android BLE stability workarounds (delay + retries).
-    private const val PREFERRED_MTU = 247
-    private const val SERVICE_DISCOVERY_INITIAL_DELAY_MS = 600L
-    private const val SERVICE_DISCOVERY_RETRY_BASE_DELAY_MS = 600L
-    private const val MAX_SERVICE_DISCOVERY_RETRIES = 4
 
     private val REQUIRED_PERMISSIONS = buildList {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

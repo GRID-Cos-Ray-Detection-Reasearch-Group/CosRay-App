@@ -22,8 +22,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -32,9 +32,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.grid.cosrayapp.BuildConfig
 import com.grid.cosrayapp.R
-import com.grid.cosrayapp.core.ui.viewModelFactory
 import com.grid.cosrayapp.data.auth.AuthState
-import com.grid.cosrayapp.data.auth.AuthValidator
 import com.grid.cosrayapp.feature.auth.LoginScreen
 import com.grid.cosrayapp.feature.auth.LoginViewModel
 import com.grid.cosrayapp.feature.dashboard.DashboardScreen
@@ -143,19 +141,13 @@ fun CosRayNavHost(appState: CosRayAppState) {
 
 private fun NavGraphBuilder.loginDestination(appState: CosRayAppState) {
   composable(CosRayDestination.Login.route) {
-    val viewModel: LoginViewModel =
-      viewModel(
-        factory = viewModelFactory { LoginViewModel(appState.authRepository, AuthValidator) }
-      )
+    val viewModel: LoginViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LoginScreen(
       state = state,
       onUsernameChange = viewModel::onUsernameChanged,
-      onEmailChange = viewModel::onEmailChanged,
       onPasswordChange = viewModel::onPasswordChanged,
-      onDisplayNameChange = viewModel::onDisplayNameChanged,
       onSubmit = viewModel::submit,
-      onToggleMode = viewModel::toggleCreateAccount,
       onContinueAsGuest = {
         appState.enterGuestMode()
         appState.navigateTo(CosRayDestination.Device, popUpToStart = true)
@@ -168,16 +160,7 @@ private fun NavGraphBuilder.loginDestination(appState: CosRayAppState) {
 @OptIn(ExperimentalPermissionsApi::class)
 private fun NavGraphBuilder.deviceDestination(appState: CosRayAppState, onOpenDrawer: () -> Unit) {
   composable(CosRayDestination.Device.route) {
-    val viewModel: DeviceViewModel =
-      viewModel(
-        factory =
-          viewModelFactory {
-            DeviceViewModel(
-              bleRepository = appState.container.bleRepository,
-              telemetryRepository = appState.container.telemetryRepository,
-            )
-          }
-      )
+    val viewModel: DeviceViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val permissionsState =
       rememberMultiplePermissionsState(
@@ -226,16 +209,7 @@ private fun NavGraphBuilder.dashboardDestination(
   onOpenDrawer: () -> Unit,
 ) {
   composable(CosRayDestination.Dashboard.route) {
-    val viewModel: DashboardViewModel =
-      viewModel(
-        factory =
-          viewModelFactory {
-            DashboardViewModel(
-              telemetryRepository = appState.container.telemetryRepository,
-              authRepository = appState.authRepository,
-            )
-          }
-      )
+    val viewModel: DashboardViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     DashboardScreen(
       state = state,
@@ -247,10 +221,7 @@ private fun NavGraphBuilder.dashboardDestination(
 
 private fun NavGraphBuilder.apiTestDestination(onOpenDrawer: () -> Unit) {
   composable(CosRayDestination.ApiTest.route) {
-    val viewModel: com.grid.cosrayapp.feature.apitest.ApiTestViewModel =
-      viewModel(
-        factory = viewModelFactory { com.grid.cosrayapp.feature.apitest.ApiTestViewModel() }
-      )
+    val viewModel: com.grid.cosrayapp.feature.apitest.ApiTestViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     com.grid.cosrayapp.feature.apitest.ApiTestScreen(
       state = state,
@@ -258,16 +229,12 @@ private fun NavGraphBuilder.apiTestDestination(onOpenDrawer: () -> Unit) {
       onTokenChange = viewModel::updateToken,
       onUsernameChange = viewModel::updateUsername,
       onPasswordChange = viewModel::updatePassword,
-      onEmailChange = viewModel::updateEmail,
-      onDisplayNameChange = viewModel::updateDisplayName,
       onMacAddressChange = viewModel::updateMacAddress,
       onDeviceNameChange = viewModel::updateDeviceName,
       onDeviceDescriptionChange = viewModel::updateDeviceDescription,
       onDeviceIdChange = viewModel::updateDeviceId,
       onTestLogin = viewModel::testLogin,
-      onTestRegister = viewModel::testRegister,
       onTestGetUserInfo = viewModel::testGetUserInfo,
-      onTestRegisterDevice = viewModel::testRegisterDevice,
       onTestListDevices = viewModel::testListDevices,
       onTestGetDevice = viewModel::testGetDevice,
       onTestUpdateDevice = viewModel::testUpdateDevice,

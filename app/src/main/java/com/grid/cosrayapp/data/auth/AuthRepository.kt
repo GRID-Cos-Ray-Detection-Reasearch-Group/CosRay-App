@@ -47,12 +47,6 @@ class AuthRepository(
     persistAuth(user, tokens)
   }
 
-  suspend fun register(email: String, password: String, displayName: String): CosRayResult<Unit> =
-    runCosRayCatching {
-      val (user, tokens) = api.register(email, password, displayName)
-      persistAuth(user, tokens)
-    }
-
   /** Refresh authentication tokens with mutex protection to prevent concurrent refresh attempts */
   suspend fun refreshTokens(): CosRayResult<Unit> =
     refreshMutex.withLock {
@@ -63,10 +57,7 @@ class AuthRepository(
       } else if (!currentTokens.isExpired) {
         CosRayResult.Success(Unit)
       } else {
-        runCosRayCatching {
-          val refreshed = api.refreshToken(currentTokens.refreshToken)
-          persistAuth(currentUser, refreshed)
-        }
+        refreshTokensLocked(currentUser, currentTokens)
       }
     }
 
@@ -80,7 +71,11 @@ class AuthRepository(
         return CosRayResult.Success(current.accessToken)
       }
 
-      refreshTokens().let { result ->
+      val currentUser =
+        (authState.value as? AuthState.Authenticated)?.user
+          ?: return CosRayResult.Error(IllegalStateException("Missing authentication context"))
+
+      refreshTokensLocked(currentUser, current).let { result ->
         when (result) {
           is CosRayResult.Success -> {
             _tokens.value?.accessToken?.let { CosRayResult.Success(it) }
@@ -114,4 +109,10 @@ class AuthRepository(
     userPreferences.persistAuth(user, tokens)
     _tokens.value = tokens
   }
+
+  private suspend fun refreshTokensLocked(user: User, tokens: AuthTokens): CosRayResult<Unit> =
+    runCosRayCatching {
+      val refreshed = api.refreshToken(tokens.refreshToken)
+      persistAuth(user, refreshed)
+    }
 }

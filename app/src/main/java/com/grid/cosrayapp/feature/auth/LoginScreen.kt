@@ -34,14 +34,10 @@ import com.grid.cosrayapp.core.ui.asString
 fun LoginScreen(
   state: LoginUiState,
   onUsernameChange: (String) -> Unit,
-  onEmailChange: (String) -> Unit,
   onPasswordChange: (String) -> Unit,
-  onDisplayNameChange: (String) -> Unit,
   onSubmit: () -> Unit,
-  onToggleMode: () -> Unit,
   onContinueAsGuest: () -> Unit,
 ) {
-  val isRegistering = state.mode == AuthMode.Register
   Column(
     modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 32.dp),
     verticalArrangement = Arrangement.SpaceBetween,
@@ -54,12 +50,7 @@ fun LoginScreen(
       )
       Spacer(modifier = Modifier.height(4.dp))
       Text(
-        text =
-          if (isRegistering) {
-            stringResource(R.string.auth_register_title)
-          } else {
-            stringResource(R.string.auth_welcome_back)
-          },
+        text = stringResource(R.string.auth_welcome_back),
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
       )
@@ -76,25 +67,15 @@ fun LoginScreen(
         modifier = Modifier.padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
       ) {
-        val primaryFieldValue = if (isRegistering) state.email else state.username
-        val primaryFieldError = if (isRegistering) state.emailError else state.usernameError
-        val primaryFieldLabel =
-          if (isRegistering) {
-            R.string.auth_email_label
-          } else {
-            R.string.auth_username_label
-          }
-        val primaryFieldCallback = if (isRegistering) onEmailChange else onUsernameChange
-
         OutlinedTextField(
-          value = primaryFieldValue,
-          onValueChange = primaryFieldCallback,
+          value = state.username,
+          onValueChange = onUsernameChange,
           modifier = Modifier.fillMaxWidth(),
-          label = { Text(stringResource(primaryFieldLabel)) },
-          isError = primaryFieldError != null,
+          label = { Text(stringResource(R.string.auth_username_label)) },
+          isError = state.usernameError != null,
           singleLine = true,
         )
-        ErrorText(primaryFieldError?.asString())
+        ErrorText(state.usernameError?.asString())
 
         OutlinedTextField(
           value = state.password,
@@ -106,16 +87,6 @@ fun LoginScreen(
           visualTransformation = PasswordVisualTransformation(),
         )
         ErrorText(state.passwordError?.asString())
-
-        AnimatedVisibility(visible = isRegistering) {
-          OutlinedTextField(
-            value = state.displayName,
-            onValueChange = onDisplayNameChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.auth_display_name_label)) },
-            singleLine = true,
-          )
-        }
 
         Button(
           onClick = onSubmit,
@@ -134,12 +105,7 @@ fun LoginScreen(
             )
           } else {
             Text(
-              text =
-                if (isRegistering) {
-                  stringResource(R.string.auth_register_action)
-                } else {
-                  stringResource(R.string.auth_login_action)
-                },
+              text = stringResource(R.string.auth_login_action),
               style = MaterialTheme.typography.bodyMedium,
             )
           }
@@ -147,18 +113,6 @@ fun LoginScreen(
 
         ErrorText(state.errorMessage?.asString(), alignCenter = true)
       }
-    }
-
-    TextButton(onClick = onToggleMode, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-      Text(
-        text =
-          if (isRegistering) {
-            stringResource(R.string.auth_have_account_action)
-          } else {
-            stringResource(R.string.auth_create_account_action)
-          },
-        style = MaterialTheme.typography.labelLarge,
-      )
     }
 
     TextButton(

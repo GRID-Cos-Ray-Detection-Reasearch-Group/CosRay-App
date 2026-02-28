@@ -45,10 +45,10 @@ object ProtocolMapper {
       accX = data.accX.toInt(),
       accY = data.accY.toInt(),
       accZ = data.accZ.toInt(),
-      siPMTmp = data.siPMTmp.toInt() and 0xFFFF,
+      sipmTmp = data.siPMTmp.toInt() and 0xFFFF,
       mcuTmp = data.mcUTmp.toInt() and 0xFF,
-      siPMImon = data.siPMImon.toInt() and 0xFFFF,
-      siPMVmon = data.siPMVmon.toInt() and 0xFFFF,
+      sipmImon = data.siPMImon.toInt() and 0xFFFF,
+      sipmVmon = data.siPMVmon.toInt() and 0xFFFF,
     )
 
   /** 将TimeLinePkg转换为TimelinePacketDto */

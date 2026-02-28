@@ -11,7 +11,9 @@ import com.grid.cosrayapp.core.network.model.MuonPacketDto
 import com.grid.cosrayapp.core.network.model.PacketUploadRequest
 import com.grid.cosrayapp.core.network.model.TimelineEventDto
 import com.grid.cosrayapp.core.network.model.TimelinePacketDto
+import dagger.hilt.android.lifecycle.HiltViewModel
 import io.ktor.client.HttpClient
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,8 +26,6 @@ data class ApiTestUiState(
   val token: String = "",
   val username: String = "test",
   val password: String = "LocalPass123!",
-  val email: String = "localtester@example.com",
-  val displayName: String = "Local Tester",
   val macAddress: String = "00:11:22:33:44:55",
   val deviceName: String = "Local Device",
   val deviceDescription: String = "Local Device Description",
@@ -36,7 +36,10 @@ data class ApiTestUiState(
 )
 
 @Suppress("TooGenericExceptionCaught", "TooManyFunctions")
-class ApiTestViewModel : ViewModel() {
+@HiltViewModel
+class ApiTestViewModel
+  @Inject
+  constructor() : ViewModel() {
   private val _uiState = MutableStateFlow(ApiTestUiState())
   val uiState: StateFlow<ApiTestUiState> = _uiState.asStateFlow()
 
@@ -63,14 +66,6 @@ class ApiTestViewModel : ViewModel() {
 
   fun updatePassword(password: String) {
     _uiState.update { it.copy(password = password) }
-  }
-
-  fun updateEmail(email: String) {
-    _uiState.update { it.copy(email = email) }
-  }
-
-  fun updateDisplayName(displayName: String) {
-    _uiState.update { it.copy(displayName = displayName) }
   }
 
   fun updateMacAddress(macAddress: String) {
@@ -141,46 +136,6 @@ class ApiTestViewModel : ViewModel() {
     }
   }
 
-  fun testRegister() {
-    val state = _uiState.value
-    viewModelScope.launch {
-      _uiState.update { it.copy(isLoading = true, error = null) }
-      try {
-        val (user, tokens) =
-          getApi()
-            .register(
-              email = state.email,
-              password = state.password,
-              displayName = state.displayName,
-            )
-        val responseText = buildString {
-          appendLine("{")
-          appendLine("  \"user\": {")
-          appendLine("    \"id\": \"${user.id.value}\",")
-          appendLine("    \"email\": \"${user.email}\",")
-          appendLine("    \"displayName\": \"${user.displayName}\"")
-          appendLine("  },")
-          appendLine("  \"tokens\": {")
-          appendLine("    \"accessToken\": \"${tokens.accessToken}\",")
-          appendLine("    \"refreshToken\": \"${tokens.refreshToken}\"")
-          appendLine("  }")
-          appendLine("}")
-        }
-        _uiState.update {
-          it.copy(response = responseText, token = tokens.accessToken, isLoading = false)
-        }
-      } catch (e: Exception) {
-        _uiState.update {
-          it.copy(
-            error = e.message ?: "Unknown error",
-            response = "Error: ${e.message}",
-            isLoading = false,
-          )
-        }
-      }
-    }
-  }
-
   fun testGetUserInfo() {
     val state = _uiState.value
     viewModelScope.launch {
@@ -198,32 +153,6 @@ class ApiTestViewModel : ViewModel() {
           appendLine("}")
         }
         _uiState.update { it.copy(response = responseText, isLoading = false) }
-      } catch (e: Exception) {
-        _uiState.update {
-          it.copy(
-            error = e.message ?: "Unknown error",
-            response = "Error: ${e.message}",
-            isLoading = false,
-          )
-        }
-      }
-    }
-  }
-
-  fun testRegisterDevice() {
-    val state = _uiState.value
-    viewModelScope.launch {
-      _uiState.update { it.copy(isLoading = true, error = null) }
-      try {
-        val device =
-          getApi()
-            .registerDevice(
-              accessToken = state.token,
-              macAddress = state.macAddress,
-              name = state.deviceName,
-              description = state.deviceDescription.ifBlank { null },
-            )
-        _uiState.update { it.copy(response = json.encodeToString(device), isLoading = false) }
       } catch (e: Exception) {
         _uiState.update {
           it.copy(
@@ -344,10 +273,10 @@ class ApiTestViewModel : ViewModel() {
                   timestamp = System.currentTimeMillis(),
                 )
               ),
-            head = listOf(0xAA, 0x55, 0x00), // Example header bytes (3 bytes required)
-            tail = listOf(0x55, 0xAA, 0x00), // Example trailer bytes (3 bytes required)
+            head = listOf(0xAA, 0xBB, 0xCC),
+            tail = listOf(0xDD, 0xEE, 0xFF),
             crc = 0x1234, // Example CRC
-            reserved = listOf(0, 0, 0, 0), // Reserved bytes
+            reserved = listOf(0, 0, 0, 0, 0, 0),
           )
         val request =
           PacketUploadRequest(
@@ -392,17 +321,17 @@ class ApiTestViewModel : ViewModel() {
                   accX = 0,
                   accY = 0,
                   accZ = 0,
-                  siPMTmp = 25,
+                  sipmTmp = 25,
                   mcuTmp = 30,
-                  siPMImon = 0,
-                  siPMVmon = 0,
+                  sipmImon = 0,
+                  sipmVmon = 0,
                   timestamp = System.currentTimeMillis(),
                 )
               ),
-            head = listOf(0xAA, 0x55, 0x00), // Example header bytes (3 bytes required)
-            tail = listOf(0x55, 0xAA, 0x00), // Example trailer bytes (3 bytes required)
+            head = listOf(0x12, 0x34, 0x56),
+            tail = listOf(0x78, 0x9A, 0xBC),
             crc = 0x5678, // Example CRC
-            reserved = listOf(0, 0, 0, 0), // Reserved bytes
+            reserved = List(20) { 0 },
           )
         val request =
           PacketUploadRequest(
