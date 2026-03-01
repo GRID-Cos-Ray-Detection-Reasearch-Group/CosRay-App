@@ -1,8 +1,8 @@
 [versions]
 accompanistPermissions = "0.37.3"
-agp = "8.13.1"
+agp = "9.0.1"
 hilt = "2.57.1"
-ksp = "2.2.21-2.0.4"
+ksp = "2.3.2"
 bleKtx = "2.11.0"
 bleScannerCompat = "1.6.0"
 coroutines = "1.10.2"
