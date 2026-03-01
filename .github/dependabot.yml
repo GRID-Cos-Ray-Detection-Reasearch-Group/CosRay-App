@@ -13,3 +13,18 @@ updates:
       github-actions:
         patterns:
           - "*"
+
+  # Enable version updates for Gradle dependencies
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+    groups:
+      gradle-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
