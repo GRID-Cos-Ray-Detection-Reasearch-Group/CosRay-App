@@ -59,10 +59,8 @@ runs:
     - name: Build release APK with optimizations
       run: |
         ./gradlew assembleRelease \
-          -PciBuild=true \
           --configuration-cache \
-          --build-cache \
-          --scan
+          --build-cache
       shell: bash
 
     - name: Find unsigned APK
@@ -87,11 +85,6 @@ runs:
         keyPassword: ${{ inputs.key-password }}
         buildToolsVersion: ${{ env.BUILD_TOOLS }}
 
-    - name: Set outputs
-      run: |
-        echo "signedFile=${{ steps.sign.outputs.signedFile || '' }}" >> $GITHUB_OUTPUT
-        echo "unsignedFile=${{ steps.find_unsigned.outputs.unsignedFile || '' }}" >> $GITHUB_OUTPUT
-      shell: bash
 
 inputs:
   run-sign:
