@@ -9,9 +9,9 @@ object Protocol {
   private const val CRC16_POLY = 0x1021
   private const val CRC16_INIT = 0xFFFF
 
-  private fun calculateCrc16Ccitt(data: ByteArray, length: Int): Int {
+  private fun calculateCrc16Ccitt(data: ByteArray, startIndex: Int, length: Int): Int {
     var crc = CRC16_INIT
-    for (index in 0 until length) {
+    for (index in startIndex until startIndex + length) {
       crc = crc xor ((data[index].toInt() and 0xFF) shl 8)
       repeat(8) {
         crc =
@@ -124,9 +124,14 @@ object Protocol {
 
         val reserved = ByteArray(6).also { buffer.get(it) }
         val crc = buffer.short
-        val calculatedCrc = calculateCrc16Ccitt(data = rawData, length = TOTAL_SIZE - 2)
+        val calculatedCrc =
+          calculateCrc16Ccitt(
+            data = rawData,
+            startIndex = 3,
+            length = TOTAL_SIZE - 3 - 2,
+          ) // Skip 3 byte header, 2 byte CRC
         require((crc.toInt() and 0xFFFF) == calculatedCrc) {
-          "μ子数据包CRC校验失败：预期${crc.toInt() and 0xFFFF}，实际$calculatedCrc"
+          "μ子数据包CRC校验失败：预期${crc.toInt() and 0xFFFF}，实际$calculatedCrc (旧算法偏移量为3起算)"
         }
 
         return MuonDataPkg(head, pkgCnt, utc, muonDataList, tail, crc, reserved)
@@ -240,9 +245,14 @@ object Protocol {
 
         val reserve = ByteArray(20).also { buffer.get(it) }
         val crc = buffer.short
-        val calculatedCrc = calculateCrc16Ccitt(data = rawData, length = TOTAL_SIZE - 2)
+        val calculatedCrc =
+          calculateCrc16Ccitt(
+            data = rawData,
+            startIndex = 3,
+            length = TOTAL_SIZE - 3 - 2,
+          ) // Skip 3 byte header, 2 byte CRC
         require((crc.toInt() and 0xFFFF) == calculatedCrc) {
-          "时间线数据包CRC校验失败：预期${crc.toInt() and 0xFFFF}，实际$calculatedCrc"
+          "时间线数据包CRC校验失败：预期${crc.toInt() and 0xFFFF}，实际$calculatedCrc (旧算法偏移量为3起算)"
         }
 
         return TimeLinePkg(head, pkgCnt, timeLineDataList, tail, crc, reserve)

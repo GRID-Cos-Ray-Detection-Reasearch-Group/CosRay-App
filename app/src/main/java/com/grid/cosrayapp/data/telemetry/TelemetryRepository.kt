@@ -22,10 +22,10 @@ import okio.ByteString
 import okio.ByteString.Companion.toByteString
 
 class TelemetryRepository(
-        private val api: CosRayApi,
-        private val bleRepository: BleRepository,
-        private val authRepository: AuthRepository,
-        externalScope: CoroutineScope,
+  private val api: CosRayApi,
+  private val bleRepository: BleRepository,
+  private val authRepository: AuthRepository,
+  externalScope: CoroutineScope,
 ) {
   private val packetAssembler = FirmwarePacketAssembler()
 
@@ -78,10 +78,10 @@ class TelemetryRepository(
         requests.forEach { request ->
           val tokenResult = authRepository.ensureValidToken()
           val accessToken =
-                  when (tokenResult) {
-                    is CosRayResult.Success -> tokenResult.data
-                    is CosRayResult.Error -> throw tokenResult.throwable
-                  }
+            when (tokenResult) {
+              is CosRayResult.Success -> tokenResult.data
+              is CosRayResult.Error -> throw tokenResult.throwable
+            }
           api.uploadPacket(accessToken, request)
         }
       }
@@ -155,17 +155,17 @@ internal class FirmwarePacketAssembler {
   private fun parsePacket(macAddress: String, packetBytes: ByteArray): PacketUploadRequest? {
     return when {
       hasHeader(packetBytes, MUON_HEAD) ->
-              runCatching {
-                        val packet = Protocol.MuonDataPkg.fromRawData(packetBytes)
-                        ProtocolMapper.createMuonPacketRequest(macAddress, packet)
-                      }
-                      .getOrNull()
+        runCatching {
+            val packet = Protocol.MuonDataPkg.fromRawData(packetBytes)
+            ProtocolMapper.createMuonPacketRequest(macAddress, packet)
+          }
+          .getOrNull()
       hasHeader(packetBytes, TIMELINE_HEAD) ->
-              runCatching {
-                        val packet = Protocol.TimeLinePkg.fromRawData(packetBytes)
-                        ProtocolMapper.createTimelinePacketRequest(macAddress, packet)
-                      }
-                      .getOrNull()
+        runCatching {
+            val packet = Protocol.TimeLinePkg.fromRawData(packetBytes)
+            ProtocolMapper.createTimelinePacketRequest(macAddress, packet)
+          }
+          .getOrNull()
       else -> null
     }
   }
@@ -196,7 +196,7 @@ internal class FirmwarePacketAssembler {
     private const val PACKET_SIZE = 512
     private const val HEADER_SIZE = 3
     private val MUON_HEAD: ByteString =
-            byteArrayOf(0xAA.toByte(), 0xBB.toByte(), 0xCC.toByte()).toByteString()
+      byteArrayOf(0xAA.toByte(), 0xBB.toByte(), 0xCC.toByte()).toByteString()
     private val TIMELINE_HEAD: ByteString = byteArrayOf(0x12, 0x34, 0x56).toByteString()
   }
 }

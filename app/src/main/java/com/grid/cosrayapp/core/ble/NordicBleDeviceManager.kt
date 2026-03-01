@@ -56,11 +56,13 @@ internal class NordicBleDeviceManager(
   }
 
   suspend fun writeCommand(command: ByteArray) {
-    writeCharacteristic(
-        writeCharacteristic,
-        command,
-        BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
-      )
+    val characteristic =
+      writeCharacteristic
+        ?: error(
+          "Write characteristic not available; services not initialized or already invalidated"
+        )
+
+    writeCharacteristic(characteristic, command, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
       .suspend()
   }
 

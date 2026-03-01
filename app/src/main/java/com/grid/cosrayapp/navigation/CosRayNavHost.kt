@@ -50,87 +50,87 @@ fun CosRayNavHost(appState: CosRayAppState) {
 
   // Get current destination for highlighting
   val currentDestination =
-          appState.navController.currentBackStackEntryAsState().value?.destination?.route
+    appState.navController.currentBackStackEntryAsState().value?.destination?.route
 
   ModalNavigationDrawer(
-          drawerState = drawerState,
-          drawerContent = {
-            val drawerWidthFraction = 0.75f
-            ModalDrawerSheet(modifier = Modifier.fillMaxWidth(drawerWidthFraction)) {
-              Spacer(Modifier.height(12.dp))
-              Text(
-                      text = stringResource(R.string.app_name),
-                      modifier = Modifier.padding(horizontal = 28.dp, vertical = 24.dp),
-                      style = MaterialTheme.typography.headlineMedium,
-              )
-              NavigationDrawerItem(
-                      label = { Text(stringResource(R.string.device_scan_title)) },
-                      selected = currentDestination == CosRayDestination.Device.route,
-                      onClick = {
-                        scope.launch { drawerState.close() }
-                        appState.navigateTo(CosRayDestination.Device)
-                      },
-                      modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-              )
-              NavigationDrawerItem(
-                      label = { Text(stringResource(R.string.device_dashboard_action)) },
-                      selected = currentDestination == CosRayDestination.Dashboard.route,
-                      onClick = {
-                        scope.launch { drawerState.close() }
-                        appState.navigateTo(CosRayDestination.Dashboard)
-                      },
-                      modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-              )
-
-              // API Test menu (Debug only)
-              if (BuildConfig.DEBUG) {
-                NavigationDrawerItem(
-                        label = { Text(stringResource(R.string.api_test_title)) },
-                        selected = currentDestination == CosRayDestination.ApiTest.route,
-                        onClick = {
-                          scope.launch { drawerState.close() }
-                          appState.navigateTo(CosRayDestination.ApiTest)
-                        },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                )
-              }
-
-              HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-              if (isAuthenticated) {
-                NavigationDrawerItem(
-                        label = { Text(stringResource(R.string.device_logout_action)) },
-                        selected = false,
-                        onClick = {
-                          scope.launch { drawerState.close() }
-                          // NOTE: Logout callback placeholder (implement if needed)
-                          appState.exitGuestMode()
-                          appState.navigateTo(CosRayDestination.Login, popUpToStart = true)
-                        },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                )
-              } else {
-                NavigationDrawerItem(
-                        label = { Text(stringResource(R.string.device_login_action)) },
-                        selected = false,
-                        onClick = {
-                          scope.launch { drawerState.close() }
-                          appState.exitGuestMode()
-                          appState.navigateTo(CosRayDestination.Login, popUpToStart = true)
-                        },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                )
-              }
-            }
+    drawerState = drawerState,
+    drawerContent = {
+      val drawerWidthFraction = 0.75f
+      ModalDrawerSheet(modifier = Modifier.fillMaxWidth(drawerWidthFraction)) {
+        Spacer(Modifier.height(12.dp))
+        Text(
+          text = stringResource(R.string.app_name),
+          modifier = Modifier.padding(horizontal = 28.dp, vertical = 24.dp),
+          style = MaterialTheme.typography.headlineMedium,
+        )
+        NavigationDrawerItem(
+          label = { Text(stringResource(R.string.device_scan_title)) },
+          selected = currentDestination == CosRayDestination.Device.route,
+          onClick = {
+            scope.launch { drawerState.close() }
+            appState.navigateTo(CosRayDestination.Device)
           },
+          modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+        )
+        NavigationDrawerItem(
+          label = { Text(stringResource(R.string.device_dashboard_action)) },
+          selected = currentDestination == CosRayDestination.Dashboard.route,
+          onClick = {
+            scope.launch { drawerState.close() }
+            appState.navigateTo(CosRayDestination.Dashboard)
+          },
+          modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+        )
+
+        // API Test menu (Debug only)
+        if (BuildConfig.DEBUG) {
+          NavigationDrawerItem(
+            label = { Text(stringResource(R.string.api_test_title)) },
+            selected = currentDestination == CosRayDestination.ApiTest.route,
+            onClick = {
+              scope.launch { drawerState.close() }
+              appState.navigateTo(CosRayDestination.ApiTest)
+            },
+            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+          )
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        if (isAuthenticated) {
+          NavigationDrawerItem(
+            label = { Text(stringResource(R.string.device_logout_action)) },
+            selected = false,
+            onClick = {
+              scope.launch { drawerState.close() }
+              // NOTE: Logout callback placeholder (implement if needed)
+              appState.exitGuestMode()
+              appState.navigateTo(CosRayDestination.Login, popUpToStart = true)
+            },
+            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+          )
+        } else {
+          NavigationDrawerItem(
+            label = { Text(stringResource(R.string.device_login_action)) },
+            selected = false,
+            onClick = {
+              scope.launch { drawerState.close() }
+              appState.exitGuestMode()
+              appState.navigateTo(CosRayDestination.Login, popUpToStart = true)
+            },
+            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+          )
+        }
+      }
+    },
   ) {
     NavHost(
-            navController = appState.navController,
-            startDestination = CosRayDestination.Device.route,
+      navController = appState.navController,
+      startDestination = CosRayDestination.Device.route,
     ) {
       loginDestination(appState)
       deviceDestination(appState, onOpenDrawer = { scope.launch { drawerState.open() } })
-      dashboardDestination(appState, onOpenDrawer = { scope.launch { drawerState.open() } })
+      dashboardDestination(onOpenDrawer = { scope.launch { drawerState.open() } })
       // API Test destination (Debug only)
       if (BuildConfig.DEBUG) {
         apiTestDestination(onOpenDrawer = { scope.launch { drawerState.open() } })
@@ -144,14 +144,14 @@ private fun NavGraphBuilder.loginDestination(appState: CosRayAppState) {
     val viewModel: LoginViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LoginScreen(
-            state = state,
-            onUsernameChange = viewModel::onUsernameChanged,
-            onPasswordChange = viewModel::onPasswordChanged,
-            onSubmit = viewModel::submit,
-            onContinueAsGuest = {
-              appState.enterGuestMode()
-              appState.navigateTo(CosRayDestination.Device, popUpToStart = true)
-            },
+      state = state,
+      onUsernameChange = viewModel::onUsernameChanged,
+      onPasswordChange = viewModel::onPasswordChanged,
+      onSubmit = viewModel::submit,
+      onContinueAsGuest = {
+        appState.enterGuestMode()
+        appState.navigateTo(CosRayDestination.Device, popUpToStart = true)
+      },
     )
   }
 }
@@ -163,21 +163,20 @@ private fun NavGraphBuilder.deviceDestination(appState: CosRayAppState, onOpenDr
     val viewModel: DeviceViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val permissionsState =
-            rememberMultiplePermissionsState(
-                    permissions =
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
-                            ) {
-                              listOf(
-                                      android.Manifest.permission.BLUETOOTH_SCAN,
-                                      android.Manifest.permission.BLUETOOTH_CONNECT,
-                              )
-                            } else {
-                              listOf(android.Manifest.permission.ACCESS_FINE_LOCATION)
-                            }
+      rememberMultiplePermissionsState(
+        permissions =
+          if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            listOf(
+              android.Manifest.permission.BLUETOOTH_SCAN,
+              android.Manifest.permission.BLUETOOTH_CONNECT,
             )
+          } else {
+            listOf(android.Manifest.permission.ACCESS_FINE_LOCATION)
+          }
+      )
 
     val authState by
-            appState.authState.collectAsStateWithLifecycle(initialValue = AuthState.Loading)
+      appState.authState.collectAsStateWithLifecycle(initialValue = AuthState.Loading)
     val isAuthenticated = authState is AuthState.Authenticated
 
     LaunchedEffect(permissionsState.allPermissionsGranted) {
@@ -185,36 +184,34 @@ private fun NavGraphBuilder.deviceDestination(appState: CosRayAppState, onOpenDr
     }
 
     DeviceScreen(
-            state = state,
-            permissionsState = permissionsState,
-            onRequestPermissions = {
-              viewModel.onPermissionsChanged(permissionsState.allPermissionsGranted)
-            },
-            onStartScan = viewModel::startScan,
-            onStopScan = viewModel::stopScan,
-            onConnect = viewModel::connect,
-            onDisconnect = viewModel::disconnect,
-            onNavigateToDashboard = { appState.navigateTo(CosRayDestination.Dashboard) },
-            isAuthenticated = isAuthenticated,
-            onRequestLogin = {
-              appState.exitGuestMode()
-              appState.navigateTo(CosRayDestination.Login, popUpToStart = true)
-            },
-            onOpenDrawer = onOpenDrawer,
+      state = state,
+      permissionsState = permissionsState,
+      onRequestPermissions = {
+        viewModel.onPermissionsChanged(permissionsState.allPermissionsGranted)
+      },
+      onStartScan = viewModel::startScan,
+      onStopScan = viewModel::stopScan,
+      onConnect = viewModel::connect,
+      onDisconnect = viewModel::disconnect,
+      onNavigateToDashboard = { appState.navigateTo(CosRayDestination.Dashboard) },
+      isAuthenticated = isAuthenticated,
+      onRequestLogin = {
+        appState.exitGuestMode()
+        appState.navigateTo(CosRayDestination.Login, popUpToStart = true)
+      },
+      onOpenDrawer = onOpenDrawer,
     )
   }
 }
 
-private fun NavGraphBuilder.dashboardDestination(
-        onOpenDrawer: () -> Unit,
-) {
+private fun NavGraphBuilder.dashboardDestination(onOpenDrawer: () -> Unit) {
   composable(CosRayDestination.Dashboard.route) {
     val viewModel: DashboardViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     DashboardScreen(
-            state = state,
-            onMessageShown = viewModel::clearStatusMessage,
-            onOpenDrawer = onOpenDrawer,
+      state = state,
+      onMessageShown = viewModel::clearStatusMessage,
+      onOpenDrawer = onOpenDrawer,
     )
   }
 }
@@ -224,25 +221,25 @@ private fun NavGraphBuilder.apiTestDestination(onOpenDrawer: () -> Unit) {
     val viewModel: com.grid.cosrayapp.feature.apitest.ApiTestViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     com.grid.cosrayapp.feature.apitest.ApiTestScreen(
-            state = state,
-            onBaseUrlChange = viewModel::updateBaseUrl,
-            onTokenChange = viewModel::updateToken,
-            onUsernameChange = viewModel::updateUsername,
-            onPasswordChange = viewModel::updatePassword,
-            onMacAddressChange = viewModel::updateMacAddress,
-            onDeviceNameChange = viewModel::updateDeviceName,
-            onDeviceDescriptionChange = viewModel::updateDeviceDescription,
-            onDeviceIdChange = viewModel::updateDeviceId,
-            onTestLogin = viewModel::testLogin,
-            onTestGetUserInfo = viewModel::testGetUserInfo,
-            onTestListDevices = viewModel::testListDevices,
-            onTestGetDevice = viewModel::testGetDevice,
-            onTestUpdateDevice = viewModel::testUpdateDevice,
-            onTestDeleteDevice = viewModel::testDeleteDevice,
-            onTestUploadMuonPacket = viewModel::testUploadMuonPacket,
-            onTestUploadTimelinePacket = viewModel::testUploadTimelinePacket,
-            onClearResponse = viewModel::clearResponse,
-            onOpenDrawer = onOpenDrawer,
+      state = state,
+      onBaseUrlChange = viewModel::updateBaseUrl,
+      onTokenChange = viewModel::updateToken,
+      onUsernameChange = viewModel::updateUsername,
+      onPasswordChange = viewModel::updatePassword,
+      onMacAddressChange = viewModel::updateMacAddress,
+      onDeviceNameChange = viewModel::updateDeviceName,
+      onDeviceDescriptionChange = viewModel::updateDeviceDescription,
+      onDeviceIdChange = viewModel::updateDeviceId,
+      onTestLogin = viewModel::testLogin,
+      onTestGetUserInfo = viewModel::testGetUserInfo,
+      onTestListDevices = viewModel::testListDevices,
+      onTestGetDevice = viewModel::testGetDevice,
+      onTestUpdateDevice = viewModel::testUpdateDevice,
+      onTestDeleteDevice = viewModel::testDeleteDevice,
+      onTestUploadMuonPacket = viewModel::testUploadMuonPacket,
+      onTestUploadTimelinePacket = viewModel::testUploadTimelinePacket,
+      onClearResponse = viewModel::clearResponse,
+      onOpenDrawer = onOpenDrawer,
     )
   }
 }
