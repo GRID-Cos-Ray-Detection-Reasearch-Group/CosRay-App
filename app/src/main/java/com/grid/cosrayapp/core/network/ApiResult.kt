@@ -21,7 +21,7 @@ sealed class ApiResult<out T> {
    * @property cause Underlying exception, if any.
    */
   data class Error(val code: Int, val message: String, val cause: Throwable? = null) :
-    ApiResult<Nothing>()
+          ApiResult<Nothing>()
 
   /** Loading state for async operations. */
   data object Loading : ApiResult<Nothing>()
@@ -40,25 +40,25 @@ sealed class ApiResult<out T> {
 
   /** Get the data if successful, or null otherwise. */
   fun getOrNull(): T? =
-    when (this) {
-      is Success -> data
-      else -> null
-    }
+          when (this) {
+            is Success -> data
+            else -> null
+          }
 
   /** Get the data if successful, or throw the error. */
   fun getOrThrow(): T =
-    when (this) {
-      is Success -> data
-      is Error -> throw cause ?: ApiException(code, message)
-      is Loading -> throw IllegalStateException("Result is still loading")
-    }
+          when (this) {
+            is Success -> data
+            is Error -> throw cause ?: ApiException(code, message)
+            is Loading -> error("Result is still loading")
+          }
 
   /** Get the data if successful, or return the default value. */
   fun getOrDefault(default: @UnsafeVariance T): T =
-    when (this) {
-      is Success -> data
-      else -> default
-    }
+          when (this) {
+            is Success -> data
+            else -> default
+          }
 }
 
 /** Exception representing an API error. */
@@ -66,11 +66,11 @@ class ApiException(val code: Int, override val message: String) : Exception(mess
 
 /** Transform the data of a successful result. */
 inline fun <T, R> ApiResult<T>.map(transform: (T) -> R): ApiResult<R> =
-  when (this) {
-    is ApiResult.Success -> ApiResult.Success(transform(data))
-    is ApiResult.Error -> this
-    is ApiResult.Loading -> this
-  }
+        when (this) {
+          is ApiResult.Success -> ApiResult.Success(transform(data))
+          is ApiResult.Error -> this
+          is ApiResult.Loading -> this
+        }
 
 /** Perform an action if the result is successful. */
 inline fun <T> ApiResult<T>.onSuccess(action: (T) -> Unit): ApiResult<T> {
@@ -92,22 +92,22 @@ inline fun <T> ApiResult<T>.onLoading(action: () -> Unit): ApiResult<T> {
 
 /** Fold the result into a single value. */
 inline fun <T, R> ApiResult<T>.fold(
-  onSuccess: (T) -> R,
-  onError: (ApiResult.Error) -> R,
-  onLoading: () -> R,
+        onSuccess: (T) -> R,
+        onError: (ApiResult.Error) -> R,
+        onLoading: () -> R,
 ): R =
-  when (this) {
-    is ApiResult.Success -> onSuccess(data)
-    is ApiResult.Error -> onError(this)
-    is ApiResult.Loading -> onLoading()
-  }
+        when (this) {
+          is ApiResult.Success -> onSuccess(data)
+          is ApiResult.Error -> onError(this)
+          is ApiResult.Loading -> onLoading()
+        }
 
 /** Convert a suspending function result to ApiResult. */
 suspend fun <T> apiResultOf(block: suspend () -> T): ApiResult<T> =
-  try {
-    ApiResult.Success(block())
-  } catch (e: ApiException) {
-    ApiResult.Error(e.code, e.message, e)
-  } catch (e: Exception) {
-    ApiResult.Error(-1, e.message ?: "Unknown error", e)
-  }
+        try {
+          ApiResult.Success(block())
+        } catch (e: ApiException) {
+          ApiResult.Error(e.code, e.message, e)
+        } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
+          ApiResult.Error(-1, e.message ?: "Unknown error", e)
+        }
