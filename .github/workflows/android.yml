@@ -1,7 +1,27 @@
+# Android CI workflow
+#
+# This workflow builds a release APK, optionally signs it (when run manually or on a tag
+# and required secrets are configured), uploads the signed APK as an artifact, and
+# creates a GitHub Release when a tag is pushed.
+#
+# Required secrets (set in repository Settings > Secrets):
+# - ANDROID_SIGNING_KEY: base64-encoded keystore content
+# - ANDROID_KEY_ALIAS: alias within the keystore
+# - ANDROID_KEYSTORE_PASSWORD: keystore password
+# - ANDROID_KEY_PASSWORD: key password
+# GITHUB_TOKEN is provided automatically by GitHub Actions for release creation.
+
 name: Android CI
 
 on:
   push:
+    branches: [dev, main]
+    tags:
+      - "v*"
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [dev, main]
+  workflow_dispatch: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -10,17 +30,40 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    env:
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
 
     steps:
-      - uses: actions/checkout@v6
-      - name: set up JDK 21
-        uses: actions/setup-java@v5
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          java-version: "21"
-          distribution: "temurin"
-          cache: gradle
+          fetch-depth: 1
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-      - name: Build with Gradle
-        run: ./gradlew build
+      - name: Build and (optionally) sign APK
+        id: build_sign
+        uses: ./.github/actions/build-and-sign
+        with:
+          run-sign: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') }}
+          signing-key: ${{ secrets.ANDROID_SIGNING_KEY }}
+          key-alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          key-store-password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          key-password: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          api-level: 36
+
+      - name: Upload signed APK as artifact
+        if: ${{ steps.build_sign.outputs.signedFile != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-apk
+          path: ${{ steps.build_sign.outputs.signedFile }}
+
+      - name: Upload unsigned APK as artifact (fallback)
+        if: ${{ steps.build_sign.outputs.unsignedFile != '' && (steps.build_sign.outputs.signedFile == '' || steps.build_sign.outcome == 'skipped' || steps.build_sign.outcome == 'failure') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-apk
+          path: ${{ steps.build_sign.outputs.unsignedFile }}

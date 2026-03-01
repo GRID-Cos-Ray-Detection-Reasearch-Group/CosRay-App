@@ -19,3 +19,4 @@ uv.lock
 *.salive
 .venv/
 .kotlin/
+/key

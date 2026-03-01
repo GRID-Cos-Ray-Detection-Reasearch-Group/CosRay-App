@@ -1,0 +1,139 @@
+name: "Build and sign APK"
+description: "Composite action to build release APK and optionally sign it with provided keystore."
+author: "Copilot"
+runs:
+  using: "composite"
+  steps:
+    - name: Determine compileSdk version
+      id: extract_sdk
+      shell: bash
+      run: |
+        set -euo pipefail
+        # Prefer explicit input over auto-detection
+        if [ -n "${{ inputs.compile-sdk }}" ]; then
+          echo "COMPILE_SDK=${{ inputs.compile-sdk }}" >> $GITHUB_ENV
+          echo "COMPILE_SDK=${{ inputs.compile-sdk }}" >> $GITHUB_OUTPUT
+          echo "Using explicit compile-sdk input: ${{ inputs.compile-sdk }}"
+          exit 0
+        fi
+        # Fallback: extract from build.gradle.kts
+        file=app/build.gradle.kts
+        if [ -f "$file" ]; then
+          num=$(grep -Eo 'compileSdk.*?[0-9]+|release\([0-9]+\)' "$file" | grep -Eo '[0-9]+' | head -n1 || true)
+          if [ -n "$num" ]; then
+            echo "COMPILE_SDK=$num" >> $GITHUB_ENV
+            echo "COMPILE_SDK=$num" >> $GITHUB_OUTPUT
+            echo "Auto-detected compileSdk: $num"
+          else
+            echo "::warning::Could not auto-detect compileSdk from $file"
+          fi
+        else
+          echo "::warning::$file not found, skipping compileSdk detection"
+        fi
+
+    - name: Set up JDK
+      uses: actions/setup-java@v5
+      with:
+        java-version: ${{ inputs.java-version }}
+        distribution: temurin
+        cache: "gradle"
+
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v2
+      with:
+        api-level: ${{ inputs.api-level }}
+
+    - name: Determine build-tools version
+      run: |
+        set -euo pipefail
+        # If build-tools-version input provided use it; otherwise derive from COMPILE_SDK
+        if [ -n "${{ inputs.build-tools-version }}" ]; then
+          export BUILD_TOOLS="${{ inputs.build-tools-version }}"
+          echo "BUILD_TOOLS=$BUILD_TOOLS" >> $GITHUB_ENV
+        else
+          if [ -n "${COMPILE_SDK:-}" ]; then
+            export BUILD_TOOLS="${COMPILE_SDK}.0.0"
+            echo "BUILD_TOOLS=$BUILD_TOOLS" >> $GITHUB_ENV
+          else
+            export BUILD_TOOLS="36.0.0"
+            echo "BUILD_TOOLS=$BUILD_TOOLS" >> $GITHUB_ENV
+          fi
+        fi
+        echo "Build tools version set to: ${BUILD_TOOLS}"
+      shell: bash
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x ./gradlew
+      shell: bash
+
+    - name: Build release APK with optimizations
+      run: |
+        ./gradlew assembleRelease \
+          --configuration-cache \
+          --build-cache
+      shell: bash
+
+    - name: Find unsigned APK
+      id: find_unsigned
+      run: |
+        set -euo pipefail
+        apk=$(ls -1t app/build/outputs/apk/release/*.apk 2>/dev/null | head -n1 || true)
+        if [ -n "$apk" ]; then
+          echo "unsignedFile=$apk" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+
+    - name: Sign APK (optional)
+      id: sign
+      if: ${{ inputs.run-sign == 'true' }}
+      uses: ilharp/sign-android-release@v2
+      with:
+        releaseDir: app/build/outputs/apk/release
+        signingKey: ${{ inputs.signing-key }}
+        keyAlias: ${{ inputs.key-alias }}
+        keyStorePassword: ${{ inputs.key-store-password }}
+        keyPassword: ${{ inputs.key-password }}
+        buildToolsVersion: ${{ env.BUILD_TOOLS }}
+
+
+inputs:
+  run-sign:
+    description: "Whether to sign APK"
+    required: false
+    default: "false"
+  signing-key:
+    description: "Base64 encoded keystore"
+    required: false
+  key-alias:
+    description: "Keystore alias"
+    required: false
+  key-store-password:
+    description: "Keystore password"
+    required: false
+  key-password:
+    description: "Key password"
+    required: false
+  build-tools-version:
+    description: "Android build-tools version to use (overrides auto-detection)"
+    required: false
+    default: ""
+  compile-sdk:
+    description: "compileSdk version (overrides auto-detection from build.gradle.kts)"
+    required: false
+    default: ""
+  api-level:
+    description: "Android SDK API level"
+    required: false
+    default: "33"
+  java-version:
+    description: "Java version to use"
+    required: false
+    default: "21"
+
+outputs:
+  signedFile:
+    description: "Path to signed file"
+    value: ${{ steps.sign.outputs.signedFile }}
+  unsignedFile:
+    description: "Path to unsigned file"
+    value: ${{ steps.find_unsigned.outputs.unsignedFile }}
