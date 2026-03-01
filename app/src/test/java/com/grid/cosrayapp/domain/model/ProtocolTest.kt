@@ -105,11 +105,11 @@ class ProtocolTest {
       crc = crc xor ((data[index].toInt() and 0xFF) shl 8)
       repeat(8) {
         crc =
-                if ((crc and 0x8000) != 0) {
-                  ((crc shl 1) xor 0x1021) and 0xFFFF
-                } else {
-                  (crc shl 1) and 0xFFFF
-                }
+          if ((crc and 0x8000) != 0) {
+            ((crc shl 1) xor 0x1021) and 0xFFFF
+          } else {
+            (crc shl 1) and 0xFFFF
+          }
       }
     }
     return crc and 0xFFFF
