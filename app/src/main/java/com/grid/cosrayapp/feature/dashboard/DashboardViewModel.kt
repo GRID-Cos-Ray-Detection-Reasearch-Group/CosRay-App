@@ -15,7 +15,9 @@ import com.grid.cosrayapp.domain.model.PacketType
 import com.grid.cosrayapp.domain.model.SipmMonitoring
 import com.grid.cosrayapp.domain.model.TelemetrySample
 import com.grid.cosrayapp.domain.model.User
+import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +25,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class DashboardViewModel(
+@HiltViewModel
+class DashboardViewModel
+@Inject
+constructor(
   private val telemetryRepository: TelemetryRepository,
   private val authRepository: AuthRepository,
 ) : ViewModel() {

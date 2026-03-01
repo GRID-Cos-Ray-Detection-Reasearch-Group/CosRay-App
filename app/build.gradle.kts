@@ -1,12 +1,16 @@
+import org.gradle.testing.jacoco.tasks.JacocoReport
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.android)
+  alias(libs.plugins.ksp)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.kotlin.serialization)
+  alias(libs.plugins.hilt.android)
+  alias(libs.plugins.detekt)
   alias(libs.plugins.ktfmt)
-  id("io.gitlab.arturbosch.detekt") version "1.23.8"
+  jacoco
 }
 
 android {
@@ -39,7 +43,6 @@ android {
     compose = true
     buildConfig = true
   }
-  composeCompiler { enableStrongSkippingMode = true }
 }
 
 kotlin {
@@ -65,6 +68,7 @@ dependencies {
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
+  implementation(libs.androidx.hilt.navigation.compose)
   implementation(libs.androidx.activity.compose)
   implementation(platform(libs.androidx.compose.bom))
   implementation(libs.androidx.compose.ui)
@@ -77,6 +81,7 @@ dependencies {
   implementation(libs.kotlinx.coroutines.core)
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.kotlinx.serialization.json)
+  implementation(libs.okio)
   implementation(libs.androidx.datastore.preferences)
   implementation(libs.ktor.client.android)
   implementation("io.ktor:ktor-client-core:${libs.versions.ktor.get()}")
@@ -85,12 +90,62 @@ dependencies {
   implementation(libs.ktor.client.logging)
   implementation(libs.ktor.serialization.kotlinx.json)
   implementation(libs.ble.ktx)
+  implementation(libs.ble.scanner.compat)
+  implementation(libs.dagger.hilt.android)
+  ksp(libs.dagger.hilt.compiler)
   implementation(libs.androidx.navigation.common.ktx)
   testImplementation(libs.junit)
+  testImplementation("io.ktor:ktor-client-java:${libs.versions.ktor.get()}")
   androidTestImplementation(libs.androidx.junit)
   androidTestImplementation(libs.androidx.espresso.core)
   androidTestImplementation(platform(libs.androidx.compose.bom))
   androidTestImplementation(libs.androidx.compose.ui.test.junit4)
   debugImplementation(libs.androidx.compose.ui.tooling)
   debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
+  dependsOn("testDebugUnitTest")
+
+  reports {
+    xml.required.set(true)
+    html.required.set(true)
+    csv.required.set(false)
+  }
+
+  val excludes =
+    listOf(
+      "**/R.class",
+      "**/R$*.class",
+      "**/BuildConfig.*",
+      "**/Manifest*.*",
+      "**/*Test*.*",
+      "android/**/*.*",
+      "**/*_Factory*.*",
+      "**/*_MembersInjector*.*",
+      "**/Dagger*.*",
+      "**/Hilt*.*",
+      "**/*_HiltModules*.*",
+      "**/*_HiltComponents*.*",
+    )
+
+  classDirectories.setFrom(
+    files(
+      fileTree("$buildDir/tmp/kotlin-classes/debug") { exclude(excludes) },
+      fileTree("$buildDir/intermediates/javac/debug/compileDebugJavaWithJavac/classes") {
+        exclude(excludes)
+      },
+    )
+  )
+
+  sourceDirectories.setFrom(files("src/main/java", "src/main/kotlin"))
+
+  executionData.setFrom(
+    fileTree(buildDir) {
+      include(
+        "jacoco/testDebugUnitTest.exec",
+        "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+      )
+    }
+  )
 }

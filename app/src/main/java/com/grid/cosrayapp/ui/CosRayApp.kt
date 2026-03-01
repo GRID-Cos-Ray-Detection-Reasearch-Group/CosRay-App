@@ -8,6 +8,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import com.grid.cosrayapp.data.auth.AuthRepository
 import com.grid.cosrayapp.data.auth.AuthState
 import com.grid.cosrayapp.navigation.CosRayAppState
 import com.grid.cosrayapp.navigation.CosRayDestination
@@ -17,7 +18,8 @@ import com.grid.cosrayapp.navigation.rememberCosRayAppState
 import com.grid.cosrayapp.ui.theme.CosRayAppTheme
 
 @Composable
-fun CosRayApp(appState: CosRayAppState = rememberCosRayAppState()) {
+fun CosRayApp(authRepository: AuthRepository) {
+  val appState: CosRayAppState = rememberCosRayAppState(authRepository = authRepository)
   val authState = rememberAuthState(appState)
 
   LaunchedEffect(authState) {

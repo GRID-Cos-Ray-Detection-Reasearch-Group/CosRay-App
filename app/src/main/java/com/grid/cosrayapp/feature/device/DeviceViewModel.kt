@@ -7,6 +7,8 @@ import com.grid.cosrayapp.data.ble.BleRepository
 import com.grid.cosrayapp.data.telemetry.TelemetryRepository
 import com.grid.cosrayapp.domain.model.SignalQuality
 import com.grid.cosrayapp.domain.model.TelemetrySample
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,7 +16,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class DeviceViewModel(
+@HiltViewModel
+class DeviceViewModel
+@Inject
+constructor(
   private val bleRepository: BleRepository,
   private val telemetryRepository: TelemetryRepository,
 ) : ViewModel() {

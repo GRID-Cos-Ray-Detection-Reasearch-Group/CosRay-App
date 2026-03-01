@@ -6,6 +6,25 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 object Protocol {
+  private const val CRC16_POLY = 0x1021
+  private const val CRC16_INIT = 0xFFFF
+
+  private fun calculateCrc16Ccitt(data: ByteArray, startIndex: Int, length: Int): Int {
+    var crc = CRC16_INIT
+    for (index in startIndex until startIndex + length) {
+      crc = crc xor ((data[index].toInt() and 0xFF) shl 8)
+      repeat(8) {
+        crc =
+          if ((crc and 0x8000) != 0) {
+            ((crc shl 1) xor CRC16_POLY) and 0xFFFF
+          } else {
+            (crc shl 1) and 0xFFFF
+          }
+      }
+    }
+    return crc and 0xFFFF
+  }
+
   // 指令帧定义（App → ESP32）
   object Command {
     // 帧头/帧尾
@@ -103,19 +122,17 @@ object Protocol {
           "μ子数据包尾部标识错误：预期${TAIL_EXPECTED.contentToString()}，实际${tail.contentToString()}"
         }
 
+        val reserved = ByteArray(6).also { buffer.get(it) }
         val crc = buffer.short
         val calculatedCrc =
-          Command.calculateChecksum(
+          calculateCrc16Ccitt(
             data = rawData,
-            startIndex = 3, // 从PkgCnt开始到reserved结束（3+4+4+490+3+6=509字节）
-            length = TOTAL_SIZE - 3 - 2, // 总长度 512字节- 头部3字节 - CRC2字节 =
-            // 507，需与esp32的CRC计算范围一致
-          )
-        require((crc.toInt() and 0xFFFF) == (calculatedCrc.toInt() and 0xFFFF)) {
-          "μ子数据包CRC校验失败：预期${crc.toInt() and 0xFFFF}，实际${calculatedCrc.toInt() and 0xFFFF}"
+            startIndex = 3,
+            length = TOTAL_SIZE - 3 - 2,
+          ) // Skip 3 byte header, 2 byte CRC
+        require((crc.toInt() and 0xFFFF) == calculatedCrc) {
+          "μ子数据包CRC校验失败：预期${crc.toInt() and 0xFFFF}，实际$calculatedCrc (旧算法偏移量为3起算)"
         }
-
-        val reserved = ByteArray(6).also { buffer.get(it) }
 
         return MuonDataPkg(head, pkgCnt, utc, muonDataList, tail, crc, reserved)
       }
@@ -226,18 +243,17 @@ object Protocol {
           "时间线数据包尾部标识错误：预期${TAIL_EXPECTED.contentToString()}，实际${tail.contentToString()}"
         }
 
+        val reserve = ByteArray(20).also { buffer.get(it) }
         val crc = buffer.short
         val calculatedCrc =
-          Command.calculateChecksum(
+          calculateCrc16Ccitt(
             data = rawData,
             startIndex = 3,
-            length = TOTAL_SIZE - 3 - 2, // 总长度 - 头部3字节 - CRC2字节 = 507
-          )
-        require((crc.toInt() and 0xFFFF) == (calculatedCrc.toInt() and 0xFFFF)) {
-          "时间线数据包CRC校验失败：预期${crc.toInt() and 0xFFFF}，实际${calculatedCrc.toInt() and 0xFFFF}"
+            length = TOTAL_SIZE - 3 - 2,
+          ) // Skip 3 byte header, 2 byte CRC
+        require((crc.toInt() and 0xFFFF) == calculatedCrc) {
+          "时间线数据包CRC校验失败：预期${crc.toInt() and 0xFFFF}，实际$calculatedCrc (旧算法偏移量为3起算)"
         }
-
-        val reserve = ByteArray(20).also { buffer.get(it) }
 
         return TimeLinePkg(head, pkgCnt, timeLineDataList, tail, crc, reserve)
       }

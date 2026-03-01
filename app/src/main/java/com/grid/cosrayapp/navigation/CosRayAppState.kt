@@ -6,8 +6,6 @@ import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import com.grid.cosrayapp.core.di.AppContainer
-import com.grid.cosrayapp.core.di.LocalAppContainer
 import com.grid.cosrayapp.data.auth.AuthRepository
 import com.grid.cosrayapp.data.auth.AuthState
 import kotlinx.coroutines.CoroutineScope
@@ -16,13 +14,9 @@ import kotlinx.coroutines.launch
 @Stable
 class CosRayAppState(
   val navController: NavHostController,
-  private val appContainer: AppContainer,
+  val authRepository: AuthRepository,
   private val coroutineScope: CoroutineScope,
 ) {
-  val container: AppContainer
-    get() = appContainer
-
-  val authRepository: AuthRepository = appContainer.authRepository
   val authState = authRepository.authState
   private var guestMode = false
 
@@ -61,11 +55,15 @@ class CosRayAppState(
 @Composable
 fun rememberCosRayAppState(
   navController: NavHostController = rememberNavController(),
-  appContainer: AppContainer = LocalAppContainer.current,
+  authRepository: AuthRepository,
   coroutineScope: CoroutineScope = androidx.compose.runtime.rememberCoroutineScope(),
 ): CosRayAppState =
-  remember(navController, appContainer, coroutineScope) {
-    CosRayAppState(navController, appContainer, coroutineScope)
+  remember(navController, authRepository, coroutineScope) {
+    CosRayAppState(
+      navController = navController,
+      authRepository = authRepository,
+      coroutineScope = coroutineScope,
+    )
   }
 
 @Composable

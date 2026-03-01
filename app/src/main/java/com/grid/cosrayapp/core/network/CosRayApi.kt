@@ -1,21 +1,16 @@
 package com.grid.cosrayapp.core.network
 
 import com.grid.cosrayapp.core.network.model.AuthResponse
+import com.grid.cosrayapp.core.network.model.CreateDeviceRequest
 import com.grid.cosrayapp.core.network.model.DeviceDto
 import com.grid.cosrayapp.core.network.model.LoginRequest
 import com.grid.cosrayapp.core.network.model.PacketUploadRequest
 import com.grid.cosrayapp.core.network.model.PacketUploadResponse
-import com.grid.cosrayapp.core.network.model.RegisterDeviceRequest
-import com.grid.cosrayapp.core.network.model.RegisterRequest
-import com.grid.cosrayapp.core.network.model.TelemetryPayloadDto
-import com.grid.cosrayapp.core.network.model.TelemetrySampleDto
+import com.grid.cosrayapp.core.network.model.TokenRefreshRequest
+import com.grid.cosrayapp.core.network.model.TokenResponse
+import com.grid.cosrayapp.core.network.model.UpdateDeviceRequest
 import com.grid.cosrayapp.core.network.model.UserResponse
-import com.grid.cosrayapp.domain.model.AcquisitionMetrics
 import com.grid.cosrayapp.domain.model.AuthTokens
-import com.grid.cosrayapp.domain.model.EnvironmentSnapshot
-import com.grid.cosrayapp.domain.model.PowerSnapshot
-import com.grid.cosrayapp.domain.model.RadiationMetrics
-import com.grid.cosrayapp.domain.model.TelemetrySample
 import com.grid.cosrayapp.domain.model.User
 import com.grid.cosrayapp.domain.model.UserId
 import io.ktor.client.HttpClient
@@ -34,70 +29,50 @@ import kotlinx.coroutines.withContext
 
 @Suppress("TooManyFunctions")
 class CosRayApi(private val client: HttpClient) {
-  // https://docs.allauth.org/en/dev/headless/openapi-specification/#tag/Authentication:-Account
   suspend fun login(username: String, password: String): Pair<User, AuthTokens> =
     withContext(Dispatchers.IO) {
       val response: AuthResponse =
         client
-          .post("/_allauth/app/v1/auth/login") {
+          .post("/api/token/pair") {
             contentType(ContentType.Application.Json)
             setBody(LoginRequest(username = username, password = password))
           }
           .body()
-      val sessionToken =
-        response.meta.sessionToken ?: error("Session token not found in login response")
-      val tokens = AuthTokens.fromSessionToken(sessionToken)
-      response.data.user.toDomain() to tokens
-    }
-
-  suspend fun register(
-    email: String,
-    password: String,
-    displayName: String,
-  ): Pair<User, AuthTokens> =
-    withContext(Dispatchers.IO) {
-      val response: AuthResponse =
-        client
-          .post("/_allauth/app/v1/auth/signup") {
-            contentType(ContentType.Application.Json)
-            setBody(RegisterRequest(email = email, password = password, displayName = displayName))
-          }
-          .body()
-      val sessionToken =
-        response.meta.sessionToken ?: error("Session token not found in register response")
-      val tokens = AuthTokens.fromSessionToken(sessionToken)
-      response.data.user.toDomain() to tokens
+      val tokens = AuthTokens.fromJwtTokens(response.access, response.refresh)
+      val user = fetchCurrentUser(tokens.accessToken)
+      user to tokens
     }
 
   suspend fun refreshToken(refreshToken: String): AuthTokens =
-    withContext(Dispatchers.IO) { AuthTokens.fromSessionToken(refreshToken) }
+    withContext(Dispatchers.IO) {
+      val response: TokenResponse =
+        client
+          .post("/api/token/refresh") {
+            contentType(ContentType.Application.Json)
+            setBody(TokenRefreshRequest(refresh = refreshToken))
+          }
+          .body()
+      AuthTokens.fromJwtTokens(accessToken = response.access, refreshToken = refreshToken)
+    }
 
   suspend fun fetchCurrentUser(accessToken: String): User =
     withContext(Dispatchers.IO) {
-      val response: AuthResponse =
-        client.get("/_allauth/app/v1/auth/session") { sessionToken(accessToken) }.body()
-      response.data.user.toDomain()
+      val response: UserResponse = client.get("/api/users/me") { bearerToken(accessToken) }.body()
+      response.toDomain()
     }
 
-  /**
-   * 上传遥测数据（旧版 API，用于 TelemetryRepository）
-   *
-   * @param accessToken 访问令牌
-   * @param payload 遥测数据负载
-   * @deprecated 使用 uploadPacket 替代
-   */
-  @Deprecated("Use uploadPacket instead", ReplaceWith("uploadPacket(accessToken, request)"))
-  suspend fun uploadTelemetry(accessToken: String, payload: TelemetryPayloadDto): Unit =
+  /** 获取当前用户的所有设备 */
+  suspend fun getDevices(accessToken: String): List<DeviceDto> =
+    withContext(Dispatchers.IO) { client.get("/api/devices/") { bearerToken(accessToken) }.body() }
+
+  /** 获取指定设备的详情 */
+  suspend fun getDevice(accessToken: String, deviceId: Int): DeviceDto =
     withContext(Dispatchers.IO) {
-      client.post("/api/mu-packets/") {
-        sessionToken(accessToken)
-        contentType(ContentType.Application.Json)
-        setBody(payload)
-      }
+      client.get("/api/devices/$deviceId/") { bearerToken(accessToken) }.body()
     }
 
-  /** 注册新设备 */
-  suspend fun registerDevice(
+  /** 创建新设备 */
+  suspend fun createDevice(
     accessToken: String,
     macAddress: String,
     name: String,
@@ -105,24 +80,14 @@ class CosRayApi(private val client: HttpClient) {
   ): DeviceDto =
     withContext(Dispatchers.IO) {
       val request =
-        RegisterDeviceRequest(macAddress = macAddress, name = name, description = description)
+        CreateDeviceRequest(macAddress = macAddress, name = name, description = description)
       client
         .post("/api/devices/") {
-          sessionToken(accessToken)
+          bearerToken(accessToken)
           contentType(ContentType.Application.Json)
           setBody(request)
         }
         .body()
-    }
-
-  /** 获取当前用户的所有设备 */
-  suspend fun getDevices(accessToken: String): List<DeviceDto> =
-    withContext(Dispatchers.IO) { client.get("/api/devices/") { sessionToken(accessToken) }.body() }
-
-  /** 获取指定设备的详情 */
-  suspend fun getDevice(accessToken: String, deviceId: Int): DeviceDto =
-    withContext(Dispatchers.IO) {
-      client.get("/api/devices/$deviceId/") { sessionToken(accessToken) }.body()
     }
 
   /** 更新设备信息 */
@@ -134,14 +99,10 @@ class CosRayApi(private val client: HttpClient) {
     isActive: Boolean? = null,
   ): DeviceDto =
     withContext(Dispatchers.IO) {
-      val updates = buildMap {
-        name?.let { put("name", it) }
-        description?.let { put("description", it) }
-        isActive?.let { put("is_active", it) }
-      }
+      val updates = UpdateDeviceRequest(name = name, description = description, isActive = isActive)
       client
         .patch("/api/devices/$deviceId/") {
-          sessionToken(accessToken)
+          bearerToken(accessToken)
           contentType(ContentType.Application.Json)
           setBody(updates)
         }
@@ -151,7 +112,7 @@ class CosRayApi(private val client: HttpClient) {
   /** 删除设备 */
   suspend fun deleteDevice(accessToken: String, deviceId: Int): Unit =
     withContext(Dispatchers.IO) {
-      client.delete("/api/devices/$deviceId/") { sessionToken(accessToken) }
+      client.delete("/api/devices/$deviceId/") { bearerToken(accessToken) }
     }
 
   /** 上传μ子或时间线数据包 */
@@ -162,78 +123,17 @@ class CosRayApi(private val client: HttpClient) {
     withContext(Dispatchers.IO) {
       client
         .post("/api/mu-packets/") {
-          sessionToken(accessToken)
+          bearerToken(accessToken)
           contentType(ContentType.Application.Json)
           setBody(request)
         }
         .body()
     }
 
-  private fun HttpRequestBuilder.sessionToken(currentToken: String) {
-    header("X-Session-Token", currentToken)
+  private fun HttpRequestBuilder.bearerToken(currentToken: String) {
+    header("Authorization", "Bearer $currentToken")
   }
-
-  fun TelemetrySample.toDto(deviceId: String): TelemetrySampleDto =
-    TelemetrySampleDto(
-      detectorId = detectorId.value,
-      deviceId = deviceId,
-      telemetryId = id.value,
-      recordedAt = recordedAt.toEpochMilli(),
-      acquisition = acquisition.toDto(),
-      radiation = radiation.toDto(),
-      environment = environment.toDto(),
-      power = power.toDto(),
-      diagnostics = diagnostics.toDto(),
-    )
 }
 
 fun UserResponse.toDomain(): User =
-  User(
-    id = UserId(id),
-    email = email,
-    displayName = display,
-    avatarUrl = avatarUrl,
-    organization = organization,
-    roles = roles,
-  )
-
-private fun AcquisitionMetrics.toDto(): TelemetrySampleDto.AcquisitionDto =
-  TelemetrySampleDto.AcquisitionDto(
-    particleCount = particleCount,
-    countsPerMinute = countsPerMinute,
-    integrationTimeSeconds = integrationTimeSeconds,
-    deadTimeMillis = deadTimeMillis,
-    coincidenceCount = coincidenceCount,
-  )
-
-private fun RadiationMetrics.toDto(): TelemetrySampleDto.RadiationDto =
-  TelemetrySampleDto.RadiationDto(
-    doseRateMicrosievertsPerHour = doseRateMicrosievertsPerHour,
-    equivalentDoseMicrosieverts = equivalentDoseMicrosieverts,
-    backgroundDoseMicrosievertsPerHour = backgroundDoseMicrosievertsPerHour,
-  )
-
-private fun EnvironmentSnapshot.toDto(): TelemetrySampleDto.EnvironmentDto =
-  TelemetrySampleDto.EnvironmentDto(
-    boardTemperatureCelsius = boardTemperatureCelsius,
-    sensorTemperatureCelsius = sensorTemperatureCelsius,
-    humidityPercent = humidityPercent,
-    pressureHPa = pressureHPa,
-  )
-
-private fun PowerSnapshot.toDto(): TelemetrySampleDto.PowerDto =
-  TelemetrySampleDto.PowerDto(
-    batteryPercent = batteryPercent,
-    batteryVoltage = batteryVoltage,
-    inputVoltage = inputVoltage,
-    isCharging = isCharging,
-  )
-
-private fun com.grid.cosrayapp.domain.model.DiagnosticsSnapshot.toDto():
-  TelemetrySampleDto.DiagnosticsDto =
-  TelemetrySampleDto.DiagnosticsDto(
-    firmwareVersion = firmware?.toString(),
-    uptimeMillis = uptimeMillis,
-    errorCode = errorCode,
-    message = message,
-  )
+  User(id = UserId(id.toString()), email = email, displayName = username)
