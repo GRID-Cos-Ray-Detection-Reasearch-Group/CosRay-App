@@ -47,7 +47,7 @@ jobs:
         id: build_sign
         uses: ./.github/actions/build-and-sign
         with:
-          run-sign: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'dev') }}
+          run-sign: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') }}
           signing-key: ${{ secrets.ANDROID_SIGNING_KEY }}
           key-alias: ${{ secrets.ANDROID_KEY_ALIAS }}
           key-store-password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -62,7 +62,7 @@ jobs:
           path: ${{ steps.build_sign.outputs.signedFile }}
 
       - name: Upload unsigned APK as artifact (fallback)
-        if: ${{ steps.build_sign.outputs.signedFile == '' || steps.build_sign.outcome == 'skipped' || steps.build_sign.outcome == 'failure' }}
+        if: ${{ steps.build_sign.outputs.unsignedFile != '' && (steps.build_sign.outputs.signedFile == '' || steps.build_sign.outcome == 'skipped' || steps.build_sign.outcome == 'failure') }}
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-apk

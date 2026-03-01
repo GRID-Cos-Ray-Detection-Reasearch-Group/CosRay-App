@@ -4,21 +4,31 @@ author: "Copilot"
 runs:
   using: "composite"
   steps:
-    - name: Extract compileSdk version
+    - name: Determine compileSdk version
       id: extract_sdk
       shell: bash
       run: |
         set -euo pipefail
+        # Prefer explicit input over auto-detection
+        if [ -n "${{ inputs.compile-sdk }}" ]; then
+          echo "COMPILE_SDK=${{ inputs.compile-sdk }}" >> $GITHUB_ENV
+          echo "COMPILE_SDK=${{ inputs.compile-sdk }}" >> $GITHUB_OUTPUT
+          echo "Using explicit compile-sdk input: ${{ inputs.compile-sdk }}"
+          exit 0
+        fi
+        # Fallback: extract from build.gradle.kts
         file=app/build.gradle.kts
         if [ -f "$file" ]; then
-          # Extract number in release(N) or compileSdk N pattern
-          sdk=$(grep -E "compileSdk|release\(" "$file" | grep -Eo 'release\([0-9]+\)|compileSdk \{[^}]*version = release\([0-9]+\)' || true)
-          if [ -n "$sdk" ]; then
-            # Extract digits
-            num=$(echo "$sdk" | grep -Eo '[0-9]+' | head -n1)
+          num=$(grep -Eo 'compileSdk.*?[0-9]+|release\([0-9]+\)' "$file" | grep -Eo '[0-9]+' | head -n1 || true)
+          if [ -n "$num" ]; then
             echo "COMPILE_SDK=$num" >> $GITHUB_ENV
             echo "COMPILE_SDK=$num" >> $GITHUB_OUTPUT
+            echo "Auto-detected compileSdk: $num"
+          else
+            echo "::warning::Could not auto-detect compileSdk from $file"
           fi
+        else
+          echo "::warning::$file not found, skipping compileSdk detection"
         fi
 
     - name: Set up JDK
@@ -104,7 +114,11 @@ inputs:
     description: "Key password"
     required: false
   build-tools-version:
-    description: "Android build-tools version to use"
+    description: "Android build-tools version to use (overrides auto-detection)"
+    required: false
+    default: ""
+  compile-sdk:
+    description: "compileSdk version (overrides auto-detection from build.gradle.kts)"
     required: false
     default: ""
   api-level:
