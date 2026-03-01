@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
@@ -56,14 +56,14 @@ jobs:
 
       - name: Upload signed APK as artifact
         if: ${{ steps.build_sign.outputs.signedFile != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: signed-apk
           path: ${{ steps.build_sign.outputs.signedFile }}
 
       - name: Upload unsigned APK as artifact (fallback)
         if: ${{ steps.build_sign.outputs.unsignedFile != '' && (steps.build_sign.outputs.signedFile == '' || steps.build_sign.outcome == 'skipped' || steps.build_sign.outcome == 'failure') }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: unsigned-apk
           path: ${{ steps.build_sign.outputs.unsignedFile }}
