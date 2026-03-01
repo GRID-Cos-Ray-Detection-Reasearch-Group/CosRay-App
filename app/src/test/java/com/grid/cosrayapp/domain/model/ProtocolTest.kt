@@ -60,7 +60,7 @@ class ProtocolTest {
     data.put(ByteArray(6))
 
     val raw = data.array()
-    val crc = calculateCrc16Ccitt(raw, 510)
+    val crc = calculateCrc16Ccitt(raw, startIndex = 3, length = 507)
     val footerBuffer = ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN)
     footerBuffer.position(510)
     footerBuffer.putShort(crc.toShort())
@@ -92,24 +92,24 @@ class ProtocolTest {
     data.put(ByteArray(20))
 
     val raw = data.array()
-    val crc = calculateCrc16Ccitt(raw, 510)
+    val crc = calculateCrc16Ccitt(raw, startIndex = 3, length = 507)
     val footerBuffer = ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN)
     footerBuffer.position(510)
     footerBuffer.putShort(crc.toShort())
     return raw
   }
 
-  private fun calculateCrc16Ccitt(data: ByteArray, length: Int): Int {
+  private fun calculateCrc16Ccitt(data: ByteArray, startIndex: Int, length: Int): Int {
     var crc = 0xFFFF
-    repeat(length) { index ->
+    for (index in startIndex until startIndex + length) {
       crc = crc xor ((data[index].toInt() and 0xFF) shl 8)
       repeat(8) {
         crc =
-          if ((crc and 0x8000) != 0) {
-            ((crc shl 1) xor 0x1021) and 0xFFFF
-          } else {
-            (crc shl 1) and 0xFFFF
-          }
+                if ((crc and 0x8000) != 0) {
+                  ((crc shl 1) xor 0x1021) and 0xFFFF
+                } else {
+                  (crc shl 1) and 0xFFFF
+                }
       }
     }
     return crc and 0xFFFF
