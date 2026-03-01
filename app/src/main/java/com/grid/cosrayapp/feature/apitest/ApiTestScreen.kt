@@ -54,6 +54,7 @@ fun ApiTestScreen(
   onTestGetUserInfo: () -> Unit,
   onTestListDevices: () -> Unit,
   onTestGetDevice: () -> Unit,
+  onTestCreateDevice: () -> Unit,
   onTestUpdateDevice: () -> Unit,
   onTestDeleteDevice: () -> Unit,
   onTestUploadMuonPacket: () -> Unit,
@@ -118,6 +119,7 @@ fun ApiTestScreen(
         onDeviceIdChange = onDeviceIdChange,
         onTestListDevices = onTestListDevices,
         onTestGetDevice = onTestGetDevice,
+        onTestCreateDevice = onTestCreateDevice,
         onTestUpdateDevice = onTestUpdateDevice,
         onTestDeleteDevice = onTestDeleteDevice,
         isLoading = state.isLoading,
@@ -249,6 +251,7 @@ private fun DeviceTestSection(
   onDeviceDescriptionChange: (String) -> Unit,
   onDeviceIdChange: (String) -> Unit,
   onTestListDevices: () -> Unit,
+  onTestCreateDevice: () -> Unit,
   onTestGetDevice: () -> Unit,
   onTestUpdateDevice: () -> Unit,
   onTestDeleteDevice: () -> Unit,
@@ -284,12 +287,13 @@ private fun DeviceTestSection(
         maxLines = 3,
       )
 
-      Button(
-        onClick = onTestListDevices,
-        modifier = Modifier.fillMaxWidth(),
-        enabled = !isLoading,
-      ) {
-        Text(stringResource(R.string.api_test_test_list_devices))
+      Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Button(onClick = onTestListDevices, modifier = Modifier.weight(1f), enabled = !isLoading) {
+          Text(stringResource(R.string.api_test_test_list_devices))
+        }
+        Button(onClick = onTestCreateDevice, modifier = Modifier.weight(1f), enabled = !isLoading) {
+          Text("Create") // Let's use simple string since I don't have R.string for it yet.
+        }
       }
 
       Spacer(modifier = Modifier.height(8.dp))

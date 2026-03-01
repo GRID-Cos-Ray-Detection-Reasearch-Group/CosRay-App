@@ -1,6 +1,7 @@
 package com.grid.cosrayapp.core.network
 
 import com.grid.cosrayapp.core.network.model.AuthResponse
+import com.grid.cosrayapp.core.network.model.CreateDeviceRequest
 import com.grid.cosrayapp.core.network.model.DeviceDto
 import com.grid.cosrayapp.core.network.model.LoginRequest
 import com.grid.cosrayapp.core.network.model.PacketUploadRequest
@@ -68,6 +69,25 @@ class CosRayApi(private val client: HttpClient) {
   suspend fun getDevice(accessToken: String, deviceId: Int): DeviceDto =
     withContext(Dispatchers.IO) {
       client.get("/api/devices/$deviceId/") { bearerToken(accessToken) }.body()
+    }
+
+  /** 创建新设备 */
+  suspend fun createDevice(
+    accessToken: String,
+    macAddress: String,
+    name: String,
+    description: String? = null,
+  ): DeviceDto =
+    withContext(Dispatchers.IO) {
+      val request =
+        CreateDeviceRequest(macAddress = macAddress, name = name, description = description)
+      client
+        .post("/api/devices/") {
+          bearerToken(accessToken)
+          contentType(ContentType.Application.Json)
+          setBody(request)
+        }
+        .body()
     }
 
   /** 更新设备信息 */

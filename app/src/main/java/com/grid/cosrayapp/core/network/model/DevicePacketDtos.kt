@@ -18,6 +18,14 @@ data class DeviceDto(
   @SerialName("last_seen_at") val lastSeenAt: String?,
 )
 
+/** 设备注册/创建请求 */
+@Serializable
+data class CreateDeviceRequest(
+  @SerialName("mac_address") val macAddress: String,
+  @SerialName("name") val name: String,
+  @SerialName("description") val description: String? = null,
+)
+
 /** 设备更新请求 */
 @Serializable
 data class UpdateDeviceRequest(

@@ -203,6 +203,32 @@ class ApiTestViewModel @Inject constructor() : ViewModel() {
     }
   }
 
+  fun testCreateDevice() {
+    val state = _uiState.value
+    viewModelScope.launch {
+      _uiState.update { it.copy(isLoading = true, error = null) }
+      try {
+        val device =
+          getApi()
+            .createDevice(
+              accessToken = state.token,
+              macAddress = state.macAddress,
+              name = state.deviceName.ifBlank { "Test Device" },
+              description = state.deviceDescription.ifBlank { null },
+            )
+        _uiState.update { it.copy(response = json.encodeToString(device), isLoading = false) }
+      } catch (e: Exception) {
+        _uiState.update {
+          it.copy(
+            error = e.message ?: "Unknown error",
+            response = "Error: ${e.message}",
+            isLoading = false,
+          )
+        }
+      }
+    }
+  }
+
   fun testUpdateDevice() {
     val state = _uiState.value
     viewModelScope.launch {

@@ -234,6 +234,7 @@ private fun NavGraphBuilder.apiTestDestination(onOpenDrawer: () -> Unit) {
       onTestGetUserInfo = viewModel::testGetUserInfo,
       onTestListDevices = viewModel::testListDevices,
       onTestGetDevice = viewModel::testGetDevice,
+      onTestCreateDevice = viewModel::testCreateDevice,
       onTestUpdateDevice = viewModel::testUpdateDevice,
       onTestDeleteDevice = viewModel::testDeleteDevice,
       onTestUploadMuonPacket = viewModel::testUploadMuonPacket,
