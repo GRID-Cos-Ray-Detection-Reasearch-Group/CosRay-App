@@ -303,6 +303,8 @@ private fun NavGraphBuilder.settingsDestination(
         appState.exitGuestMode()
         appState.navigateTo(CosRayDestination.Login, popUpToStart = true)
       },
+      onToggleDarkTheme = viewModel::toggleDarkTheme,
+      onToggleOledDark = viewModel::toggleOledDark,
       onOpenDrawer = onOpenDrawer,
     )
   }

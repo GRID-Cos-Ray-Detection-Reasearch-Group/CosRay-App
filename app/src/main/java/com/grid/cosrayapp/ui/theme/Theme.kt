@@ -47,17 +47,28 @@ private val LightColorScheme =
 @Composable
 fun CosRayAppTheme(
   darkTheme: Boolean = isSystemInDarkTheme(),
+  oledDark: Boolean = false,
   dynamicColor: Boolean = true,
   content: @Composable () -> Unit,
 ) {
   val colorScheme =
-    if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-      val context = LocalContext.current
-      if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-    } else if (darkTheme) {
-      DarkColorScheme
-    } else {
-      LightColorScheme
+    when {
+      dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        val context = LocalContext.current
+        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+      }
+      darkTheme -> DarkColorScheme
+      else -> LightColorScheme
+    }.run {
+      if (darkTheme && oledDark) {
+        copy(
+          background = androidx.compose.ui.graphics.Color.Black,
+          surface = androidx.compose.ui.graphics.Color.Black,
+          surfaceVariant = androidx.compose.ui.graphics.Color.Black,
+        )
+      } else {
+        this
+      }
     }
 
   MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)

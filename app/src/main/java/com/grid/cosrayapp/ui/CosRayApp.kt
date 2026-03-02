@@ -37,9 +37,7 @@ fun CosRayApp(authRepository: AuthRepository) {
     }
   }
 
-  CosRayAppTheme {
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-      CosRayNavHost(appState = appState)
-    }
+  Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    CosRayNavHost(appState = appState)
   }
 }

@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -201,7 +202,7 @@ private fun HeaderSection(state: DashboardUiState, onUploadClicked: () -> Unit) 
 
 @Composable
 private fun LocationCard(location: LocationSnapshot, modifier: Modifier = Modifier) {
-  Card(
+  androidx.compose.material3.Card(
     modifier = modifier,
     shape = RoundedCornerShape(16.dp),
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -228,7 +229,7 @@ private fun LocationCard(location: LocationSnapshot, modifier: Modifier = Modifi
 
 @Composable
 private fun OrientationCard(acceleration: AccelerationSnapshot, modifier: Modifier = Modifier) {
-  Card(
+  androidx.compose.material3.Card(
     modifier = modifier,
     shape = RoundedCornerShape(16.dp),
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -282,7 +283,7 @@ private fun AxisIndicator(label: String, value: Int) {
 
 @Composable
 private fun SipmMonitoringCard(sipm: SipmMonitoring) {
-  Card(
+  androidx.compose.material3.Card(
     modifier = Modifier.fillMaxWidth(),
     shape = RoundedCornerShape(16.dp),
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
@@ -325,7 +326,7 @@ private fun SipmMonitoringCard(sipm: SipmMonitoring) {
 
 @Composable
 private fun PacketStatsCard(stats: PacketStatistics) {
-  Card(
+  androidx.compose.material3.Card(
     modifier = Modifier.fillMaxWidth(),
     shape = RoundedCornerShape(16.dp),
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
@@ -403,7 +404,7 @@ private fun MuonEventCard(sample: TelemetrySample) {
       else -> EnergyLevel.LOW
     }
 
-  Card(
+  androidx.compose.material3.Card(
     modifier = Modifier.fillMaxWidth(),
     shape = RoundedCornerShape(12.dp),
     colors =
@@ -482,7 +483,7 @@ private fun TimelineEventsList(events: List<TelemetrySample>) {
 
 @Composable
 private fun TimelineEventCard(sample: TelemetrySample) {
-  Card(
+  androidx.compose.material3.Card(
     modifier = Modifier.fillMaxWidth(),
     shape = RoundedCornerShape(12.dp),
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),

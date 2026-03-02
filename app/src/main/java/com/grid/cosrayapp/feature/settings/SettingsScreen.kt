@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
@@ -46,16 +47,23 @@ import com.grid.cosrayapp.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(state: SettingsUiState, onLogout: () -> Unit, onOpenDrawer: () -> Unit) {
+fun SettingsScreen(
+  state: SettingsUiState,
+  onLogout: () -> Unit,
+  onToggleDarkTheme: (Boolean) -> Unit,
+  onToggleOledDark: (Boolean) -> Unit,
+  onOpenDrawer: () -> Unit,
+) {
   val context = LocalContext.current
-  val versionInfo = remember {
-    try {
-      val packageInfo: PackageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-      "${packageInfo.versionName} (${packageInfo.versionCode})"
-    } catch (e: PackageManager.NameNotFoundException) {
-      "Unknown"
+  val versionInfo =
+    remember {
+      try {
+        val packageInfo: PackageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+        "${packageInfo.versionName} (${packageInfo.versionCode})"
+      } catch (e: PackageManager.NameNotFoundException) {
+        "Unknown"
+      }
     }
-  }
 
   Scaffold(
     topBar = {
@@ -104,7 +112,7 @@ fun SettingsScreen(state: SettingsUiState, onLogout: () -> Unit, onOpenDrawer: (
                 fontWeight = FontWeight.SemiBold,
               )
               Text(
-                text = state.user?.username ?: stringResource(R.string.settings_user_login_unknown),
+                text = state.user?.email ?: stringResource(R.string.settings_user_login_unknown),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
               )
@@ -139,8 +147,16 @@ fun SettingsScreen(state: SettingsUiState, onLogout: () -> Unit, onOpenDrawer: (
           icon = Icons.Default.Palette,
           label = stringResource(R.string.settings_dark_theme),
           checked = state.isDarkThemeOn,
-          onCheckedChange = { /* Placeholder for future theme selection */ },
+          onCheckedChange = onToggleDarkTheme,
         )
+        if (state.isDarkThemeOn) {
+          SettingsToggleRow(
+            icon = Icons.Default.DarkMode,
+            label = "OLED深色模式", // TODO: Move to string resources
+            checked = state.isOledDarkOn,
+            onCheckedChange = onToggleOledDark,
+          )
+        }
         SettingsToggleRow(
           icon = Icons.Default.Notifications,
           label = stringResource(R.string.settings_notifications),

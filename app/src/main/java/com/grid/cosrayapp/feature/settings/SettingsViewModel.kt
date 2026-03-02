@@ -14,15 +14,24 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 @HiltViewModel
-class SettingsViewModel @Inject constructor(private val authRepository: AuthRepository) :
-  ViewModel() {
+class SettingsViewModel
+@Inject
+constructor(
+  private val authRepository: AuthRepository,
+  private val userPreferences: com.grid.cosrayapp.core.datastore.UserPreferencesDataSource,
+) : ViewModel() {
 
   val uiState: StateFlow<SettingsUiState> =
-    authRepository.authState
-      .map { authState ->
+    kotlinx.coroutines.flow.combine(
+        authRepository.authState,
+        userPreferences.darkTheme,
+        userPreferences.oledDark,
+      ) { authState, darkTheme, oledDark ->
         SettingsUiState(
           user = (authState as? AuthState.Authenticated)?.user,
           isAuthenticated = authState is AuthState.Authenticated,
+          isDarkThemeOn = darkTheme ?: false,
+          isOledDarkOn = oledDark ?: false,
         )
       }
       .stateIn(
@@ -32,16 +41,22 @@ class SettingsViewModel @Inject constructor(private val authRepository: AuthRepo
       )
 
   fun logout() {
-    viewModelScope.launch {
-      // NOTE: Assume logout isn't fully implemented in local repo, so we just sign out
-      authRepository.logout()
-    }
+    viewModelScope.launch { authRepository.logout() }
+  }
+
+  fun toggleDarkTheme(enabled: Boolean) {
+    viewModelScope.launch { userPreferences.setDarkTheme(enabled) }
+  }
+
+  fun toggleOledDark(enabled: Boolean) {
+    viewModelScope.launch { userPreferences.setOledDark(enabled) }
   }
 }
 
 data class SettingsUiState(
   val user: User? = null,
   val isAuthenticated: Boolean = false,
-  val isDarkThemeOn: Boolean = false, // Placeholder for future theme selection
+  val isDarkThemeOn: Boolean = false,
+  val isOledDarkOn: Boolean = false,
   val areNotificationsEnabled: Boolean = true, // Placeholder
 )

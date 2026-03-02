@@ -61,6 +61,17 @@ class UserPreferencesDataSource(context: Context) {
       }
     }
 
+  val darkTheme: Flow<Boolean?> = store.data.map { preferences -> preferences[Keys.DARK_THEME] }
+  val oledDark: Flow<Boolean?> = store.data.map { preferences -> preferences[Keys.OLED_DARK] }
+
+  suspend fun setDarkTheme(enabled: Boolean) {
+    store.edit { preferences -> preferences[Keys.DARK_THEME] = enabled }
+  }
+
+  suspend fun setOledDark(enabled: Boolean) {
+    store.edit { preferences -> preferences[Keys.OLED_DARK] = enabled }
+  }
+
   suspend fun persistAuth(user: User, tokens: AuthTokens) {
     store.edit { preferences ->
       preferences[Keys.ACCESS_TOKEN] = tokens.accessToken
@@ -95,6 +106,8 @@ class UserPreferencesDataSource(context: Context) {
     val USER_AVATAR = stringPreferencesKey("user_avatar")
     val USER_ORGANIZATION = stringPreferencesKey("user_org")
     val USER_ROLES = stringPreferencesKey("user_roles")
+    val DARK_THEME = androidx.datastore.preferences.core.booleanPreferencesKey("dark_theme")
+    val OLED_DARK = androidx.datastore.preferences.core.booleanPreferencesKey("oled_dark")
   }
 }
 
