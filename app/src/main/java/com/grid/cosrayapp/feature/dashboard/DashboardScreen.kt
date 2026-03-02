@@ -16,8 +16,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.Card
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -65,7 +66,12 @@ private val TIME_FORMATTER: DateTimeFormatter =
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(state: DashboardUiState, onMessageShown: () -> Unit, onOpenDrawer: () -> Unit) {
+fun DashboardScreen(
+  state: DashboardUiState,
+  onMessageShown: () -> Unit,
+  onOpenDrawer: () -> Unit,
+  onUploadClicked: () -> Unit,
+) {
   val snackbarHostState = remember { SnackbarHostState() }
   var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -95,7 +101,10 @@ fun DashboardScreen(state: DashboardUiState, onMessageShown: () -> Unit, onOpenD
       verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
       // Header Section
-      HeaderSection(state)
+      HeaderSection(
+        state = state,
+        onUploadClicked = onUploadClicked,
+      )
 
       // Device Status Cards Row
       Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -145,8 +154,16 @@ fun DashboardScreen(state: DashboardUiState, onMessageShown: () -> Unit, onOpenD
 }
 
 @Composable
-private fun HeaderSection(state: DashboardUiState) {
-  Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+private fun HeaderSection(state: DashboardUiState, onUploadClicked: () -> Unit) {
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.SpaceBetween,
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Column(
+      modifier = Modifier.weight(1f),
+      verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
     Text(
       text = state.user?.displayName ?: stringResource(R.string.dashboard_title_default),
       style = MaterialTheme.typography.headlineSmall,
@@ -161,6 +178,29 @@ private fun HeaderSection(state: DashboardUiState) {
       style = MaterialTheme.typography.bodyMedium,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
+  }
+  
+  // Upload Button
+  androidx.compose.material3.Button(
+    onClick = onUploadClicked,
+    enabled = !state.isUploading,
+    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+  ) {
+    if (state.isUploading) {
+      androidx.compose.material3.CircularProgressIndicator(
+        modifier = Modifier.size(16.dp).padding(end = 8.dp),
+        color = MaterialTheme.colorScheme.onPrimary,
+        strokeWidth = 2.dp,
+      )
+    } else {
+      Icon(
+        imageVector = androidx.compose.material.icons.Icons.Default.CloudUpload,
+        contentDescription = null,
+        modifier = Modifier.size(16.dp).padding(end = 8.dp),
+      )
+    }
+    Text(stringResource(R.string.dashboard_upload_button))
+  }
   }
 }
 

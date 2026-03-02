@@ -63,6 +63,7 @@
     <string name="dashboard_live_data">实时数据</string>
     <string name="dashboard_uploading">上传中…</string>
     <string name="dashboard_upload">同步后台</string>
+    <string name="dashboard_upload_button">上传至云端</string>
     <string name="dashboard_no_data">等待来自探测器的数据…</string>
     <string name="dashboard_particle_count">粒子计数</string>
     <string name="dashboard_dose_rate">剂量率</string>

@@ -212,6 +212,7 @@ private fun NavGraphBuilder.dashboardDestination(onOpenDrawer: () -> Unit) {
       state = state,
       onMessageShown = viewModel::clearStatusMessage,
       onOpenDrawer = onOpenDrawer,
+      onUploadClicked = viewModel::uploadBufferedTelemetry,
     )
   }
 }
