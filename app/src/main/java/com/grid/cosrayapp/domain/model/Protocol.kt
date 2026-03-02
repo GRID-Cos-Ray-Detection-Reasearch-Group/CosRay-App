@@ -103,8 +103,10 @@ object Protocol {
        * @return 解析后的 MuonDataPkg 对象（解析失败抛出异常）
        */
       fun fromRawData(rawData: ByteArray): MuonDataPkg {
-        require(rawData.size == TOTAL_SIZE) { "μ子数据包长度错误：预期512字节，实际${rawData.size}字节" }
         val buffer = ByteBuffer.wrap(rawData).order(ByteOrder.LITTLE_ENDIAN)
+
+        // Extract exact payload size for 512 bytes struct
+        val itemCount = 35
 
         val head = ByteArray(3).also { buffer.get(it) }
         require(head.contentEquals(HEAD_EXPECTED)) {
@@ -114,24 +116,37 @@ object Protocol {
         val pkgCnt = buffer.int
         val utc = buffer.int
 
+
+
         val muonDataList = mutableListOf<MuonData>()
-        repeat(35) { muonDataList.add(MuonData.fromByteBuffer(buffer)) }
+        repeat(itemCount) { muonDataList.add(MuonData.fromByteBuffer(buffer)) }
 
         val tail = ByteArray(3).also { buffer.get(it) }
         require(tail.contentEquals(TAIL_EXPECTED)) {
           "μ子数据包尾部标识错误：预期${TAIL_EXPECTED.contentToString()}，实际${tail.contentToString()}"
         }
 
-        val reserved = ByteArray(6).also { buffer.get(it) }
+        val reserved = ByteArray(6).also { 
+           if (buffer.remaining() >= 6) {
+               buffer.get(it) 
+           } else if (buffer.remaining() > 0) {
+              // Copy what's available
+              buffer.get(it, 0, buffer.remaining())
+           }
+        }
+        
         val crc = buffer.short
+        
+        // Calculate CRC
+        // The firmware computes CRC starting from index 0 for length = TOTAL_SIZE - 2
         val calculatedCrc =
           calculateCrc16Ccitt(
             data = rawData,
-            startIndex = 3,
-            length = TOTAL_SIZE - 3 - 2,
-          ) // Skip 3 byte header, 2 byte CRC
+            startIndex = 0,
+            length = TOTAL_SIZE - 2,
+          )
         require((crc.toInt() and 0xFFFF) == calculatedCrc) {
-          "μ子数据包CRC校验失败：预期${crc.toInt() and 0xFFFF}，实际$calculatedCrc (旧算法偏移量为3起算)"
+          "μ子数据包CRC校验失败：预期${crc.toInt() and 0xFFFF}，实际$calculatedCrc"
         }
 
         return MuonDataPkg(head, pkgCnt, utc, muonDataList, tail, crc, reserved)
@@ -224,9 +239,10 @@ object Protocol {
       private val TAIL_EXPECTED = byteArrayOf(0x78.toByte(), 0x9A.toByte(), 0xBC.toByte()) // 预期尾部标识
 
       fun fromRawData(rawData: ByteArray): TimeLinePkg {
-        require(rawData.size == TOTAL_SIZE) { "时间线数据包长度错误：预期512字节，实际${rawData.size}字节" }
-
         val buffer = ByteBuffer.wrap(rawData).order(ByteOrder.LITTLE_ENDIAN)
+
+        // Exact number of items based on fixed 512 byte struct
+        val itemCount = 10
 
         val head = ByteArray(3).also { buffer.get(it) }
         require(head.contentEquals(HEAD_EXPECTED)) {
@@ -235,24 +251,37 @@ object Protocol {
 
         val pkgCnt = buffer.int
 
+
+
         val timeLineDataList = mutableListOf<TimeLineData>()
-        repeat(10) { timeLineDataList.add(TimeLineData.fromByteBuffer(buffer)) }
+        repeat(itemCount) { timeLineDataList.add(TimeLineData.fromByteBuffer(buffer)) }
 
         val tail = ByteArray(3).also { buffer.get(it) }
         require(tail.contentEquals(TAIL_EXPECTED)) {
           "时间线数据包尾部标识错误：预期${TAIL_EXPECTED.contentToString()}，实际${tail.contentToString()}"
         }
 
-        val reserve = ByteArray(20).also { buffer.get(it) }
+        val reserve = ByteArray(20).also { 
+           if (buffer.remaining() >= 20) {
+               buffer.get(it) 
+           } else if (buffer.remaining() > 0) {
+              // Copy what's available
+              buffer.get(it, 0, buffer.remaining())
+           }
+        }
+        
         val crc = buffer.short
+        
+        // Calculate CRC
+        // The firmware computes CRC starting from index 0 for length = TOTAL_SIZE - 2
         val calculatedCrc =
           calculateCrc16Ccitt(
             data = rawData,
-            startIndex = 3,
-            length = TOTAL_SIZE - 3 - 2,
-          ) // Skip 3 byte header, 2 byte CRC
+            startIndex = 0,
+            length = TOTAL_SIZE - 2,
+          )
         require((crc.toInt() and 0xFFFF) == calculatedCrc) {
-          "时间线数据包CRC校验失败：预期${crc.toInt() and 0xFFFF}，实际$calculatedCrc (旧算法偏移量为3起算)"
+          "时间线数据包CRC校验失败：预期${crc.toInt() and 0xFFFF}，实际$calculatedCrc"
         }
 
         return TimeLinePkg(head, pkgCnt, timeLineDataList, tail, crc, reserve)
@@ -286,5 +315,16 @@ object Protocol {
     override fun toString(): String =
       "TimeLinePkg(pkgCnt=$pkgCnt, eventCount=${timeLineDataList.size}, " +
         "head=${head.contentToString()}, tail=${tail.contentToString()})"
+  }
+
+  // Extension method to find tail byte sequences
+  private fun ByteArray.indexOfTail(target: ByteArray): Int {
+    if (this.size < target.size) return -1
+    for (i in 0..this.size - target.size) {
+      if (this[i] == target[0] && this[i + 1] == target[1] && this[i + 2] == target[2]) {
+        return i
+      }
+    }
+    return -1
   }
 }

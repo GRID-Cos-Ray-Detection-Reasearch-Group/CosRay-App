@@ -46,7 +46,8 @@ class FirmwarePacketAssemblerTest {
   }
 
   private fun buildMuonPacketBytes(pkgCnt: Int, utc: Int): ByteArray {
-    val data = ByteBuffer.allocate(512).order(ByteOrder.LITTLE_ENDIAN)
+    val totalSize = 3 + 4 + 4 + (35 * 14) + 3 + 6 + 2 // 512
+    val data = ByteBuffer.allocate(totalSize).order(ByteOrder.LITTLE_ENDIAN)
     data.put(byteArrayOf(0xAA.toByte(), 0xBB.toByte(), 0xCC.toByte()))
     data.putInt(pkgCnt)
     data.putInt(utc)
@@ -59,15 +60,16 @@ class FirmwarePacketAssemblerTest {
     data.put(ByteArray(6))
 
     val raw = data.array()
-    val crc = calculateCrc16Ccitt(raw, startIndex = 3, length = 507)
+    val crc = calculateCrc16Ccitt(raw, startIndex = 0, length = totalSize - 2)
     val footerBuffer = ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN)
-    footerBuffer.position(510)
+    footerBuffer.position(totalSize - 2)
     footerBuffer.putShort(crc.toShort())
     return raw
   }
 
   private fun buildTimelinePacketBytes(pkgCnt: Int): ByteArray {
-    val data = ByteBuffer.allocate(512).order(ByteOrder.LITTLE_ENDIAN)
+    val totalSize = 3 + 4 + (10 * 48) + 3 + 20 + 2 // 512
+    val data = ByteBuffer.allocate(totalSize).order(ByteOrder.LITTLE_ENDIAN)
     data.put(byteArrayOf(0x12, 0x34, 0x56))
     data.putInt(pkgCnt)
     repeat(10) { index ->
@@ -91,9 +93,9 @@ class FirmwarePacketAssemblerTest {
     data.put(ByteArray(20))
 
     val raw = data.array()
-    val crc = calculateCrc16Ccitt(raw, startIndex = 3, length = 507)
+    val crc = calculateCrc16Ccitt(raw, startIndex = 0, length = totalSize - 2)
     val footerBuffer = ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN)
-    footerBuffer.position(510)
+    footerBuffer.position(totalSize - 2)
     footerBuffer.putShort(crc.toShort())
     return raw
   }

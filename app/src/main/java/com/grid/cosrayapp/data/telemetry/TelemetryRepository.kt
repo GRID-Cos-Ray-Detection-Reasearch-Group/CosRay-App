@@ -129,17 +129,27 @@ internal class FirmwarePacketAssembler {
         byteBuffer.skip(startIndex.toLong())
       }
 
-      if (byteBuffer.size < PACKET_SIZE.toLong()) {
+      if (byteBuffer.size < HEADER_SIZE.toLong()) {
+        break
+      }
+
+      val packetSize = determinePacketSize()
+      if (packetSize < 0) {
+        // Did not find tail or buffer too small, wait for more data
+        // Prevent buffer bloat if tail is lost forever
+        if (byteBuffer.size > MAX_BUFFER_WAIT_SIZE) {
+            shrinkTailForResync()
+        }
         break
       }
 
       val packetPreview = Buffer()
-      byteBuffer.copyTo(packetPreview, 0, PACKET_SIZE.toLong())
+      byteBuffer.copyTo(packetPreview, 0, packetSize.toLong())
       val packetBytes = packetPreview.readByteArray()
       val request = parsePacket(macAddress, packetBytes)
       if (request != null) {
         requests.add(request)
-        byteBuffer.skip(PACKET_SIZE.toLong())
+        byteBuffer.skip(packetSize.toLong())
       } else {
         byteBuffer.skip(1)
       }
@@ -182,6 +192,25 @@ internal class FirmwarePacketAssembler {
     }
   }
 
+  private fun determinePacketSize(): Int {
+     // Check what header is at index 0
+     val currentHeader = Buffer()
+     byteBuffer.copyTo(currentHeader, 0, HEADER_SIZE.toLong())
+     val headByteArray = currentHeader.readByteArray()
+
+     return when {
+         hasHeader(headByteArray, MUON_HEAD) -> {
+             if (byteBuffer.size < Protocol.MuonDataPkg.TOTAL_SIZE) -1 else Protocol.MuonDataPkg.TOTAL_SIZE
+         }
+         hasHeader(headByteArray, TIMELINE_HEAD) -> {
+             if (byteBuffer.size < Protocol.TimeLinePkg.TOTAL_SIZE) -1 else Protocol.TimeLinePkg.TOTAL_SIZE
+         }
+         else -> -1
+     }
+  }
+
+
+
   private fun shrinkTailForResync() {
     if (byteBuffer.size <= (HEADER_SIZE - 1).toLong()) return
     val keep = (HEADER_SIZE - 1).toLong()
@@ -193,10 +222,15 @@ internal class FirmwarePacketAssembler {
   }
 
   companion object {
-    private const val PACKET_SIZE = 512
     private const val HEADER_SIZE = 3
+    private const val MUON_RESERVED_SIZE = 6
+    private const val TIMELINE_RESERVED_SIZE = 20
+    private const val MAX_BUFFER_WAIT_SIZE = 2048
     private val MUON_HEAD: ByteString =
       byteArrayOf(0xAA.toByte(), 0xBB.toByte(), 0xCC.toByte()).toByteString()
     private val TIMELINE_HEAD: ByteString = byteArrayOf(0x12, 0x34, 0x56).toByteString()
+    private val MUON_TAIL: ByteString =
+      byteArrayOf(0xDD.toByte(), 0xEE.toByte(), 0xFF.toByte()).toByteString()
+    private val TIMELINE_TAIL: ByteString = byteArrayOf(0x78, 0x9A.toByte(), 0xBC.toByte()).toByteString()
   }
 }
