@@ -52,10 +52,15 @@ import com.grid.cosrayapp.domain.model.AccelerationSnapshot
 import com.grid.cosrayapp.domain.model.LocationSnapshot
 import com.grid.cosrayapp.domain.model.SipmMonitoring
 import com.grid.cosrayapp.domain.model.TelemetrySample
+import com.grid.cosrayapp.core.ble.RawPacket
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
+
+// Reusable DateTimeFormatter for raw packet display
+private val RAW_PACKET_TIME_FORMATTER: DateTimeFormatter =
+  DateTimeFormatter.ofPattern("HH:mm:ss.SSS").withZone(ZoneId.systemDefault())
 
 // Energy level thresholds for muon event classification (ADC counts)
 private const val HIGH_ENERGY_THRESHOLD = 40000
@@ -120,7 +125,7 @@ fun DashboardScreen(
       // Packet Statistics
       PacketStatsCard(stats = state.packetStats)
 
-      // Tab Selector for Muon / Timeline Events
+      // Tab Selector for Muon / Timeline Events / Raw Packets
       SecondaryTabRow(selectedTabIndex = selectedTab) {
         Tab(
           selected = selectedTab == 0,
@@ -134,6 +139,13 @@ fun DashboardScreen(
             Text(stringResource(R.string.dashboard_timeline_events_tab, state.timelineEvents.size))
           },
         )
+        Tab(
+          selected = selectedTab == 2,
+          onClick = { selectedTab = 2 },
+          text = {
+            Text(stringResource(R.string.dashboard_raw_packets_tab, state.rawPackets.size))
+          },
+        )
       }
 
       // Event List based on selected tab
@@ -145,6 +157,7 @@ fun DashboardScreen(
         when (selectedTab) {
           0 -> MuonEventsList(events = state.muonEvents)
           1 -> TimelineEventsList(events = state.timelineEvents)
+          2 -> RawPacketsList(packets = state.rawPackets)
         }
       }
     }
@@ -569,6 +582,62 @@ private fun MetricItem(label: String, value: String) {
 }
 
 private fun formatInstant(instant: Instant): String = TIME_FORMATTER.format(instant)
+
+@Composable
+private fun RawPacketsList(packets: List<RawPacket>) {
+  if (packets.isEmpty()) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+      Text(
+        text = stringResource(R.string.dashboard_no_raw_packets),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
+  } else {
+    LazyColumn(
+      modifier = Modifier.padding(12.dp),
+      verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      items(packets) { packet -> RawPacketCard(packet) }
+    }
+  }
+}
+
+@Composable
+private fun RawPacketCard(packet: RawPacket) {
+  androidx.compose.material3.Card(
+    modifier = Modifier.fillMaxWidth(),
+    shape = RoundedCornerShape(12.dp),
+    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+  ) {
+    Column(
+      modifier = Modifier.fillMaxWidth().padding(12.dp),
+      verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+      Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        val instant = Instant.ofEpochMilli(packet.timestamp)
+        Text(
+          text = stringResource(R.string.dashboard_raw_packet_time, RAW_PACKET_TIME_FORMATTER.format(instant)),
+          style = MaterialTheme.typography.labelMedium,
+          fontWeight = FontWeight.Medium,
+          color = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+          text = "${packet.data.size} bytes",
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+      
+      val hexString = packet.data.joinToString(" ") { String.format("%02X", it) }
+      Text(
+        text = hexString,
+        style = MaterialTheme.typography.bodySmall.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
+  }
+}
 
 private enum class EnergyLevel {
   LOW,

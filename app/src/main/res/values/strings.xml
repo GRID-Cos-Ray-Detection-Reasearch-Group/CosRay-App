@@ -99,6 +99,10 @@
     <string name="dashboard_sipm_current">漏电流</string>
     <string name="dashboard_sipm_current_value">%1$d µA</string>
     <string name="dashboard_packet_statistics">数据包统计</string>
+    <string name="dashboard_raw_packets_tab">原始数据 (%1$d)</string>
+    <string name="dashboard_raw_packet_item">原始数据 #%1$d</string>
+    <string name="dashboard_raw_packet_time">时间: %1$s</string>
+    <string name="dashboard_no_raw_packets">暂无原始数据包记录</string>
     <string name="dashboard_muon_packets">μ子包</string>
     <string name="dashboard_timeline_packets">时间线包</string>
     <string name="dashboard_total_events">总事件数</string>

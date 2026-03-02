@@ -23,6 +23,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.map
+import com.grid.cosrayapp.core.ble.RawPacket
 import kotlinx.coroutines.launch
 
 @HiltViewModel
@@ -31,6 +33,7 @@ class DashboardViewModel
 constructor(
   private val telemetryRepository: TelemetryRepository,
   private val authRepository: AuthRepository,
+  private val bleRepository: com.grid.cosrayapp.data.ble.BleRepository,
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(DashboardUiState())
   val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
@@ -59,6 +62,7 @@ constructor(
             samples = allSamples,
             muonEvents = muonSamples.take(MAX_MUON_EVENTS),
             timelineEvents = timelineSamples.take(MAX_TIMELINE_EVENTS),
+            rawPackets = emptyList(), // We will update this via a separate flow
             deviceLocation = latestTimeline?.location,
             deviceOrientation = latestTimeline?.acceleration,
             sipmStatus = latestTimeline?.sipmMonitoring,
@@ -67,7 +71,16 @@ constructor(
             uploadMessage = _uiState.value.uploadMessage,
           )
         }
-        .collect { state -> _uiState.value = state }
+        .collect { state -> _uiState.value = state.copy(rawPackets = _uiState.value.rawPackets) }
+    }
+    
+    viewModelScope.launch {
+      bleRepository.rawPackets.collect { rawPacket ->
+        _uiState.update { state ->
+          val newRawPackets = (listOf(rawPacket) + state.rawPackets).take(MAX_RAW_PACKETS)
+          state.copy(rawPackets = newRawPackets)
+        }
+      }
     }
   }
 
@@ -136,6 +149,7 @@ constructor(
     private const val MAX_SAMPLES = 30
     private const val MAX_MUON_EVENTS = 50
     private const val MAX_TIMELINE_EVENTS = 20
+    private const val MAX_RAW_PACKETS = 50
   }
 }
 
@@ -145,6 +159,7 @@ data class DashboardUiState(
   val samples: List<TelemetrySample> = emptyList(),
   val muonEvents: List<TelemetrySample> = emptyList(),
   val timelineEvents: List<TelemetrySample> = emptyList(),
+  val rawPackets: List<RawPacket> = emptyList(),
   val deviceLocation: LocationSnapshot? = null,
   val deviceOrientation: AccelerationSnapshot? = null,
   val sipmStatus: SipmMonitoring? = null,
