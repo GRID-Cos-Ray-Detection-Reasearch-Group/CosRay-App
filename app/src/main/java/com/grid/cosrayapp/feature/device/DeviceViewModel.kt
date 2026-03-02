@@ -43,7 +43,7 @@ constructor(
                 rssi = device.signal.rssi,
                 signalQuality = device.signal.quality,
               )
-            }
+            }.sortedByDescending { it.rssi }
           DeviceUiState(
             devices = items,
             isScanning = isScanning,
