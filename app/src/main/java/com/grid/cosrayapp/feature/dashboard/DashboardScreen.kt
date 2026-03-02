@@ -101,10 +101,7 @@ fun DashboardScreen(
       verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
       // Header Section
-      HeaderSection(
-        state = state,
-        onUploadClicked = onUploadClicked,
-      )
+      HeaderSection(state = state, onUploadClicked = onUploadClicked)
 
       // Device Status Cards Row
       Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -160,47 +157,45 @@ private fun HeaderSection(state: DashboardUiState, onUploadClicked: () -> Unit) 
     horizontalArrangement = Arrangement.SpaceBetween,
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    Column(
-      modifier = Modifier.weight(1f),
-      verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-    Text(
-      text = state.user?.displayName ?: stringResource(R.string.dashboard_title_default),
-      style = MaterialTheme.typography.headlineSmall,
-      fontWeight = FontWeight.Bold,
-    )
-    Text(
-      text =
-        state.device?.let {
-          val name = it.name ?: it.macAddress
-          stringResource(R.string.dashboard_device_connected, name)
-        } ?: stringResource(R.string.dashboard_device_disconnected),
-      style = MaterialTheme.typography.bodyMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-  }
-  
-  // Upload Button
-  androidx.compose.material3.Button(
-    onClick = onUploadClicked,
-    enabled = !state.isUploading,
-    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-  ) {
-    if (state.isUploading) {
-      androidx.compose.material3.CircularProgressIndicator(
-        modifier = Modifier.size(16.dp).padding(end = 8.dp),
-        color = MaterialTheme.colorScheme.onPrimary,
-        strokeWidth = 2.dp,
+    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+      Text(
+        text = state.user?.displayName ?: stringResource(R.string.dashboard_title_default),
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.Bold,
       )
-    } else {
-      Icon(
-        imageVector = androidx.compose.material.icons.Icons.Default.CloudUpload,
-        contentDescription = null,
-        modifier = Modifier.size(16.dp).padding(end = 8.dp),
+      Text(
+        text =
+          state.device?.let {
+            val name = it.name ?: it.macAddress
+            stringResource(R.string.dashboard_device_connected, name)
+          } ?: stringResource(R.string.dashboard_device_disconnected),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
     }
-    Text(stringResource(R.string.dashboard_upload_button))
-  }
+
+    // Upload Button
+    androidx.compose.material3.Button(
+      onClick = onUploadClicked,
+      enabled = !state.isUploading,
+      contentPadding =
+        androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+      if (state.isUploading) {
+        androidx.compose.material3.CircularProgressIndicator(
+          modifier = Modifier.size(16.dp).padding(end = 8.dp),
+          color = MaterialTheme.colorScheme.onPrimary,
+          strokeWidth = 2.dp,
+        )
+      } else {
+        Icon(
+          imageVector = androidx.compose.material.icons.Icons.Default.CloudUpload,
+          contentDescription = null,
+          modifier = Modifier.size(16.dp).padding(end = 8.dp),
+        )
+      }
+      Text(stringResource(R.string.dashboard_upload_button))
+    }
   }
 }
 
