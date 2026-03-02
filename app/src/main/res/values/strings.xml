@@ -23,6 +23,7 @@
     <string name="settings_dark_theme">深色模式</string>
     <string name="settings_notifications">通知提醒</string>
     <string name="settings_version">应用版本</string>
+    <string name="settings_oled_dark_mode">OLED深色模式</string>
 
     <!-- Device -->
     <string name="device_scan_stop">停止扫描</string>

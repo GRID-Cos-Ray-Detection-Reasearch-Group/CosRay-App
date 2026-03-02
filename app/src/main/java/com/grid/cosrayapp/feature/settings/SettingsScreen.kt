@@ -152,7 +152,7 @@ fun SettingsScreen(
         if (state.isDarkThemeOn) {
           SettingsToggleRow(
             icon = Icons.Default.DarkMode,
-            label = "OLED深色模式", // TODO: Move to string resources
+            label = stringResource(R.string.settings_oled_dark_mode),
             checked = state.isOledDarkOn,
             onCheckedChange = onToggleOledDark,
           )
