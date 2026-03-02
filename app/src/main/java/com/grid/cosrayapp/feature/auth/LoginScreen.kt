@@ -97,7 +97,7 @@ fun LoginScreen(
               containerColor = MaterialTheme.colorScheme.primary,
               contentColor = MaterialTheme.colorScheme.onPrimary,
             ),
-          shape = RoundedCornerShape(12.dp)
+          shape = RoundedCornerShape(12.dp),
         ) {
           if (state.isLoading) {
             Text(

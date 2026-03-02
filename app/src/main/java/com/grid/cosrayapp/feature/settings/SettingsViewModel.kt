@@ -6,31 +6,31 @@ import com.grid.cosrayapp.data.auth.AuthRepository
 import com.grid.cosrayapp.data.auth.AuthState
 import com.grid.cosrayapp.domain.model.User
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @HiltViewModel
-class SettingsViewModel @Inject constructor(
-  private val authRepository: AuthRepository,
-) : ViewModel() {
-  
-  val uiState: StateFlow<SettingsUiState> = authRepository.authState
-    .map { authState ->
-      SettingsUiState(
-        user = (authState as? AuthState.Authenticated)?.user,
-        isAuthenticated = authState is AuthState.Authenticated,
+class SettingsViewModel @Inject constructor(private val authRepository: AuthRepository) :
+  ViewModel() {
+
+  val uiState: StateFlow<SettingsUiState> =
+    authRepository.authState
+      .map { authState ->
+        SettingsUiState(
+          user = (authState as? AuthState.Authenticated)?.user,
+          isAuthenticated = authState is AuthState.Authenticated,
+        )
+      }
+      .stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = SettingsUiState(),
       )
-    }
-    .stateIn(
-      scope = viewModelScope,
-      started = SharingStarted.WhileSubscribed(5_000),
-      initialValue = SettingsUiState()
-    )
-    
+
   fun logout() {
     viewModelScope.launch {
       // NOTE: Assume logout isn't fully implemented in local repo, so we just sign out

@@ -46,11 +46,7 @@ import com.grid.cosrayapp.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(
-  state: SettingsUiState,
-  onLogout: () -> Unit,
-  onOpenDrawer: () -> Unit,
-) {
+fun SettingsScreen(state: SettingsUiState, onLogout: () -> Unit, onOpenDrawer: () -> Unit) {
   val context = LocalContext.current
   val versionInfo = remember {
     try {
@@ -74,10 +70,8 @@ fun SettingsScreen(
     }
   ) { innerPadding ->
     Column(
-      modifier = Modifier
-        .fillMaxSize()
-        .padding(innerPadding)
-        .padding(horizontal = 24.dp, vertical = 16.dp),
+      modifier =
+        Modifier.fillMaxSize().padding(innerPadding).padding(horizontal = 24.dp, vertical = 16.dp),
       verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
 
@@ -86,32 +80,33 @@ fun SettingsScreen(
         if (state.isAuthenticated) {
           Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
           ) {
             Box(
-              modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-              contentAlignment = Alignment.Center
+              modifier =
+                Modifier.size(48.dp)
+                  .clip(CircleShape)
+                  .background(MaterialTheme.colorScheme.primaryContainer),
+              contentAlignment = Alignment.Center,
             ) {
               Icon(
                 imageVector = Icons.Default.Person,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
               )
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
               Text(
-                text = state.user?.displayName ?: stringResource(R.string.settings_user_name_default),
+                text =
+                  state.user?.displayName ?: stringResource(R.string.settings_user_name_default),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
               )
               Text(
                 text = state.user?.username ?: stringResource(R.string.settings_user_login_unknown),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
               )
             }
           }
@@ -119,11 +114,12 @@ fun SettingsScreen(
           Button(
             onClick = onLogout,
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            colors = ButtonDefaults.buttonColors(
-              containerColor = MaterialTheme.colorScheme.errorContainer,
-              contentColor = MaterialTheme.colorScheme.onErrorContainer
-            ),
-            shape = RoundedCornerShape(12.dp)
+            colors =
+              ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+              ),
+            shape = RoundedCornerShape(12.dp),
           ) {
             Text(stringResource(R.string.device_logout_action))
           }
@@ -132,7 +128,7 @@ fun SettingsScreen(
             text = stringResource(R.string.settings_not_logged_in),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(vertical = 12.dp)
+            modifier = Modifier.padding(vertical = 12.dp),
           )
         }
       }
@@ -143,13 +139,13 @@ fun SettingsScreen(
           icon = Icons.Default.Palette,
           label = stringResource(R.string.settings_dark_theme),
           checked = state.isDarkThemeOn,
-          onCheckedChange = { /* Placeholder for future theme selection */ }
+          onCheckedChange = { /* Placeholder for future theme selection */ },
         )
         SettingsToggleRow(
           icon = Icons.Default.Notifications,
           label = stringResource(R.string.settings_notifications),
           checked = state.areNotificationsEnabled,
-          onCheckedChange = { /* Placeholder */ }
+          onCheckedChange = { /* Placeholder */ },
         )
       }
 
@@ -158,25 +154,25 @@ fun SettingsScreen(
         Row(
           modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
           horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically
+          verticalAlignment = Alignment.CenterVertically,
         ) {
           Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
               imageVector = Icons.Default.Info,
               contentDescription = null,
               modifier = Modifier.size(24.dp),
-              tint = MaterialTheme.colorScheme.onSurfaceVariant
+              tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.width(16.dp))
             Text(
               text = stringResource(R.string.settings_version),
-              style = MaterialTheme.typography.bodyLarge
+              style = MaterialTheme.typography.bodyLarge,
             )
           }
           Text(
             text = "v$versionInfo",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
         }
       }
@@ -185,26 +181,17 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsSection(
-  title: String,
-  content: @Composable () -> Unit
-) {
+private fun SettingsSection(title: String, content: @Composable () -> Unit) {
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Text(
       text = title,
       style = MaterialTheme.typography.labelLarge,
       color = MaterialTheme.colorScheme.primary,
       fontWeight = FontWeight.Bold,
-      modifier = Modifier.padding(bottom = 4.dp)
+      modifier = Modifier.padding(bottom = 4.dp),
     )
-    Surface(
-      shape = RoundedCornerShape(16.dp),
-      color = MaterialTheme.colorScheme.surfaceVariant,
-    ) {
-      Column(
-        modifier = Modifier.padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-      ) {
+    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+      Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         content()
       }
     }
@@ -216,29 +203,23 @@ private fun SettingsToggleRow(
   icon: ImageVector,
   label: String,
   checked: Boolean,
-  onCheckedChange: (Boolean) -> Unit
+  onCheckedChange: (Boolean) -> Unit,
 ) {
   Row(
     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
     horizontalArrangement = Arrangement.SpaceBetween,
-    verticalAlignment = Alignment.CenterVertically
+    verticalAlignment = Alignment.CenterVertically,
   ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
       Icon(
         imageVector = icon,
         contentDescription = null,
         modifier = Modifier.size(24.dp),
-        tint = MaterialTheme.colorScheme.onSurfaceVariant
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
       )
       Spacer(modifier = Modifier.width(16.dp))
-      Text(
-        text = label,
-        style = MaterialTheme.typography.bodyLarge
-      )
+      Text(text = label, style = MaterialTheme.typography.bodyLarge)
     }
-    Switch(
-      checked = checked,
-      onCheckedChange = onCheckedChange
-    )
+    Switch(checked = checked, onCheckedChange = onCheckedChange)
   }
 }

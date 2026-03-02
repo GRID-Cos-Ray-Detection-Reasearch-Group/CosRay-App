@@ -66,7 +66,12 @@ fun CosRayNavHost(appState: CosRayAppState) {
           style = MaterialTheme.typography.headlineMedium,
         )
         NavigationDrawerItem(
-          label = { Text(stringResource(R.string.device_scan_title), style = MaterialTheme.typography.titleMedium) },
+          label = {
+            Text(
+              stringResource(R.string.device_scan_title),
+              style = MaterialTheme.typography.titleMedium,
+            )
+          },
           selected = currentDestination == CosRayDestination.Device.route,
           onClick = {
             scope.launch { drawerState.close() }
@@ -75,7 +80,12 @@ fun CosRayNavHost(appState: CosRayAppState) {
           modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
         )
         NavigationDrawerItem(
-          label = { Text(stringResource(R.string.device_dashboard_action), style = MaterialTheme.typography.titleMedium) },
+          label = {
+            Text(
+              stringResource(R.string.device_dashboard_action),
+              style = MaterialTheme.typography.titleMedium,
+            )
+          },
           selected = currentDestination == CosRayDestination.Dashboard.route,
           onClick = {
             scope.launch { drawerState.close() }
@@ -83,9 +93,14 @@ fun CosRayNavHost(appState: CosRayAppState) {
           },
           modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
         )
-        
+
         NavigationDrawerItem(
-          label = { Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleMedium) },
+          label = {
+            Text(
+              stringResource(R.string.settings_title),
+              style = MaterialTheme.typography.titleMedium,
+            )
+          },
           selected = currentDestination == CosRayDestination.Settings.route,
           onClick = {
             scope.launch { drawerState.close() }
@@ -97,7 +112,12 @@ fun CosRayNavHost(appState: CosRayAppState) {
         // API Test menu (Debug only)
         if (BuildConfig.DEBUG) {
           NavigationDrawerItem(
-            label = { Text(stringResource(R.string.api_test_title), style = MaterialTheme.typography.titleMedium) },
+            label = {
+              Text(
+                stringResource(R.string.api_test_title),
+                style = MaterialTheme.typography.titleMedium,
+              )
+            },
             selected = currentDestination == CosRayDestination.ApiTest.route,
             onClick = {
               scope.launch { drawerState.close() }
@@ -111,7 +131,12 @@ fun CosRayNavHost(appState: CosRayAppState) {
 
         if (isAuthenticated) {
           NavigationDrawerItem(
-            label = { Text(stringResource(R.string.device_logout_action), style = MaterialTheme.typography.titleMedium) },
+            label = {
+              Text(
+                stringResource(R.string.device_logout_action),
+                style = MaterialTheme.typography.titleMedium,
+              )
+            },
             selected = false,
             onClick = {
               scope.launch { drawerState.close() }
@@ -123,7 +148,12 @@ fun CosRayNavHost(appState: CosRayAppState) {
           )
         } else {
           NavigationDrawerItem(
-            label = { Text(stringResource(R.string.device_login_action), style = MaterialTheme.typography.titleMedium) },
+            label = {
+              Text(
+                stringResource(R.string.device_login_action),
+                style = MaterialTheme.typography.titleMedium,
+              )
+            },
             selected = false,
             onClick = {
               scope.launch { drawerState.close() }
@@ -259,7 +289,10 @@ private fun NavGraphBuilder.apiTestDestination(onOpenDrawer: () -> Unit) {
   }
 }
 
-private fun NavGraphBuilder.settingsDestination(appState: CosRayAppState, onOpenDrawer: () -> Unit) {
+private fun NavGraphBuilder.settingsDestination(
+  appState: CosRayAppState,
+  onOpenDrawer: () -> Unit,
+) {
   composable(CosRayDestination.Settings.route) {
     val viewModel: SettingsViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
