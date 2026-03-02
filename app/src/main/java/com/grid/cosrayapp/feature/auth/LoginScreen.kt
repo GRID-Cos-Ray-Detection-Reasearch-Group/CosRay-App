@@ -58,9 +58,9 @@ fun LoginScreen(
 
     Surface(
       modifier = Modifier.fillMaxWidth(),
-      shape = RoundedCornerShape(20.dp),
-      tonalElevation = 8.dp,
-      shadowElevation = 8.dp,
+      shape = RoundedCornerShape(16.dp),
+      tonalElevation = 2.dp,
+      shadowElevation = 4.dp,
       color = MaterialTheme.colorScheme.surface,
     ) {
       Column(
@@ -97,6 +97,7 @@ fun LoginScreen(
               containerColor = MaterialTheme.colorScheme.primary,
               contentColor = MaterialTheme.colorScheme.onPrimary,
             ),
+          shape = RoundedCornerShape(12.dp)
         ) {
           if (state.isLoading) {
             Text(

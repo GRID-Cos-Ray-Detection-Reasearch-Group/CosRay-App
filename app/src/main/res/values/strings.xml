@@ -12,6 +12,17 @@
     <string name="auth_error_weak_password">密码至少8位，包含数字和大写字母</string>
     <string name="error_unknown">发生未知错误</string>
     <string name="auth_loading">正在提交…</string>
+    <!-- Settings -->
+    <string name="settings_title">设置</string>
+    <string name="settings_section_account">账户</string>
+    <string name="settings_section_preferences">偏好设置</string>
+    <string name="settings_section_about">关于</string>
+    <string name="settings_user_name_default">访客用户</string>
+    <string name="settings_user_login_unknown">未登录</string>
+    <string name="settings_not_logged_in">您当前处于离线模式。登录后可自动同步设备采集的遥测数据到云端。</string>
+    <string name="settings_dark_theme">深色模式</string>
+    <string name="settings_notifications">通知提醒</string>
+    <string name="settings_version">应用版本</string>
 
     <!-- Device -->
     <string name="device_scan_stop">停止扫描</string>

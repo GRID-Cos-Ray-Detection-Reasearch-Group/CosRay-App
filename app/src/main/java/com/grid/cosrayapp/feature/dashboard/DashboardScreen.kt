@@ -138,7 +138,7 @@ fun DashboardScreen(
       // Event List based on selected tab
       Surface(
         modifier = Modifier.weight(1f).fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         tonalElevation = 2.dp,
       ) {
         when (selectedTab) {
@@ -203,7 +203,7 @@ private fun HeaderSection(state: DashboardUiState, onUploadClicked: () -> Unit) 
 private fun LocationCard(location: LocationSnapshot, modifier: Modifier = Modifier) {
   Card(
     modifier = modifier,
-    shape = RoundedCornerShape(12.dp),
+    shape = RoundedCornerShape(16.dp),
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
   ) {
     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -230,7 +230,7 @@ private fun LocationCard(location: LocationSnapshot, modifier: Modifier = Modifi
 private fun OrientationCard(acceleration: AccelerationSnapshot, modifier: Modifier = Modifier) {
   Card(
     modifier = modifier,
-    shape = RoundedCornerShape(12.dp),
+    shape = RoundedCornerShape(16.dp),
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
   ) {
     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -284,7 +284,7 @@ private fun AxisIndicator(label: String, value: Int) {
 private fun SipmMonitoringCard(sipm: SipmMonitoring) {
   Card(
     modifier = Modifier.fillMaxWidth(),
-    shape = RoundedCornerShape(12.dp),
+    shape = RoundedCornerShape(16.dp),
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
   ) {
     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -327,7 +327,7 @@ private fun SipmMonitoringCard(sipm: SipmMonitoring) {
 private fun PacketStatsCard(stats: PacketStatistics) {
   Card(
     modifier = Modifier.fillMaxWidth(),
-    shape = RoundedCornerShape(12.dp),
+    shape = RoundedCornerShape(16.dp),
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
   ) {
     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -405,7 +405,7 @@ private fun MuonEventCard(sample: TelemetrySample) {
 
   Card(
     modifier = Modifier.fillMaxWidth(),
-    shape = RoundedCornerShape(8.dp),
+    shape = RoundedCornerShape(12.dp),
     colors =
       CardDefaults.cardColors(
         containerColor =
@@ -484,7 +484,7 @@ private fun TimelineEventsList(events: List<TelemetrySample>) {
 private fun TimelineEventCard(sample: TelemetrySample) {
   Card(
     modifier = Modifier.fillMaxWidth(),
-    shape = RoundedCornerShape(8.dp),
+    shape = RoundedCornerShape(12.dp),
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
   ) {
     Column(

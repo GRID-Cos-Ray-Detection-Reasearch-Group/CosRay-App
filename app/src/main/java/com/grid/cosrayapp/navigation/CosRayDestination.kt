@@ -7,5 +7,7 @@ sealed class CosRayDestination(val route: String) {
 
   data object Dashboard : CosRayDestination("dashboard")
 
+  data object Settings : CosRayDestination("settings")
+
   data object ApiTest : CosRayDestination("api_test")
 }

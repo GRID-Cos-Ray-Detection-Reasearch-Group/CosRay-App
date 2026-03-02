@@ -39,6 +39,8 @@ import com.grid.cosrayapp.feature.dashboard.DashboardScreen
 import com.grid.cosrayapp.feature.dashboard.DashboardViewModel
 import com.grid.cosrayapp.feature.device.DeviceScreen
 import com.grid.cosrayapp.feature.device.DeviceViewModel
+import com.grid.cosrayapp.feature.settings.SettingsScreen
+import com.grid.cosrayapp.feature.settings.SettingsViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -64,7 +66,7 @@ fun CosRayNavHost(appState: CosRayAppState) {
           style = MaterialTheme.typography.headlineMedium,
         )
         NavigationDrawerItem(
-          label = { Text(stringResource(R.string.device_scan_title)) },
+          label = { Text(stringResource(R.string.device_scan_title), style = MaterialTheme.typography.titleMedium) },
           selected = currentDestination == CosRayDestination.Device.route,
           onClick = {
             scope.launch { drawerState.close() }
@@ -73,7 +75,7 @@ fun CosRayNavHost(appState: CosRayAppState) {
           modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
         )
         NavigationDrawerItem(
-          label = { Text(stringResource(R.string.device_dashboard_action)) },
+          label = { Text(stringResource(R.string.device_dashboard_action), style = MaterialTheme.typography.titleMedium) },
           selected = currentDestination == CosRayDestination.Dashboard.route,
           onClick = {
             scope.launch { drawerState.close() }
@@ -81,11 +83,21 @@ fun CosRayNavHost(appState: CosRayAppState) {
           },
           modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
         )
+        
+        NavigationDrawerItem(
+          label = { Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleMedium) },
+          selected = currentDestination == CosRayDestination.Settings.route,
+          onClick = {
+            scope.launch { drawerState.close() }
+            appState.navigateTo(CosRayDestination.Settings)
+          },
+          modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+        )
 
         // API Test menu (Debug only)
         if (BuildConfig.DEBUG) {
           NavigationDrawerItem(
-            label = { Text(stringResource(R.string.api_test_title)) },
+            label = { Text(stringResource(R.string.api_test_title), style = MaterialTheme.typography.titleMedium) },
             selected = currentDestination == CosRayDestination.ApiTest.route,
             onClick = {
               scope.launch { drawerState.close() }
@@ -99,7 +111,7 @@ fun CosRayNavHost(appState: CosRayAppState) {
 
         if (isAuthenticated) {
           NavigationDrawerItem(
-            label = { Text(stringResource(R.string.device_logout_action)) },
+            label = { Text(stringResource(R.string.device_logout_action), style = MaterialTheme.typography.titleMedium) },
             selected = false,
             onClick = {
               scope.launch { drawerState.close() }
@@ -111,7 +123,7 @@ fun CosRayNavHost(appState: CosRayAppState) {
           )
         } else {
           NavigationDrawerItem(
-            label = { Text(stringResource(R.string.device_login_action)) },
+            label = { Text(stringResource(R.string.device_login_action), style = MaterialTheme.typography.titleMedium) },
             selected = false,
             onClick = {
               scope.launch { drawerState.close() }
@@ -131,6 +143,7 @@ fun CosRayNavHost(appState: CosRayAppState) {
       loginDestination(appState)
       deviceDestination(appState, onOpenDrawer = { scope.launch { drawerState.open() } })
       dashboardDestination(onOpenDrawer = { scope.launch { drawerState.open() } })
+      settingsDestination(appState, onOpenDrawer = { scope.launch { drawerState.open() } })
       // API Test destination (Debug only)
       if (BuildConfig.DEBUG) {
         apiTestDestination(onOpenDrawer = { scope.launch { drawerState.open() } })
@@ -241,6 +254,22 @@ private fun NavGraphBuilder.apiTestDestination(onOpenDrawer: () -> Unit) {
       onTestUploadMuonPacket = viewModel::testUploadMuonPacket,
       onTestUploadTimelinePacket = viewModel::testUploadTimelinePacket,
       onClearResponse = viewModel::clearResponse,
+      onOpenDrawer = onOpenDrawer,
+    )
+  }
+}
+
+private fun NavGraphBuilder.settingsDestination(appState: CosRayAppState, onOpenDrawer: () -> Unit) {
+  composable(CosRayDestination.Settings.route) {
+    val viewModel: SettingsViewModel = hiltViewModel()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    SettingsScreen(
+      state = state,
+      onLogout = {
+        viewModel.logout()
+        appState.exitGuestMode()
+        appState.navigateTo(CosRayDestination.Login, popUpToStart = true)
+      },
       onOpenDrawer = onOpenDrawer,
     )
   }
