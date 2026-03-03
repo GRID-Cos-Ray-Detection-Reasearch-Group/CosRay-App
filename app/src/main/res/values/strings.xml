@@ -4,11 +4,17 @@
     <!-- Authentication -->
     <string name="login_brand_title">CosRay</string>
     <string name="auth_welcome_back">欢迎回来</string>
+    <string name="auth_register_title">创建新账号</string>
     <string name="auth_username_label">用户名</string>
+    <string name="auth_email_label">邮箱</string>
     <string name="auth_password_label">密码</string>
     <string name="auth_login_action">登录</string>
+    <string name="auth_register_action">注册</string>
+    <string name="auth_goto_register_action">没有账号？去注册</string>
+    <string name="auth_goto_login_action">已有账号？去登录</string>
     <string name="auth_skip_login_action">暂不登录</string>
     <string name="auth_error_invalid_username">请输入用户名</string>
+    <string name="auth_error_invalid_email">请输入有效邮箱</string>
     <string name="auth_error_weak_password">密码至少8位，包含数字和大写字母</string>
     <string name="error_unknown">发生未知错误</string>
     <string name="auth_loading">正在提交…</string>

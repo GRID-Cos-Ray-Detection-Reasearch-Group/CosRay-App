@@ -35,6 +35,8 @@ import com.grid.cosrayapp.R
 import com.grid.cosrayapp.data.auth.AuthState
 import com.grid.cosrayapp.feature.auth.LoginScreen
 import com.grid.cosrayapp.feature.auth.LoginViewModel
+import com.grid.cosrayapp.feature.auth.RegisterScreen
+import com.grid.cosrayapp.feature.auth.RegisterViewModel
 import com.grid.cosrayapp.feature.dashboard.DashboardScreen
 import com.grid.cosrayapp.feature.dashboard.DashboardViewModel
 import com.grid.cosrayapp.feature.device.DeviceScreen
@@ -171,6 +173,7 @@ fun CosRayNavHost(appState: CosRayAppState) {
       startDestination = CosRayDestination.Device.route,
     ) {
       loginDestination(appState)
+      registerDestination(appState)
       deviceDestination(appState, onOpenDrawer = { scope.launch { drawerState.open() } })
       dashboardDestination(onOpenDrawer = { scope.launch { drawerState.open() } })
       settingsDestination(appState, onOpenDrawer = { scope.launch { drawerState.open() } })
@@ -191,9 +194,27 @@ private fun NavGraphBuilder.loginDestination(appState: CosRayAppState) {
       onUsernameChange = viewModel::onUsernameChanged,
       onPasswordChange = viewModel::onPasswordChanged,
       onSubmit = viewModel::submit,
+      onNavigateToRegister = { appState.navigateTo(CosRayDestination.Register) },
       onContinueAsGuest = {
         appState.enterGuestMode()
         appState.navigateTo(CosRayDestination.Device, popUpToStart = true)
+      },
+    )
+  }
+}
+
+private fun NavGraphBuilder.registerDestination(appState: CosRayAppState) {
+  composable(CosRayDestination.Register.route) {
+    val viewModel: RegisterViewModel = hiltViewModel()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    RegisterScreen(
+      state = state,
+      onUsernameChange = viewModel::onUsernameChanged,
+      onEmailChange = viewModel::onEmailChanged,
+      onPasswordChange = viewModel::onPasswordChanged,
+      onSubmit = viewModel::submit,
+      onNavigateToLogin = {
+        appState.navigateTo(CosRayDestination.Login, popUpToStart = true)
       },
     )
   }

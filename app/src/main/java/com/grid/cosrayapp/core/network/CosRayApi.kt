@@ -6,6 +6,8 @@ import com.grid.cosrayapp.core.network.model.DeviceDto
 import com.grid.cosrayapp.core.network.model.LoginRequest
 import com.grid.cosrayapp.core.network.model.PacketUploadRequest
 import com.grid.cosrayapp.core.network.model.PacketUploadResponse
+import com.grid.cosrayapp.core.network.model.RegisterRequest
+import com.grid.cosrayapp.core.network.model.RegisterResponse
 import com.grid.cosrayapp.core.network.model.TokenRefreshRequest
 import com.grid.cosrayapp.core.network.model.TokenResponse
 import com.grid.cosrayapp.core.network.model.UpdateDeviceRequest
@@ -41,6 +43,19 @@ class CosRayApi(private val client: HttpClient) {
       val tokens = AuthTokens.fromJwtTokens(response.access, response.refresh)
       val user = fetchCurrentUser(tokens.accessToken)
       user to tokens
+    }
+
+  suspend fun register(username: String, email: String, password: String): Pair<User, AuthTokens> =
+    withContext(Dispatchers.IO) {
+      val response: RegisterResponse =
+        client
+          .post("/api/auth/register") {
+            contentType(ContentType.Application.Json)
+            setBody(RegisterRequest(username = username, email = email, password = password))
+          }
+          .body()
+      val tokens = AuthTokens.fromJwtTokens(response.access, response.refresh)
+      response.user.toDomain() to tokens
     }
 
   suspend fun refreshToken(refreshToken: String): AuthTokens =
