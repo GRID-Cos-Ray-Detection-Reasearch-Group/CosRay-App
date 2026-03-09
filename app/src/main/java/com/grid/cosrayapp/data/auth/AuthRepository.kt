@@ -47,6 +47,12 @@ class AuthRepository(
     persistAuth(user, tokens)
   }
 
+  suspend fun register(username: String, email: String, password: String): CosRayResult<Unit> =
+    runCosRayCatching {
+      val (user, tokens) = api.register(username, email, password)
+      persistAuth(user, tokens)
+    }
+
   /** Refresh authentication tokens with mutex protection to prevent concurrent refresh attempts */
   suspend fun refreshTokens(): CosRayResult<Unit> =
     refreshMutex.withLock {

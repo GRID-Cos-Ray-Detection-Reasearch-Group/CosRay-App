@@ -210,11 +210,11 @@ private fun ConnectionOverview(
 
   Surface(
     modifier = Modifier.fillMaxWidth(),
-    shape = RoundedCornerShape(18.dp),
-    tonalElevation = 6.dp,
-    color = MaterialTheme.colorScheme.surface,
+    shape = RoundedCornerShape(16.dp),
+    tonalElevation = 2.dp,
+    color = MaterialTheme.colorScheme.surfaceVariant,
   ) {
-    Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
       Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -307,12 +307,12 @@ private fun MetricRow(label: String, value: String) {
 private fun DeviceItemCard(item: DeviceItem, isConnected: Boolean, onClick: () -> Unit) {
   Surface(
     modifier = Modifier.fillMaxWidth().clickable { onClick() },
-    shape = RoundedCornerShape(20.dp),
-    tonalElevation = 3.dp,
+    shape = RoundedCornerShape(16.dp),
+    tonalElevation = 1.dp,
     color = MaterialTheme.colorScheme.surface,
   ) {
     Row(
-      modifier = Modifier.padding(vertical = 16.dp, horizontal = 18.dp),
+      modifier = Modifier.padding(16.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.SpaceBetween,
     ) {

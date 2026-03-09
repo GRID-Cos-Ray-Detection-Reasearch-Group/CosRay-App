@@ -1,9 +1,13 @@
 import org.gradle.testing.jacoco.tasks.JacocoReport
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
+val debugBaseUrl: String? =
+  providers.gradleProperty("COSRAY_DEBUG_BASE_URL").getOrElse("http://59.66.16.192:8000")
+val releaseBaseUrl: String? =
+  providers.gradleProperty("COSRAY_RELEASE_BASE_URL").getOrElse("https://cosray.top")
+
 plugins {
   alias(libs.plugins.android.application)
-  alias(libs.plugins.kotlin.android)
   alias(libs.plugins.ksp)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.kotlin.serialization)
@@ -25,19 +29,20 @@ android {
     versionName = "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    buildConfigField("String", "BASE_URL", "\"http://192.168.3.4:8000\"")
+    buildConfigField("String", "BASE_URL", "\"$releaseBaseUrl\"")
   }
 
   buildTypes {
-    debug { buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8000\"") }
+    debug { buildConfigField("String", "BASE_URL", "\"$debugBaseUrl\"") }
     release {
-      isMinifyEnabled = false
+      isMinifyEnabled = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+      buildConfigField("String", "BASE_URL", "\"$releaseBaseUrl\"")
     }
   }
   compileOptions {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
   }
   buildFeatures {
     compose = true
@@ -47,13 +52,13 @@ android {
 
 kotlin {
   compilerOptions {
-    jvmTarget = JvmTarget.JVM_21
+    jvmTarget = JvmTarget.JVM_25
     freeCompilerArgs.addAll(
       "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
       "-opt-in=kotlinx.coroutines.FlowPreview",
     )
   }
-  jvmToolchain(21)
+  jvmToolchain(25)
 }
 
 ktfmt {
@@ -131,8 +136,10 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
 
   classDirectories.setFrom(
     files(
-      fileTree("$buildDir/tmp/kotlin-classes/debug") { exclude(excludes) },
-      fileTree("$buildDir/intermediates/javac/debug/compileDebugJavaWithJavac/classes") {
+      fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) { exclude(excludes) },
+      fileTree(
+        layout.buildDirectory.dir("intermediates/javac/debug/compileDebugJavaWithJavac/classes")
+      ) {
         exclude(excludes)
       },
     )
@@ -141,7 +148,7 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
   sourceDirectories.setFrom(files("src/main/java", "src/main/kotlin"))
 
   executionData.setFrom(
-    fileTree(buildDir) {
+    fileTree(layout.buildDirectory) {
       include(
         "jacoco/testDebugUnitTest.exec",
         "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",

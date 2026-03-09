@@ -31,13 +31,13 @@ import com.grid.cosrayapp.R
 import com.grid.cosrayapp.core.ui.asString
 
 @Composable
-fun LoginScreen(
-  state: LoginUiState,
+fun RegisterScreen(
+  state: RegisterUiState,
   onUsernameChange: (String) -> Unit,
+  onEmailChange: (String) -> Unit,
   onPasswordChange: (String) -> Unit,
   onSubmit: () -> Unit,
-  onNavigateToRegister: () -> Unit,
-  onContinueAsGuest: () -> Unit,
+  onNavigateToLogin: () -> Unit,
 ) {
   Column(
     modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 32.dp),
@@ -51,7 +51,7 @@ fun LoginScreen(
       )
       Spacer(modifier = Modifier.height(4.dp))
       Text(
-        text = stringResource(R.string.auth_welcome_back),
+        text = stringResource(R.string.auth_register_title),
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
       )
@@ -77,6 +77,16 @@ fun LoginScreen(
           singleLine = true,
         )
         ErrorText(state.usernameError?.asString())
+
+        OutlinedTextField(
+          value = state.email,
+          onValueChange = onEmailChange,
+          modifier = Modifier.fillMaxWidth(),
+          label = { Text(stringResource(R.string.auth_email_label)) },
+          isError = state.emailError != null,
+          singleLine = true,
+        )
+        ErrorText(state.emailError?.asString())
 
         OutlinedTextField(
           value = state.password,
@@ -107,7 +117,7 @@ fun LoginScreen(
             )
           } else {
             Text(
-              text = stringResource(R.string.auth_login_action),
+              text = stringResource(R.string.auth_register_action),
               style = MaterialTheme.typography.bodyMedium,
             )
           }
@@ -117,22 +127,14 @@ fun LoginScreen(
       }
     }
 
-    Column(
+    TextButton(
+      onClick = onNavigateToLogin,
       modifier = Modifier.align(Alignment.CenterHorizontally),
-      horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-      TextButton(onClick = onNavigateToRegister) {
-        Text(
-          text = stringResource(R.string.auth_goto_register_action),
-          style = MaterialTheme.typography.labelLarge,
-        )
-      }
-      TextButton(onClick = onContinueAsGuest) {
-        Text(
-          text = stringResource(R.string.auth_skip_login_action),
-          style = MaterialTheme.typography.labelLarge,
-        )
-      }
+      Text(
+        text = stringResource(R.string.auth_goto_login_action),
+        style = MaterialTheme.typography.labelLarge,
+      )
     }
   }
 }

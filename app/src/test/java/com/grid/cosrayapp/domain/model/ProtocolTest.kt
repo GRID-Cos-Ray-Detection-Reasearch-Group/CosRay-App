@@ -3,8 +3,10 @@ package com.grid.cosrayapp.domain.model
 import com.grid.cosrayapp.domain.mapper.ProtocolMapper
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class ProtocolTest {
@@ -34,6 +36,30 @@ class ProtocolTest {
   }
 
   @Test
+  fun `muon packet parse with truncated payload should fail fast`() {
+    val raw = buildMuonPacketBytes(pkgCnt = 42, utc = 1_710_000_000).copyOf(511)
+
+    val error =
+      assertThrows(IllegalArgumentException::class.java) {
+        Protocol.MuonDataPkg.fromRawData(raw)
+      }
+
+    assertEquals("μ子数据包长度错误：预期512字节，实际511字节", error.message)
+  }
+
+  @Test
+  fun `timeline packet parse with truncated payload should fail fast`() {
+    val raw = buildTimelinePacketBytes(pkgCnt = 7).copyOf(511)
+
+    val error =
+      assertThrows(IllegalArgumentException::class.java) {
+        Protocol.TimeLinePkg.fromRawData(raw)
+      }
+
+    assertEquals("时间线数据包长度错误：预期512字节，实际511字节", error.message)
+  }
+
+  @Test
   fun `protocol mapper should create upload request from muon packet`() {
     val raw = buildMuonPacketBytes(pkgCnt = 11, utc = 1_710_000_100)
     val packet = Protocol.MuonDataPkg.fromRawData(raw)
@@ -46,8 +72,44 @@ class ProtocolTest {
     assertEquals(35, request.muonPacket?.events?.size)
   }
 
+  @Test
+  fun `start command should match firmware command package format`() {
+    val command =
+            Protocol.Command.buildStartCommand(
+                    packageId = 114_514,
+                    packetType = Protocol.Command.TYPE_MUON,
+            )
+
+    assertArrayEquals(
+            byteArrayOf(
+                    0x01,
+                    0x00,
+                    0x01,
+                    0xBF.toByte(),
+                    0x52,
+                    0x01,
+                    0x00,
+                    0x00,
+                    0x36,
+                    0x97.toByte()
+            ),
+            command,
+    )
+  }
+
+  @Test
+  fun `ping command should build fixed length command package`() {
+    val command = Protocol.Command.buildPingCommand()
+
+    assertEquals(10, command.size)
+    assertEquals(Protocol.Command.OPCODE_PING, command[0])
+    assertEquals(0, command[1].toInt())
+    assertEquals(0, command[5].toInt())
+  }
+
   private fun buildMuonPacketBytes(pkgCnt: Int, utc: Int): ByteArray {
-    val data = ByteBuffer.allocate(512).order(ByteOrder.LITTLE_ENDIAN)
+    val totalSize = 3 + 4 + 4 + (35 * 14) + 3 + 6 + 2 // 512
+    val data = ByteBuffer.allocate(totalSize).order(ByteOrder.LITTLE_ENDIAN)
     data.put(byteArrayOf(0xAA.toByte(), 0xBB.toByte(), 0xCC.toByte()))
     data.putInt(pkgCnt)
     data.putInt(utc)
@@ -60,15 +122,16 @@ class ProtocolTest {
     data.put(ByteArray(6))
 
     val raw = data.array()
-    val crc = calculateCrc16Ccitt(raw, startIndex = 3, length = 507)
+    val crc = calculateCrc16Ccitt(raw, startIndex = 0, length = totalSize - 2)
     val footerBuffer = ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN)
-    footerBuffer.position(510)
+    footerBuffer.position(totalSize - 2)
     footerBuffer.putShort(crc.toShort())
     return raw
   }
 
   private fun buildTimelinePacketBytes(pkgCnt: Int): ByteArray {
-    val data = ByteBuffer.allocate(512).order(ByteOrder.LITTLE_ENDIAN)
+    val totalSize = 3 + 4 + (10 * 48) + 3 + 20 + 2 // 512
+    val data = ByteBuffer.allocate(totalSize).order(ByteOrder.LITTLE_ENDIAN)
     data.put(byteArrayOf(0x12, 0x34, 0x56))
     data.putInt(pkgCnt)
     repeat(10) { index ->
@@ -92,9 +155,9 @@ class ProtocolTest {
     data.put(ByteArray(20))
 
     val raw = data.array()
-    val crc = calculateCrc16Ccitt(raw, startIndex = 3, length = 507)
+    val crc = calculateCrc16Ccitt(raw, startIndex = 0, length = totalSize - 2)
     val footerBuffer = ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN)
-    footerBuffer.position(510)
+    footerBuffer.position(totalSize - 2)
     footerBuffer.putShort(crc.toShort())
     return raw
   }
@@ -105,11 +168,11 @@ class ProtocolTest {
       crc = crc xor ((data[index].toInt() and 0xFF) shl 8)
       repeat(8) {
         crc =
-          if ((crc and 0x8000) != 0) {
-            ((crc shl 1) xor 0x1021) and 0xFFFF
-          } else {
-            (crc shl 1) and 0xFFFF
-          }
+                if ((crc and 0x8000) != 0) {
+                  ((crc shl 1) xor 0x1021) and 0xFFFF
+                } else {
+                  (crc shl 1) and 0xFFFF
+                }
       }
     }
     return crc and 0xFFFF

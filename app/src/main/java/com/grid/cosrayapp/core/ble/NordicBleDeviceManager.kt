@@ -67,6 +67,6 @@ internal class NordicBleDeviceManager(
   }
 
   companion object {
-    private const val PREFERRED_MTU = 247
+    private const val PREFERRED_MTU = 515
   }
 }

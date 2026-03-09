@@ -3,10 +3,12 @@ package com.grid.cosrayapp.feature.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.grid.cosrayapp.R
+import com.grid.cosrayapp.core.ble.RawPacket
 import com.grid.cosrayapp.core.common.CosRayResult
 import com.grid.cosrayapp.core.ui.UiMessage
 import com.grid.cosrayapp.data.auth.AuthRepository
 import com.grid.cosrayapp.data.auth.AuthState
+import com.grid.cosrayapp.data.ble.BleRepository
 import com.grid.cosrayapp.data.telemetry.TelemetryRepository
 import com.grid.cosrayapp.domain.model.AccelerationSnapshot
 import com.grid.cosrayapp.domain.model.BleDevice
@@ -29,8 +31,9 @@ import kotlinx.coroutines.launch
 class DashboardViewModel
 @Inject
 constructor(
-  private val telemetryRepository: TelemetryRepository,
-  private val authRepository: AuthRepository,
+        private val telemetryRepository: TelemetryRepository,
+        private val authRepository: AuthRepository,
+        private val bleRepository: BleRepository,
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(DashboardUiState())
   val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
@@ -38,36 +41,49 @@ constructor(
   init {
     viewModelScope.launch {
       combine(
-          telemetryRepository.liveTelemetry,
-          telemetryRepository.connectedDevice,
-          authRepository.authState,
-        ) { samples, device, authState ->
-          val allSamples = samples.take(MAX_SAMPLES)
-          val muonSamples = allSamples.filter { it.packetMetadata?.packetType == PacketType.MUON }
-          val timelineSamples =
-            allSamples.filter { it.packetMetadata?.packetType == PacketType.TIMELINE }
+                      telemetryRepository.liveTelemetry,
+                      telemetryRepository.connectedDevice,
+                      authRepository.authState,
+              ) { samples, device, authState ->
+        val allSamples = samples.take(MAX_SAMPLES)
+        val muonSamples = allSamples.filter { it.packetMetadata?.packetType == PacketType.MUON }
+        val timelineSamples =
+                allSamples.filter { it.packetMetadata?.packetType == PacketType.TIMELINE }
 
-          // Extract latest location, orientation, and SiPM data from timeline events
-          val latestTimeline = timelineSamples.firstOrNull()
+        // Extract latest location, orientation, and SiPM data from timeline events
+        val latestTimeline = timelineSamples.firstOrNull()
 
-          // Calculate packet statistics
-          val stats = calculatePacketStatistics(allSamples)
+        // Calculate packet statistics
+        val stats = calculatePacketStatistics(allSamples)
 
-          DashboardUiState(
-            user = (authState as? AuthState.Authenticated)?.user,
-            device = device,
-            samples = allSamples,
-            muonEvents = muonSamples.take(MAX_MUON_EVENTS),
-            timelineEvents = timelineSamples.take(MAX_TIMELINE_EVENTS),
-            deviceLocation = latestTimeline?.location,
-            deviceOrientation = latestTimeline?.acceleration,
-            sipmStatus = latestTimeline?.sipmMonitoring,
-            packetStats = stats,
-            isUploading = _uiState.value.isUploading,
-            uploadMessage = _uiState.value.uploadMessage,
-          )
+        DashboardUiState(
+                user = (authState as? AuthState.Authenticated)?.user,
+                device = device,
+                samples = allSamples,
+                muonEvents = muonSamples.take(MAX_MUON_EVENTS),
+                timelineEvents = timelineSamples.take(MAX_TIMELINE_EVENTS),
+                rawPackets = emptyList(), // We will update this via a separate flow
+                deviceLocation = latestTimeline?.location,
+                deviceOrientation = latestTimeline?.acceleration,
+                sipmStatus = latestTimeline?.sipmMonitoring,
+                packetStats = stats,
+                isUploading = _uiState.value.isUploading,
+                isSendingCommand = _uiState.value.isSendingCommand,
+                uploadMessage = _uiState.value.uploadMessage,
+        )
+      }
+              .collect { state ->
+                _uiState.value = state.copy(rawPackets = _uiState.value.rawPackets)
+              }
+    }
+
+    viewModelScope.launch {
+      bleRepository.rawPackets.collect { rawPacket ->
+        _uiState.update { state ->
+          val newRawPackets = (listOf(rawPacket) + state.rawPackets).take(MAX_RAW_PACKETS)
+          state.copy(rawPackets = newRawPackets)
         }
-        .collect { state -> _uiState.value = state }
+      }
     }
   }
 
@@ -93,11 +109,11 @@ constructor(
     val lastPacket = samples.maxByOrNull { it.recordedAt }?.recordedAt
 
     return PacketStatistics(
-      muonPacketCount = muonCount,
-      timelinePacketCount = timelineCount,
-      totalEventCount = samples.size,
-      lastPacketTime = lastPacket,
-      averageEnergyAdcCounts = avgEnergy,
+            muonPacketCount = muonCount,
+            timelinePacketCount = timelineCount,
+            totalEventCount = samples.size,
+            lastPacketTime = lastPacket,
+            averageEnergyAdcCounts = avgEnergy,
     )
   }
 
@@ -108,19 +124,17 @@ constructor(
         is CosRayResult.Success -> {
           _uiState.update {
             it.copy(
-              isUploading = false,
-              uploadMessage = UiMessage.from(R.string.dashboard_upload_success),
+                    isUploading = false,
+                    uploadMessage = UiMessage.from(R.string.dashboard_upload_success),
             )
           }
         }
-
         is CosRayResult.Error -> {
           _uiState.update {
             it.copy(
-              isUploading = false,
-              uploadMessage =
-                result.throwable.message?.let(UiMessage::fromRaw)
-                  ?: UiMessage.from(R.string.dashboard_upload_failed),
+                    isUploading = false,
+                    uploadMessage = result.throwable.message?.let(UiMessage::fromRaw)
+                                    ?: UiMessage.from(R.string.dashboard_upload_failed),
             )
           }
         }
@@ -132,31 +146,90 @@ constructor(
     _uiState.update { it.copy(uploadMessage = null) }
   }
 
+  fun sendStatusCommand() {
+    sendFirmwareCommand(
+            successMessage = UiMessage.from(R.string.dashboard_command_status_success),
+            command = telemetryRepository::sendStatusCommand,
+    )
+  }
+
+  fun sendMuonStartCommand() {
+    sendFirmwareCommand(
+            successMessage = UiMessage.from(R.string.dashboard_command_muon_success),
+            command = telemetryRepository::sendMuonStartCommand,
+    )
+  }
+
+  fun sendTimelineStartCommand() {
+    sendFirmwareCommand(
+            successMessage = UiMessage.from(R.string.dashboard_command_timeline_success),
+            command = telemetryRepository::sendTimelineStartCommand,
+    )
+  }
+
+  fun sendStopCommand() {
+    sendFirmwareCommand(
+            successMessage = UiMessage.from(R.string.dashboard_command_stop_success),
+            command = telemetryRepository::sendStopCommand,
+    )
+  }
+
+  private fun sendFirmwareCommand(
+          successMessage: UiMessage,
+          command: suspend () -> CosRayResult<Unit>,
+  ) {
+    viewModelScope.launch {
+      _uiState.update { it.copy(isSendingCommand = true, uploadMessage = null) }
+      when (val result = command()) {
+        is CosRayResult.Success -> {
+          _uiState.update {
+            it.copy(
+                    isSendingCommand = false,
+                    uploadMessage = successMessage,
+            )
+          }
+        }
+        is CosRayResult.Error -> {
+          _uiState.update {
+            it.copy(
+                    isSendingCommand = false,
+                    uploadMessage = result.throwable.message?.let(UiMessage::fromRaw)
+                                    ?: UiMessage.from(R.string.dashboard_command_failed),
+            )
+          }
+        }
+      }
+    }
+  }
+
   companion object {
     private const val MAX_SAMPLES = 30
     private const val MAX_MUON_EVENTS = 50
     private const val MAX_TIMELINE_EVENTS = 20
+    private const val MAX_RAW_PACKETS = 50
   }
 }
 
 data class DashboardUiState(
-  val user: User? = null,
-  val device: BleDevice? = null,
-  val samples: List<TelemetrySample> = emptyList(),
-  val muonEvents: List<TelemetrySample> = emptyList(),
-  val timelineEvents: List<TelemetrySample> = emptyList(),
-  val deviceLocation: LocationSnapshot? = null,
-  val deviceOrientation: AccelerationSnapshot? = null,
-  val sipmStatus: SipmMonitoring? = null,
-  val packetStats: PacketStatistics = PacketStatistics(),
-  val isUploading: Boolean = false,
-  val uploadMessage: UiMessage? = null,
+        val user: User? = null,
+        val device: BleDevice? = null,
+        val samples: List<TelemetrySample> = emptyList(),
+        val muonEvents: List<TelemetrySample> = emptyList(),
+        val timelineEvents: List<TelemetrySample> = emptyList(),
+        val rawPackets: List<RawPacket> = emptyList(),
+        val deviceLocation: LocationSnapshot? = null,
+        val deviceOrientation: AccelerationSnapshot? = null,
+        val sipmStatus: SipmMonitoring? = null,
+        val packetStats: PacketStatistics = PacketStatistics(),
+        val isUploading: Boolean = false,
+        val isSendingCommand: Boolean = false,
+        val uploadMessage: UiMessage? = null,
 )
 
 data class PacketStatistics(
-  val muonPacketCount: Int = 0,
-  val timelinePacketCount: Int = 0,
-  val totalEventCount: Int = 0,
-  val lastPacketTime: Instant? = null,
-  val averageEnergyAdcCounts: Double? = null,
+        val muonPacketCount: Int = 0,
+        val timelinePacketCount: Int = 0,
+        val totalEventCount: Int = 0,
+        val lastPacketTime: Instant? = null,
+        val averageEnergyAdcCounts: Double? = null,
 )
