@@ -126,6 +126,9 @@ object Protocol {
        * @return 解析后的 MuonDataPkg 对象（解析失败抛出异常）
        */
       fun fromRawData(rawData: ByteArray): MuonDataPkg {
+        require(rawData.size == TOTAL_SIZE) {
+          "μ子数据包长度错误：预期${TOTAL_SIZE}字节，实际${rawData.size}字节"
+        }
         val buffer = ByteBuffer.wrap(rawData).order(ByteOrder.LITTLE_ENDIAN)
 
         // Extract exact payload size for 512 bytes struct
@@ -261,6 +264,9 @@ object Protocol {
       private val TAIL_EXPECTED = byteArrayOf(0x78.toByte(), 0x9A.toByte(), 0xBC.toByte()) // 预期尾部标识
 
       fun fromRawData(rawData: ByteArray): TimeLinePkg {
+        require(rawData.size == TOTAL_SIZE) {
+          "时间线数据包长度错误：预期${TOTAL_SIZE}字节，实际${rawData.size}字节"
+        }
         val buffer = ByteBuffer.wrap(rawData).order(ByteOrder.LITTLE_ENDIAN)
 
         // Exact number of items based on fixed 512 byte struct
@@ -336,16 +342,5 @@ object Protocol {
     override fun toString(): String =
             "TimeLinePkg(pkgCnt=$pkgCnt, eventCount=${timeLineDataList.size}, " +
                     "head=${head.contentToString()}, tail=${tail.contentToString()})"
-  }
-
-  // Extension method to find tail byte sequences
-  private fun ByteArray.indexOfTail(target: ByteArray): Int {
-    if (this.size < target.size) return -1
-    for (i in 0..this.size - target.size) {
-      if (this[i] == target[0] && this[i + 1] == target[1] && this[i + 2] == target[2]) {
-        return i
-      }
-    }
-    return -1
   }
 }

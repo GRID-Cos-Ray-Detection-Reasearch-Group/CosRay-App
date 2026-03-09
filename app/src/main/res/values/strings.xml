@@ -169,4 +169,6 @@
     <string name="api_test_test_upload_muon">上传 Muon 数据包</string>
     <string name="api_test_test_upload_timeline">上传 Timeline 数据包</string>
     <string name="api_test_no_response">暂无响应</string>
+    <string name="settings_navigation_menu">菜单</string>
+    <string name="dashboard_waiting_for_data">等待数据</string>
 </resources>
