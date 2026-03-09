@@ -92,6 +92,17 @@
     <string name="dashboard_battery_value">%1$d%%</string>
     <string name="dashboard_upload_success">上传成功</string>
     <string name="dashboard_upload_failed">上传失败</string>
+    <string name="dashboard_command_section_title">固件控制</string>
+    <string name="dashboard_command_status">状态</string>
+    <string name="dashboard_command_muon">μ子</string>
+    <string name="dashboard_command_timeline">时间线</string>
+    <string name="dashboard_command_stop">停止</string>
+    <string name="dashboard_command_sending">正在发送固件指令…</string>
+    <string name="dashboard_command_failed">固件指令发送失败</string>
+    <string name="dashboard_command_status_success">已发送状态指令</string>
+    <string name="dashboard_command_muon_success">已发送 μ子启动指令</string>
+    <string name="dashboard_command_timeline_success">已发送时间线启动指令</string>
+    <string name="dashboard_command_stop_success">已发送停止指令</string>
 
     <!-- Enhanced Dashboard Features -->
     <string name="dashboard_muon_events_tab">μ子事件 (%1$d)</string>

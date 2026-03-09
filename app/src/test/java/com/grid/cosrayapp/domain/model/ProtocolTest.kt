@@ -3,6 +3,7 @@ package com.grid.cosrayapp.domain.model
 import com.grid.cosrayapp.domain.mapper.ProtocolMapper
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
@@ -44,6 +45,41 @@ class ProtocolTest {
     assertEquals("muon", request.packetType)
     assertNotNull(request.muonPacket)
     assertEquals(35, request.muonPacket?.events?.size)
+  }
+
+  @Test
+  fun `start command should match firmware command package format`() {
+    val command =
+            Protocol.Command.buildStartCommand(
+                    packageId = 114_514,
+                    packetType = Protocol.Command.TYPE_MUON,
+            )
+
+    assertArrayEquals(
+            byteArrayOf(
+                    0x01,
+                    0x00,
+                    0x01,
+                    0xBF.toByte(),
+                    0x52,
+                    0x01,
+                    0x00,
+                    0x00,
+                    0x36,
+                    0x97.toByte()
+            ),
+            command,
+    )
+  }
+
+  @Test
+  fun `ping command should build fixed length command package`() {
+    val command = Protocol.Command.buildPingCommand()
+
+    assertEquals(10, command.size)
+    assertEquals(Protocol.Command.OPCODE_PING, command[0])
+    assertEquals(0, command[1].toInt())
+    assertEquals(0, command[5].toInt())
   }
 
   private fun buildMuonPacketBytes(pkgCnt: Int, utc: Int): ByteArray {
@@ -107,11 +143,11 @@ class ProtocolTest {
       crc = crc xor ((data[index].toInt() and 0xFF) shl 8)
       repeat(8) {
         crc =
-          if ((crc and 0x8000) != 0) {
-            ((crc shl 1) xor 0x1021) and 0xFFFF
-          } else {
-            (crc shl 1) and 0xFFFF
-          }
+                if ((crc and 0x8000) != 0) {
+                  ((crc shl 1) xor 0x1021) and 0xFFFF
+                } else {
+                  (crc shl 1) and 0xFFFF
+                }
       }
     }
     return crc and 0xFFFF

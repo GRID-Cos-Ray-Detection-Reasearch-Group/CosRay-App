@@ -7,54 +7,105 @@ import org.junit.Test
 
 class FirmwarePacketAssemblerTest {
   @Test
-  fun `consume complete muon packet should return one request`() {
+  fun `consume complete muon ble fragments should return one request`() {
     val assembler = FirmwarePacketAssembler()
     val packet = buildMuonPacketBytes(pkgCnt = 1, utc = 1_710_000_000)
+    val chunks = buildBleFragments(packet, globalTotal = 1, globalIndex = 1)
 
-    val requests = assembler.consume(packet, "AA:BB:CC:DD:EE:FF")
+    val requests = chunks.flatMap { assembler.consume(it, "AA:BB:CC:DD:EE:FF") }
 
     assertEquals(1, requests.size)
-    assertEquals("muon", requests[0].packetType)
-    assertEquals("AA:BB:CC:DD:EE:FF", requests[0].device)
+    assertEquals("muon", requests[0].uploadRequest.packetType)
+    assertEquals("AA:BB:CC:DD:EE:FF", requests[0].uploadRequest.device)
+    assertEquals(35, requests[0].uploadRequest.muonPacket?.events?.size)
+    assertEquals(35, requests[0].samples.size)
   }
 
   @Test
-  fun `consume split timeline packet should assemble across chunks`() {
+  fun `consume split timeline fragments should assemble across chunks`() {
     val assembler = FirmwarePacketAssembler()
     val packet = buildTimelinePacketBytes(pkgCnt = 7)
+    val chunks = buildBleFragments(packet, globalTotal = 2, globalIndex = 1)
 
-    val first = assembler.consume(packet.copyOfRange(0, 240), "11:22:33:44:55:66")
-    val second = assembler.consume(packet.copyOfRange(240, packet.size), "11:22:33:44:55:66")
+    val first = chunks.take(10).flatMap { assembler.consume(it, "11:22:33:44:55:66") }
+    val second = chunks.drop(10).flatMap { assembler.consume(it, "11:22:33:44:55:66") }
 
     assertEquals(0, first.size)
     assertEquals(1, second.size)
-    assertEquals("timeline", second[0].packetType)
-    assertEquals("11:22:33:44:55:66", second[0].device)
+    assertEquals("timeline", second[0].uploadRequest.packetType)
+    assertEquals("11:22:33:44:55:66", second[0].uploadRequest.device)
+    assertEquals(10, second[0].uploadRequest.timelinePacket?.events?.size)
   }
 
   @Test
-  fun `consume noise then packet should resync and parse`() {
+  fun `consume invalid fragment then packet should still parse`() {
     val assembler = FirmwarePacketAssembler()
-    val noise = byteArrayOf(0x01, 0x02, 0x03, 0x04, 0x05)
     val packet = buildMuonPacketBytes(pkgCnt = 9, utc = 1_710_000_999)
-    val mixed = noise + packet
+    val invalid = byteArrayOf(0x00, 0x00, 0x00, 0x00, 0x05)
+    val chunks = buildBleFragments(packet, globalTotal = 1, globalIndex = 1)
 
-    val requests = assembler.consume(mixed, "AA:AA:AA:AA:AA:AA")
+    val requests = mutableListOf<ParsedFirmwarePacket>()
+    requests += assembler.consume(invalid, "AA:AA:AA:AA:AA:AA")
+    chunks.forEach { requests += assembler.consume(it, "AA:AA:AA:AA:AA:AA") }
 
     assertEquals(1, requests.size)
-    assertEquals("muon", requests[0].packetType)
+    assertEquals("muon", requests[0].uploadRequest.packetType)
   }
 
-  private fun buildMuonPacketBytes(pkgCnt: Int, utc: Int): ByteArray {
+  @Test
+  fun `consume muon packet should drop zero-filled placeholder events`() {
+    val assembler = FirmwarePacketAssembler()
+    val packet = buildMuonPacketBytes(pkgCnt = 5, utc = 1_710_000_321, validEventCount = 2)
+    val chunks = buildBleFragments(packet, globalTotal = 1, globalIndex = 1)
+
+    val requests = chunks.flatMap { assembler.consume(it, "12:34:56:78:9A:BC") }
+
+    assertEquals(1, requests.size)
+    assertEquals(2, requests[0].uploadRequest.muonPacket?.events?.size)
+    assertEquals(2, requests[0].samples.size)
+  }
+
+  private fun buildBleFragments(
+    packet: ByteArray,
+    globalTotal: Int,
+    globalIndex: Int,
+  ): List<ByteArray> {
+    val payloadSize = 18
+    val localTotal = (packet.size + payloadSize - 1) / payloadSize
+    return (0 until localTotal).map { localIndex ->
+      val fragment = ByteArray(22)
+      fragment[0] = globalTotal.toByte()
+      fragment[1] = globalIndex.toByte()
+      fragment[2] = localTotal.toByte()
+      fragment[3] = (localIndex + 1).toByte()
+      val start = localIndex * payloadSize
+      val end = minOf(start + payloadSize, packet.size)
+      packet.copyInto(
+        destination = fragment,
+        destinationOffset = 4,
+        startIndex = start,
+        endIndex = end,
+      )
+      fragment
+    }
+  }
+
+  private fun buildMuonPacketBytes(pkgCnt: Int, utc: Int, validEventCount: Int = 35): ByteArray {
     val totalSize = 3 + 4 + 4 + (35 * 14) + 3 + 6 + 2 // 512
     val data = ByteBuffer.allocate(totalSize).order(ByteOrder.LITTLE_ENDIAN)
     data.put(byteArrayOf(0xAA.toByte(), 0xBB.toByte(), 0xCC.toByte()))
     data.putInt(pkgCnt)
     data.putInt(utc)
     repeat(35) { index ->
-      data.putLong(1_000L + index)
-      data.putShort((200 + index).toShort())
-      data.putInt(300 + index)
+      if (index < validEventCount) {
+        data.putLong(1_000L + index)
+        data.putShort((200 + index).toShort())
+        data.putInt(300 + index)
+      } else {
+        data.putLong(0)
+        data.putShort(0)
+        data.putInt(0)
+      }
     }
     data.put(byteArrayOf(0xDD.toByte(), 0xEE.toByte(), 0xFF.toByte()))
     data.put(ByteArray(6))

@@ -1,5 +1,6 @@
 package com.grid.cosrayapp.data.telemetry
 
+import android.util.Log
 import com.grid.cosrayapp.core.ble.BleConnectionState
 import com.grid.cosrayapp.core.common.CosRayResult
 import com.grid.cosrayapp.core.common.runCosRayCatching
@@ -7,7 +8,6 @@ import com.grid.cosrayapp.core.network.CosRayApi
 import com.grid.cosrayapp.core.network.model.PacketUploadRequest
 import com.grid.cosrayapp.data.auth.AuthRepository
 import com.grid.cosrayapp.data.ble.BleRepository
-import com.grid.cosrayapp.domain.mapper.ProtocolMapper
 import com.grid.cosrayapp.domain.model.BleDevice
 import com.grid.cosrayapp.domain.model.Protocol
 import com.grid.cosrayapp.domain.model.TelemetrySample
@@ -17,17 +17,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import okio.Buffer
-import okio.ByteString
-import okio.ByteString.Companion.toByteString
 
 class TelemetryRepository(
-  private val api: CosRayApi,
-  private val bleRepository: BleRepository,
-  private val authRepository: AuthRepository,
-  externalScope: CoroutineScope,
+        private val api: CosRayApi,
+        private val bleRepository: BleRepository,
+        private val authRepository: AuthRepository,
+        externalScope: CoroutineScope,
 ) {
   private val packetAssembler = FirmwarePacketAssembler()
+  private var lastRequestedDeviceMac: String? = null
 
   private val _buffer = MutableStateFlow<List<TelemetrySample>>(emptyList())
   val bufferedSamples: StateFlow<List<TelemetrySample>> = _buffer.asStateFlow()
@@ -42,18 +40,16 @@ class TelemetryRepository(
 
   init {
     externalScope.launch {
-      bleRepository.telemetry.collect { sample: TelemetrySample ->
-        _buffer.update { list: List<TelemetrySample> -> (list + sample).takeLast(BUFFER_SIZE) }
-        _liveTelemetry.update { list: List<TelemetrySample> ->
-          (list + sample).sortedByDescending(TelemetrySample::recordedAt).take(MAX_LIVE_SAMPLES)
-        }
-      }
-    }
-    externalScope.launch {
       bleRepository.connectionState.collect { state: BleConnectionState ->
         when (state) {
-          is BleConnectionState.Connected -> _connectedDevice.value = state.device
-          else -> _connectedDevice.value = null
+          is BleConnectionState.Connected -> {
+            _connectedDevice.value = state.device
+            requestFirmwarePacketsIfNeeded(state.device.macAddress)
+          }
+          else -> {
+            _connectedDevice.value = null
+            lastRequestedDeviceMac = null
+          }
         }
       }
     }
@@ -61,11 +57,95 @@ class TelemetryRepository(
     externalScope.launch {
       bleRepository.rawPackets.collect { rawPacket ->
         val deviceMac = _connectedDevice.value?.macAddress ?: return@collect
-        val requests = packetAssembler.consume(rawPacket.data, deviceMac)
-        if (requests.isNotEmpty()) {
-          _uploadBuffer.update { list -> (list + requests).takeLast(BUFFER_SIZE) }
+        val packets = packetAssembler.consume(rawPacket.data, deviceMac)
+        if (packets.isNotEmpty()) {
+          Log.d(
+                  TAG,
+                  "Assembled ${packets.size} firmware packet(s) from ${rawPacket.data.size}-byte BLE notification"
+          )
+          appendUploadRequests(packets.map(ParsedFirmwarePacket::uploadRequest))
+          appendSamples(packets.flatMap(ParsedFirmwarePacket::samples))
         }
       }
+    }
+  }
+
+  suspend fun requestFirmwarePackets(): CosRayResult<Unit> {
+    val deviceMac =
+            _connectedDevice.value?.macAddress
+                    ?: return CosRayResult.Error(IllegalStateException("No connected device"))
+    return sendInitialCommands(deviceMac)
+  }
+
+  suspend fun sendStatusCommand(): CosRayResult<Unit> =
+          sendSingleCommand(Protocol.Command.buildStatusCommand())
+
+  suspend fun sendMuonStartCommand(): CosRayResult<Unit> =
+          sendSingleCommand(
+                  Protocol.Command.buildStartCommand(packetType = Protocol.Command.TYPE_MUON)
+          )
+
+  suspend fun sendTimelineStartCommand(): CosRayResult<Unit> =
+          sendSingleCommand(
+                  Protocol.Command.buildStartCommand(packetType = Protocol.Command.TYPE_TIMELINE)
+          )
+
+  suspend fun sendStopCommand(): CosRayResult<Unit> =
+          sendSingleCommand(Protocol.Command.buildStopCommand())
+
+  private suspend fun requestFirmwarePacketsIfNeeded(deviceMac: String) {
+    if (lastRequestedDeviceMac == deviceMac) return
+    when (val result = sendInitialCommands(deviceMac)) {
+      is CosRayResult.Success -> lastRequestedDeviceMac = deviceMac
+      is CosRayResult.Error -> {
+        Log.w(TAG, "Failed to send initial firmware commands for $deviceMac", result.throwable)
+      }
+    }
+  }
+
+  private suspend fun sendInitialCommands(deviceMac: String): CosRayResult<Unit> {
+    val commands =
+            listOf(
+                    Protocol.Command.buildStatusCommand(),
+                    Protocol.Command.buildStartCommand(packetType = Protocol.Command.TYPE_MUON),
+                    Protocol.Command.buildStartCommand(packetType = Protocol.Command.TYPE_TIMELINE),
+            )
+
+    commands.forEachIndexed { index, command ->
+      when (val result = bleRepository.sendCommand(command)) {
+        is CosRayResult.Success -> {
+          Log.i(TAG, "Sent firmware command ${index + 1}/${commands.size} to $deviceMac")
+        }
+        is CosRayResult.Error -> return result
+      }
+    }
+
+    return CosRayResult.Success(Unit)
+  }
+
+  private suspend fun sendSingleCommand(command: ByteArray): CosRayResult<Unit> {
+    val deviceMac =
+            _connectedDevice.value?.macAddress
+                    ?: return CosRayResult.Error(IllegalStateException("No connected device"))
+    return when (val result = bleRepository.sendCommand(command)) {
+      is CosRayResult.Success -> {
+        Log.i(TAG, "Sent manual firmware command to $deviceMac")
+        CosRayResult.Success(Unit)
+      }
+      is CosRayResult.Error -> result
+    }
+  }
+
+  private fun appendUploadRequests(requests: List<PacketUploadRequest>) {
+    if (requests.isEmpty()) return
+    _uploadBuffer.update { list -> (list + requests).takeLast(BUFFER_SIZE) }
+  }
+
+  private fun appendSamples(samples: List<TelemetrySample>) {
+    if (samples.isEmpty()) return
+    _buffer.update { list -> (list + samples).takeLast(BUFFER_SIZE) }
+    _liveTelemetry.update { list ->
+      (list + samples).sortedByDescending(TelemetrySample::recordedAt).take(MAX_LIVE_SAMPLES)
     }
   }
 
@@ -78,10 +158,10 @@ class TelemetryRepository(
         requests.forEach { request ->
           val tokenResult = authRepository.ensureValidToken()
           val accessToken =
-            when (tokenResult) {
-              is CosRayResult.Success -> tokenResult.data
-              is CosRayResult.Error -> throw tokenResult.throwable
-            }
+                  when (tokenResult) {
+                    is CosRayResult.Success -> tokenResult.data
+                    is CosRayResult.Error -> throw tokenResult.throwable
+                  }
           api.uploadPacket(accessToken, request)
         }
       }
@@ -99,138 +179,91 @@ class TelemetryRepository(
 
   fun clearBuffer() {
     _buffer.value = emptyList()
+    _liveTelemetry.value = emptyList()
     _uploadBuffer.value = emptyList()
     packetAssembler.reset()
   }
 
   companion object {
+    private const val TAG = "TelemetryRepository"
     private const val BUFFER_SIZE = 128
     private const val MAX_LIVE_SAMPLES = 30
   }
 }
 
 internal class FirmwarePacketAssembler {
-  private val byteBuffer = Buffer()
+  private val partialPackets = linkedMapOf<Int, PartialPacket>()
 
-  fun consume(chunk: ByteArray, macAddress: String): List<PacketUploadRequest> {
-    if (chunk.isEmpty()) return emptyList()
-    byteBuffer.write(chunk)
+  fun consume(chunk: ByteArray, macAddress: String): List<ParsedFirmwarePacket> {
+    if (chunk.size <= BLE_HEADER_SIZE) return emptyList()
 
-    val requests = mutableListOf<PacketUploadRequest>()
-    @Suppress("LoopWithTooManyJumpStatements")
-    while (true) {
-      val startIndex = findPacketStartIndex()
-      if (startIndex < 0) {
-        shrinkTailForResync()
-        break
-      }
-
-      if (startIndex > 0) {
-        byteBuffer.skip(startIndex.toLong())
-      }
-
-      if (byteBuffer.size < HEADER_SIZE.toLong()) {
-        break
-      }
-
-      val packetSize = determinePacketSize()
-      if (packetSize < 0) {
-        // Did not find tail or buffer too small, wait for more data
-        // Prevent buffer bloat if tail is lost forever
-        if (byteBuffer.size > MAX_BUFFER_WAIT_SIZE) {
-            shrinkTailForResync()
-        }
-        break
-      }
-
-      val packetPreview = Buffer()
-      byteBuffer.copyTo(packetPreview, 0, packetSize.toLong())
-      val packetBytes = packetPreview.readByteArray()
-      val request = parsePacket(macAddress, packetBytes)
-      if (request != null) {
-        requests.add(request)
-        byteBuffer.skip(packetSize.toLong())
-      } else {
-        byteBuffer.skip(1)
-      }
+    val globalTotal = chunk[0].toUnsignedInt()
+    val globalIndex = chunk[1].toUnsignedInt()
+    val localTotal = chunk[2].toUnsignedInt()
+    val localIndex = chunk[3].toUnsignedInt()
+    if (globalTotal == 0 || globalIndex == 0 || localTotal == 0 || localIndex !in 1..localTotal) {
+      return emptyList()
     }
 
-    return requests
+    val payload = chunk.copyOfRange(BLE_HEADER_SIZE, chunk.size)
+    if (payload.isEmpty()) return emptyList()
+
+    var partialPacket = partialPackets[globalIndex]
+    if (partialPacket == null ||
+                    partialPacket.globalTotal != globalTotal ||
+                    partialPacket.localTotal != localTotal ||
+                    partialPacket.payloadSize != payload.size ||
+                    (localIndex == 1 && partialPacket.fragments.isNotEmpty())
+    ) {
+      partialPacket = PartialPacket(globalTotal, localTotal, payload.size)
+      partialPackets[globalIndex] = partialPacket
+    }
+
+    partialPacket.fragments[localIndex] = payload
+    trimActivePackets()
+
+    if (partialPacket.fragments.size < localTotal) return emptyList()
+
+    val packetBytes = ByteArray(localTotal * partialPacket.payloadSize)
+    for (index in 1..localTotal) {
+      val fragment = partialPacket.fragments[index] ?: return emptyList()
+      fragment.copyInto(
+              destination = packetBytes,
+              destinationOffset = (index - 1) * partialPacket.payloadSize,
+      )
+    }
+
+    partialPackets.remove(globalIndex)
+    if (packetBytes.size < COMPLETE_PACKET_SIZE) return emptyList()
+
+    return FirmwarePacketMapper.parse(macAddress, packetBytes.copyOf(COMPLETE_PACKET_SIZE))
+            ?.let(::listOf)
+            ?: emptyList()
   }
 
   fun reset() {
-    byteBuffer.clear()
+    partialPackets.clear()
   }
 
-  private fun parsePacket(macAddress: String, packetBytes: ByteArray): PacketUploadRequest? {
-    return when {
-      hasHeader(packetBytes, MUON_HEAD) ->
-        runCatching {
-            val packet = Protocol.MuonDataPkg.fromRawData(packetBytes)
-            ProtocolMapper.createMuonPacketRequest(macAddress, packet)
-          }
-          .getOrNull()
-      hasHeader(packetBytes, TIMELINE_HEAD) ->
-        runCatching {
-            val packet = Protocol.TimeLinePkg.fromRawData(packetBytes)
-            ProtocolMapper.createTimelinePacketRequest(macAddress, packet)
-          }
-          .getOrNull()
-      else -> null
+  private fun trimActivePackets() {
+    while (partialPackets.size > MAX_ACTIVE_PACKETS) {
+      val oldestKey = partialPackets.entries.firstOrNull()?.key ?: return
+      partialPackets.remove(oldestKey)
     }
   }
 
-  private fun findPacketStartIndex(): Int {
-    if (byteBuffer.size < HEADER_SIZE.toLong()) return -1
-    val muonIndex = byteBuffer.indexOf(MUON_HEAD)
-    val timelineIndex = byteBuffer.indexOf(TIMELINE_HEAD)
-    return when {
-      muonIndex >= 0L && timelineIndex >= 0L -> minOf(muonIndex, timelineIndex).toInt()
-      muonIndex >= 0L -> muonIndex.toInt()
-      timelineIndex >= 0L -> timelineIndex.toInt()
-      else -> -1
-    }
-  }
+  private fun Byte.toUnsignedInt(): Int = toInt() and 0xFF
 
-  private fun determinePacketSize(): Int {
-     // Check what header is at index 0
-     val currentHeader = Buffer()
-     byteBuffer.copyTo(currentHeader, 0, HEADER_SIZE.toLong())
-     val headByteArray = currentHeader.readByteArray()
-
-     return when {
-         hasHeader(headByteArray, MUON_HEAD) -> {
-             if (byteBuffer.size < Protocol.MuonDataPkg.TOTAL_SIZE) -1 else Protocol.MuonDataPkg.TOTAL_SIZE
-         }
-         hasHeader(headByteArray, TIMELINE_HEAD) -> {
-             if (byteBuffer.size < Protocol.TimeLinePkg.TOTAL_SIZE) -1 else Protocol.TimeLinePkg.TOTAL_SIZE
-         }
-         else -> -1
-     }
-  }
-
-
-
-  private fun shrinkTailForResync() {
-    if (byteBuffer.size <= (HEADER_SIZE - 1).toLong()) return
-    val keep = (HEADER_SIZE - 1).toLong()
-    byteBuffer.skip(byteBuffer.size - keep)
-  }
-
-  private fun hasHeader(packetBytes: ByteArray, header: ByteString): Boolean {
-    return packetBytes[0] == header[0] && packetBytes[1] == header[1] && packetBytes[2] == header[2]
-  }
+  private data class PartialPacket(
+          val globalTotal: Int,
+          val localTotal: Int,
+          val payloadSize: Int,
+          val fragments: MutableMap<Int, ByteArray> = mutableMapOf(),
+  )
 
   companion object {
-    private const val HEADER_SIZE = 3
-    private const val MUON_RESERVED_SIZE = 6
-    private const val TIMELINE_RESERVED_SIZE = 20
-    private const val MAX_BUFFER_WAIT_SIZE = 2048
-    private val MUON_HEAD: ByteString =
-      byteArrayOf(0xAA.toByte(), 0xBB.toByte(), 0xCC.toByte()).toByteString()
-    private val TIMELINE_HEAD: ByteString = byteArrayOf(0x12, 0x34, 0x56).toByteString()
-    private val MUON_TAIL: ByteString =
-      byteArrayOf(0xDD.toByte(), 0xEE.toByte(), 0xFF.toByte()).toByteString()
-    private val TIMELINE_TAIL: ByteString = byteArrayOf(0x78, 0x9A.toByte(), 0xBC.toByte()).toByteString()
+    private const val BLE_HEADER_SIZE = 4
+    private const val COMPLETE_PACKET_SIZE = 512
+    private const val MAX_ACTIVE_PACKETS = 8
   }
 }

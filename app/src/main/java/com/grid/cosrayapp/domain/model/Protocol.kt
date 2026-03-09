@@ -15,11 +15,11 @@ object Protocol {
       crc = crc xor ((data[index].toInt() and 0xFF) shl 8)
       repeat(8) {
         crc =
-          if ((crc and 0x8000) != 0) {
-            ((crc shl 1) xor CRC16_POLY) and 0xFFFF
-          } else {
-            (crc shl 1) and 0xFFFF
-          }
+                if ((crc and 0x8000) != 0) {
+                  ((crc shl 1) xor CRC16_POLY) and 0xFFFF
+                } else {
+                  (crc shl 1) and 0xFFFF
+                }
       }
     }
     return crc and 0xFFFF
@@ -27,46 +27,69 @@ object Protocol {
 
   // 指令帧定义（App → ESP32）
   object Command {
-    // 帧头/帧尾
-    const val FRAME_HEADER: Short = 0x55AA.toShort()
-    const val FRAME_TRAILER: Short = 0xAA55.toShort()
+    const val OPCODE_START: Byte = 0x01
+    const val OPCODE_STOP: Byte = 0x02
+    const val OPCODE_ACK: Byte = 0x03
+    const val OPCODE_NACK: Byte = 0x04
+    const val OPCODE_STATUS: Byte = 0x05
+    const val OPCODE_PING: Byte = 0x06
 
-    const val CMD_TYPE_REQUEST_DATA: Byte = 0x01
-    const val CMD_ID_REQUEST_DATA: Byte = 0x01
+    const val TYPE_NONE: Byte = 0x00
+    const val TYPE_MUON: Byte = 0x01
+    const val TYPE_TIMELINE: Byte = 0x02
 
-    fun buildRequestFrame(cmdType: Byte = CMD_TYPE_REQUEST_DATA): ByteArray {
-      val paramLength = 0 // 当前指令无参数，长度为0
-      // 总长度计算：帧头(2) + 指令类型(1) + 指令ID(1) + 预留参数长度(2) + 参数(0) + 校验和(1) + 帧尾(2)
-      val totalLength = 2 + 1 + 1 + 2 + paramLength + 1 + 2
+    private const val COMMAND_LENGTH = 8
+    private const val COMMAND_PAYLOAD_LENGTH = 6
+    private const val COMMAND_PACKAGE_LENGTH = 10
 
-      val buffer = ByteBuffer.allocate(totalLength).order(ByteOrder.BIG_ENDIAN) // 指令帧默认大端序
-      buffer.putShort(FRAME_HEADER)
-      buffer.put(cmdType)
-      buffer.put(CMD_ID_REQUEST_DATA)
-      buffer.putShort(paramLength.toShort())
-      val checksum =
-        calculateChecksum(buffer.array(), startIndex = 2, length = 1 + 1 + 2 + paramLength)
-      buffer.put(checksum)
-      buffer.putShort(FRAME_TRAILER)
+    fun buildStartCommand(packageId: Long = 0, packetType: Byte = TYPE_MUON): ByteArray =
+            buildCommand(OPCODE_START, packageId, packetType)
 
-      return buffer.array()
-    }
+    fun buildStopCommand(): ByteArray = buildCommand(OPCODE_STOP)
 
-    internal fun calculateChecksum(data: ByteArray, startIndex: Int, length: Int): Byte {
-      var checksum: Byte = 0
-      for (i in startIndex until startIndex + length) {
-        checksum = (checksum.toInt() xor data[i].toInt()).toByte()
+    fun buildAckCommand(packageId: Long, packetType: Byte): ByteArray =
+            buildCommand(OPCODE_ACK, packageId, packetType)
+
+    fun buildNackCommand(packageId: Long, packetType: Byte): ByteArray =
+            buildCommand(OPCODE_NACK, packageId, packetType)
+
+    fun buildStatusCommand(): ByteArray = buildCommand(OPCODE_STATUS)
+
+    fun buildPingCommand(): ByteArray = buildCommand(OPCODE_PING)
+
+    fun buildRequestFrame(cmdType: Byte = TYPE_MUON): ByteArray =
+            buildStartCommand(packetType = cmdType)
+
+    private fun buildCommand(
+            opcode: Byte,
+            packageId: Long = 0,
+            packetType: Byte = TYPE_NONE,
+    ): ByteArray {
+      require(packageId in 0..0xFFFF_FFFFL) { "packageId 必须在 uint32 范围内" }
+
+      val command = ByteArray(COMMAND_LENGTH)
+      command[0] = opcode
+      command[1] = ((packageId shr 24) and 0xFF).toByte()
+      command[2] = ((packageId shr 16) and 0xFF).toByte()
+      command[3] = ((packageId shr 8) and 0xFF).toByte()
+      command[4] = (packageId and 0xFF).toByte()
+      command[5] = packetType
+
+      val crc = calculateCrc16Ccitt(command, startIndex = 0, length = COMMAND_PAYLOAD_LENGTH)
+      return ByteArray(COMMAND_PACKAGE_LENGTH).also { bytes ->
+        command.copyInto(bytes, endIndex = COMMAND_LENGTH)
+        bytes[COMMAND_LENGTH] = (crc and 0xFF).toByte()
+        bytes[COMMAND_LENGTH + 1] = ((crc shr 8) and 0xFF).toByte()
       }
-      return checksum
     }
   }
 
   // 数据包结构（ESP32 → App）：镜像firmware里的typedefs.h
 
   data class MuonData(
-    val cpuTime: Long, // CPU时钟（8字节，lifetime counter）
-    val energy: Short, // μ子能量（2字节，16位ADC测量值）
-    val pps: Int, // 上电以来PPS脉冲计数（4字节）
+          val cpuTime: Long, // CPU时钟（8字节，lifetime counter）
+          val energy: Short, // μ子能量（2字节，16位ADC测量值）
+          val pps: Int, // 上电以来PPS脉冲计数（4字节）
   ) {
     companion object {
       const val SIZE = 14
@@ -74,22 +97,22 @@ object Protocol {
       fun fromByteBuffer(buffer: ByteBuffer): MuonData {
         require(buffer.order() == ByteOrder.LITTLE_ENDIAN) { "MuonData 解析需小端序" }
         return MuonData(
-          cpuTime = buffer.long, // 读取8字节uint64_t
-          energy = buffer.short, // 读取2字节uint16_t
-          pps = buffer.int, // 读取4字节uint32_t
+                cpuTime = buffer.long, // 读取8字节uint64_t
+                energy = buffer.short, // 读取2字节uint16_t
+                pps = buffer.int, // 读取4字节uint32_t
         )
       }
     }
   }
 
   data class MuonDataPkg(
-    val head: ByteArray, // 包头部标识（3字节：0xAA,0xBB,0xCC）
-    val pkgCnt: Int, // 全局数据包计数（4字节，掉电不丢失）
-    val utc: Int, // 包第一个计数的UTC时间（4字节）
-    val muonDataList: List<MuonData>, // 35个μ子事件（35×14=490字节）
-    val tail: ByteArray, // 包尾部标识（3字节：0xDD,0xEE,0xFF）
-    val crc: Short, // 校验和（2字节）
-    val reserved: ByteArray, // 预留字段（6字节）
+          val head: ByteArray, // 包头部标识（3字节：0xAA,0xBB,0xCC）
+          val pkgCnt: Int, // 全局数据包计数（4字节，掉电不丢失）
+          val utc: Int, // 包第一个计数的UTC时间（4字节）
+          val muonDataList: List<MuonData>, // 35个μ子事件（35×14=490字节）
+          val tail: ByteArray, // 包尾部标识（3字节：0xDD,0xEE,0xFF）
+          val crc: Short, // 校验和（2字节）
+          val reserved: ByteArray, // 预留字段（6字节）
   ) {
     companion object {
       const val TOTAL_SIZE = 512 // 数据包总字节数（与固件一致）
@@ -116,8 +139,6 @@ object Protocol {
         val pkgCnt = buffer.int
         val utc = buffer.int
 
-
-
         val muonDataList = mutableListOf<MuonData>()
         repeat(itemCount) { muonDataList.add(MuonData.fromByteBuffer(buffer)) }
 
@@ -126,25 +147,26 @@ object Protocol {
           "μ子数据包尾部标识错误：预期${TAIL_EXPECTED.contentToString()}，实际${tail.contentToString()}"
         }
 
-        val reserved = ByteArray(6).also { 
-           if (buffer.remaining() >= 6) {
-               buffer.get(it) 
-           } else if (buffer.remaining() > 0) {
-              // Copy what's available
-              buffer.get(it, 0, buffer.remaining())
-           }
-        }
-        
+        val reserved =
+                ByteArray(6).also {
+                  if (buffer.remaining() >= 6) {
+                    buffer.get(it)
+                  } else if (buffer.remaining() > 0) {
+                    // Copy what's available
+                    buffer.get(it, 0, buffer.remaining())
+                  }
+                }
+
         val crc = buffer.short
-        
+
         // Calculate CRC
         // The firmware computes CRC starting from index 0 for length = TOTAL_SIZE - 2
         val calculatedCrc =
-          calculateCrc16Ccitt(
-            data = rawData,
-            startIndex = 0,
-            length = TOTAL_SIZE - 2,
-          )
+                calculateCrc16Ccitt(
+                        data = rawData,
+                        startIndex = 0,
+                        length = TOTAL_SIZE - 2,
+                )
         require((crc.toInt() and 0xFFFF) == calculatedCrc) {
           "μ子数据包CRC校验失败：预期${crc.toInt() and 0xFFFF}，实际$calculatedCrc"
         }
@@ -158,12 +180,12 @@ object Protocol {
       if (javaClass != other?.javaClass) return false
       other as MuonDataPkg
       return head.contentEquals(other.head) &&
-        pkgCnt == other.pkgCnt &&
-        utc == other.utc &&
-        muonDataList == other.muonDataList &&
-        tail.contentEquals(other.tail) &&
-        crc == other.crc &&
-        reserved.contentEquals(other.reserved)
+              pkgCnt == other.pkgCnt &&
+              utc == other.utc &&
+              muonDataList == other.muonDataList &&
+              tail.contentEquals(other.tail) &&
+              crc == other.crc &&
+              reserved.contentEquals(other.reserved)
     }
 
     override fun hashCode(): Int {
@@ -178,26 +200,26 @@ object Protocol {
     }
 
     override fun toString(): String =
-      "MuonDataPkg(pkgCnt=$pkgCnt, utc=$utc, muonCount=${muonDataList.size}, " +
-        "head=${head.contentToString()}, tail=${tail.contentToString()})"
+            "MuonDataPkg(pkgCnt=$pkgCnt, utc=$utc, muonCount=${muonDataList.size}, " +
+                    "head=${head.contentToString()}, tail=${tail.contentToString()})"
   }
 
   data class TimeLineData(
-    val cpuTime: Long, // 写入数据时的CPU时钟（8字节）
-    val pps: Int, // 当前PPS脉冲计数（4字节）
-    val utc: Int, // 最近一次UTC时间戳（4字节）
-    val ppsUtc: Int, // 上次记录UTC时的PPS计数（4字节）
-    val cpuTimePps: Long, // 上次收到PPS脉冲时的CPU时钟（8字节）
-    val gpsLong: Int, // GPS经度（4字节，1m级，0°-360°）
-    val gpsLat: Int, // GPS纬度（4字节，1m级，-90°-90°）
-    val gpsAlt: Short, // GPS海拔（2字节，1m级）
-    val accX: Byte, // 加速度X轴（1字节）
-    val accY: Byte, // 加速度Y轴（1字节）
-    val accZ: Byte, // 加速度Z轴（1字节）
-    val siPMTmp: Short, // SiPM附近温度（2字节，tmp112测量）
-    val mcUTmp: Byte, // ESP32内置温度（1字节）
-    val siPMImon: Short, // SiPM漏电流监测（2字节）
-    val siPMVmon: Short, // SiPM偏压监测（2字节）
+          val cpuTime: Long, // 写入数据时的CPU时钟（8字节）
+          val pps: Int, // 当前PPS脉冲计数（4字节）
+          val utc: Int, // 最近一次UTC时间戳（4字节）
+          val ppsUtc: Int, // 上次记录UTC时的PPS计数（4字节）
+          val cpuTimePps: Long, // 上次收到PPS脉冲时的CPU时钟（8字节）
+          val gpsLong: Int, // GPS经度（4字节，1m级，0°-360°）
+          val gpsLat: Int, // GPS纬度（4字节，1m级，-90°-90°）
+          val gpsAlt: Short, // GPS海拔（2字节，1m级）
+          val accX: Byte, // 加速度X轴（1字节）
+          val accY: Byte, // 加速度Y轴（1字节）
+          val accZ: Byte, // 加速度Z轴（1字节）
+          val siPMTmp: Short, // SiPM附近温度（2字节，tmp112测量）
+          val mcUTmp: Byte, // ESP32内置温度（1字节）
+          val siPMImon: Short, // SiPM漏电流监测（2字节）
+          val siPMVmon: Short, // SiPM偏压监测（2字节）
   ) {
     companion object {
       const val SIZE = 48 // 结构体总字节数（与固件一致）
@@ -205,33 +227,33 @@ object Protocol {
       fun fromByteBuffer(buffer: ByteBuffer): TimeLineData {
         require(buffer.order() == ByteOrder.LITTLE_ENDIAN) { "TimeLineData 解析需小端序" }
         return TimeLineData(
-          cpuTime = buffer.long,
-          pps = buffer.int,
-          utc = buffer.int,
-          ppsUtc = buffer.int,
-          cpuTimePps = buffer.long,
-          gpsLong = buffer.int,
-          gpsLat = buffer.int,
-          gpsAlt = buffer.short,
-          accX = buffer.get(),
-          accY = buffer.get(),
-          accZ = buffer.get(),
-          siPMTmp = buffer.short,
-          mcUTmp = buffer.get(),
-          siPMImon = buffer.short,
-          siPMVmon = buffer.short,
+                cpuTime = buffer.long,
+                pps = buffer.int,
+                utc = buffer.int,
+                ppsUtc = buffer.int,
+                cpuTimePps = buffer.long,
+                gpsLong = buffer.int,
+                gpsLat = buffer.int,
+                gpsAlt = buffer.short,
+                accX = buffer.get(),
+                accY = buffer.get(),
+                accZ = buffer.get(),
+                siPMTmp = buffer.short,
+                mcUTmp = buffer.get(),
+                siPMImon = buffer.short,
+                siPMVmon = buffer.short,
         )
       }
     }
   }
 
   data class TimeLinePkg(
-    val head: ByteArray, // 包头部标识（3字节：0x12,0x34,0x56）
-    val pkgCnt: Int, // 全局数据包计数（4字节，掉电不丢失）
-    val timeLineDataList: List<TimeLineData>, // 10个时间线事件（10×48=480字节）
-    val tail: ByteArray, // 包尾部标识（3字节：0x78,0x9A,0xBC）
-    val crc: Short, // 校验和（2字节）
-    val reserve: ByteArray, // 预留字段（20字节）
+          val head: ByteArray, // 包头部标识（3字节：0x12,0x34,0x56）
+          val pkgCnt: Int, // 全局数据包计数（4字节，掉电不丢失）
+          val timeLineDataList: List<TimeLineData>, // 10个时间线事件（10×48=480字节）
+          val tail: ByteArray, // 包尾部标识（3字节：0x78,0x9A,0xBC）
+          val crc: Short, // 校验和（2字节）
+          val reserve: ByteArray, // 预留字段（20字节）
   ) {
     companion object {
       const val TOTAL_SIZE = 512 // 数据包总字节数（与固件一致）
@@ -251,8 +273,6 @@ object Protocol {
 
         val pkgCnt = buffer.int
 
-
-
         val timeLineDataList = mutableListOf<TimeLineData>()
         repeat(itemCount) { timeLineDataList.add(TimeLineData.fromByteBuffer(buffer)) }
 
@@ -261,25 +281,26 @@ object Protocol {
           "时间线数据包尾部标识错误：预期${TAIL_EXPECTED.contentToString()}，实际${tail.contentToString()}"
         }
 
-        val reserve = ByteArray(20).also { 
-           if (buffer.remaining() >= 20) {
-               buffer.get(it) 
-           } else if (buffer.remaining() > 0) {
-              // Copy what's available
-              buffer.get(it, 0, buffer.remaining())
-           }
-        }
-        
+        val reserve =
+                ByteArray(20).also {
+                  if (buffer.remaining() >= 20) {
+                    buffer.get(it)
+                  } else if (buffer.remaining() > 0) {
+                    // Copy what's available
+                    buffer.get(it, 0, buffer.remaining())
+                  }
+                }
+
         val crc = buffer.short
-        
+
         // Calculate CRC
         // The firmware computes CRC starting from index 0 for length = TOTAL_SIZE - 2
         val calculatedCrc =
-          calculateCrc16Ccitt(
-            data = rawData,
-            startIndex = 0,
-            length = TOTAL_SIZE - 2,
-          )
+                calculateCrc16Ccitt(
+                        data = rawData,
+                        startIndex = 0,
+                        length = TOTAL_SIZE - 2,
+                )
         require((crc.toInt() and 0xFFFF) == calculatedCrc) {
           "时间线数据包CRC校验失败：预期${crc.toInt() and 0xFFFF}，实际$calculatedCrc"
         }
@@ -294,11 +315,11 @@ object Protocol {
       if (javaClass != other?.javaClass) return false
       other as TimeLinePkg
       return head.contentEquals(other.head) &&
-        pkgCnt == other.pkgCnt &&
-        timeLineDataList == other.timeLineDataList &&
-        tail.contentEquals(other.tail) &&
-        crc == other.crc &&
-        reserve.contentEquals(other.reserve)
+              pkgCnt == other.pkgCnt &&
+              timeLineDataList == other.timeLineDataList &&
+              tail.contentEquals(other.tail) &&
+              crc == other.crc &&
+              reserve.contentEquals(other.reserve)
     }
 
     override fun hashCode(): Int {
@@ -313,8 +334,8 @@ object Protocol {
 
     // 打印数据包信息
     override fun toString(): String =
-      "TimeLinePkg(pkgCnt=$pkgCnt, eventCount=${timeLineDataList.size}, " +
-        "head=${head.contentToString()}, tail=${tail.contentToString()})"
+            "TimeLinePkg(pkgCnt=$pkgCnt, eventCount=${timeLineDataList.size}, " +
+                    "head=${head.contentToString()}, tail=${tail.contentToString()})"
   }
 
   // Extension method to find tail byte sequences
