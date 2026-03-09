@@ -128,7 +128,7 @@ inputs:
   java-version:
     description: "Java version to use"
     required: false
-    default: "21"
+    default: "25"
 
 outputs:
   signedFile:

@@ -41,8 +41,8 @@ android {
     }
   }
   compileOptions {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
   }
   buildFeatures {
     compose = true
@@ -52,13 +52,13 @@ android {
 
 kotlin {
   compilerOptions {
-    jvmTarget = JvmTarget.JVM_21
+    jvmTarget = JvmTarget.JVM_25
     freeCompilerArgs.addAll(
       "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
       "-opt-in=kotlinx.coroutines.FlowPreview",
     )
   }
-  jvmToolchain(21)
+  jvmToolchain(25)
 }
 
 ktfmt {
