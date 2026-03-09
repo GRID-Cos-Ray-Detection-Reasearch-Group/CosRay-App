@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -72,6 +74,10 @@ private val RAW_PACKET_TIME_FORMATTER: DateTimeFormatter =
 // Energy level thresholds for muon event classification (ADC counts)
 private const val HIGH_ENERGY_THRESHOLD = 40000
 private const val MEDIUM_ENERGY_THRESHOLD = 20000
+
+// Height constraints for event/packet list composables
+private val EVENT_LIST_MIN_HEIGHT = 220.dp
+private val EVENT_LIST_MAX_HEIGHT = 420.dp
 
 // Reusable DateTimeFormatter for timestamp display
 private val TIME_FORMATTER: DateTimeFormatter =
@@ -179,7 +185,7 @@ fun DashboardScreen(
 
       // Event List based on selected tab
       Surface(
-              modifier = Modifier.fillMaxWidth().heightIn(min = 220.dp),
+              modifier = Modifier.fillMaxWidth().heightIn(min = EVENT_LIST_MIN_HEIGHT),
               shape = RoundedCornerShape(16.dp),
               tonalElevation = 2.dp,
       ) {
@@ -661,7 +667,7 @@ private fun StatItem(label: String, value: String) {
 private fun MuonEventsList(events: List<TelemetrySample>) {
   if (events.isEmpty()) {
     Box(
-            modifier = Modifier.fillMaxWidth().heightIn(min = 220.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = EVENT_LIST_MIN_HEIGHT),
             contentAlignment = Alignment.Center
     ) {
       Text(
@@ -671,10 +677,10 @@ private fun MuonEventsList(events: List<TelemetrySample>) {
       )
     }
   } else {
-    Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
+    LazyColumn(
+            modifier = Modifier.fillMaxWidth().heightIn(min = EVENT_LIST_MIN_HEIGHT, max = EVENT_LIST_MAX_HEIGHT).padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) { events.forEach { sample -> MuonEventCard(sample) } }
+    ) { items(events) { sample -> MuonEventCard(sample) } }
   }
 }
 
@@ -750,7 +756,7 @@ private fun MuonEventCard(sample: TelemetrySample) {
 private fun TimelineEventsList(events: List<TelemetrySample>) {
   if (events.isEmpty()) {
     Box(
-            modifier = Modifier.fillMaxWidth().heightIn(min = 220.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = EVENT_LIST_MIN_HEIGHT),
             contentAlignment = Alignment.Center
     ) {
       Text(
@@ -760,10 +766,10 @@ private fun TimelineEventsList(events: List<TelemetrySample>) {
       )
     }
   } else {
-    Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
+    LazyColumn(
+            modifier = Modifier.fillMaxWidth().heightIn(min = EVENT_LIST_MIN_HEIGHT, max = EVENT_LIST_MAX_HEIGHT).padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) { events.forEach { sample -> TimelineEventCard(sample) } }
+    ) { items(events) { sample -> TimelineEventCard(sample) } }
   }
 }
 
@@ -870,9 +876,10 @@ private fun formatSampleInstant(instant: Instant): String =
           formatInstant(instant)
         }
 
+@Composable
 private fun formatLastPacketText(instant: Instant?): String =
         if (instant == null || instant.toEpochMilli() <= 0L) {
-          "等待数据"
+          stringResource(R.string.dashboard_waiting_for_data)
         } else {
           formatInstant(instant)
         }
@@ -886,7 +893,7 @@ private fun AccelerationSnapshot.isMeaningful(): Boolean = xAxis != 0 || yAxis !
 private fun RawPacketsList(packets: List<RawPacket>) {
   if (packets.isEmpty()) {
     Box(
-            modifier = Modifier.fillMaxWidth().heightIn(min = 220.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = EVENT_LIST_MIN_HEIGHT),
             contentAlignment = Alignment.Center
     ) {
       Text(
@@ -896,10 +903,10 @@ private fun RawPacketsList(packets: List<RawPacket>) {
       )
     }
   } else {
-    Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
+    LazyColumn(
+            modifier = Modifier.fillMaxWidth().heightIn(min = EVENT_LIST_MIN_HEIGHT, max = EVENT_LIST_MAX_HEIGHT).padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) { packets.forEach { packet -> RawPacketCard(packet) } }
+    ) { items(packets) { packet -> RawPacketCard(packet) } }
   }
 }
 
@@ -936,7 +943,9 @@ private fun RawPacketCard(packet: RawPacket) {
         )
       }
 
-      val hexString = packet.data.joinToString(" ") { String.format("%02X", it) }
+      val hexString = remember(packet.data) {
+        packet.data.joinToString(" ") { String.format("%02X", it) }
+      }
       Text(
               text = hexString,
               style =

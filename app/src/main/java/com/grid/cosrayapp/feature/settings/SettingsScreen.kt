@@ -59,7 +59,7 @@ fun SettingsScreen(
     remember {
       try {
         val packageInfo: PackageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-        "${packageInfo.versionName} (${packageInfo.versionCode})"
+        "${packageInfo.versionName} (${packageInfo.longVersionCode})"
       } catch (e: PackageManager.NameNotFoundException) {
         "Unknown"
       }
@@ -71,7 +71,7 @@ fun SettingsScreen(
         title = { Text(stringResource(R.string.settings_title)) },
         navigationIcon = {
           IconButton(onClick = onOpenDrawer) {
-            Icon(imageVector = Icons.Default.Menu, contentDescription = "Menu")
+            Icon(imageVector = Icons.Default.Menu, contentDescription = stringResource(R.string.settings_navigation_menu))
           }
         },
       )
