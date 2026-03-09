@@ -6,6 +6,7 @@ import java.nio.ByteOrder
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class ProtocolTest {
@@ -32,6 +33,30 @@ class ProtocolTest {
     assertEquals(10, packet.timeLineDataList.size)
     assertEquals(0x12.toByte(), packet.head[0])
     assertEquals(0xBC.toByte(), packet.tail[2])
+  }
+
+  @Test
+  fun `muon packet parse with truncated payload should fail fast`() {
+    val raw = buildMuonPacketBytes(pkgCnt = 42, utc = 1_710_000_000).copyOf(511)
+
+    val error =
+      assertThrows(IllegalArgumentException::class.java) {
+        Protocol.MuonDataPkg.fromRawData(raw)
+      }
+
+    assertEquals("μ子数据包长度错误：预期512字节，实际511字节", error.message)
+  }
+
+  @Test
+  fun `timeline packet parse with truncated payload should fail fast`() {
+    val raw = buildTimelinePacketBytes(pkgCnt = 7).copyOf(511)
+
+    val error =
+      assertThrows(IllegalArgumentException::class.java) {
+        Protocol.TimeLinePkg.fromRawData(raw)
+      }
+
+    assertEquals("时间线数据包长度错误：预期512字节，实际511字节", error.message)
   }
 
   @Test

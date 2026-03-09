@@ -1,6 +1,11 @@
 import org.gradle.testing.jacoco.tasks.JacocoReport
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
+val debugBaseUrl =
+  providers.gradleProperty("COSRAY_DEBUG_BASE_URL").getOrElse("http://59.66.16.192:8000")
+val releaseBaseUrl =
+  providers.gradleProperty("COSRAY_RELEASE_BASE_URL").getOrElse("https://cosray.top")
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.ksp)
@@ -24,15 +29,15 @@ android {
     versionName = "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    buildConfigField("String", "BASE_URL", "\"http://192.168.3.4:8000\"")
+    buildConfigField("String", "BASE_URL", "\"$releaseBaseUrl\"")
   }
 
   buildTypes {
-    debug { buildConfigField("String", "BASE_URL", "\"http://59.66.16.192:8000\"") }
+    debug { buildConfigField("String", "BASE_URL", "\"$debugBaseUrl\"") }
     release {
       isMinifyEnabled = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      buildConfigField("String", "BASE_URL", "\"http://59.66.16.192:8000\"")
+      buildConfigField("String", "BASE_URL", "\"$releaseBaseUrl\"")
     }
   }
   compileOptions {
