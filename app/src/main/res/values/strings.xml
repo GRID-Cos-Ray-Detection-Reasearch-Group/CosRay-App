@@ -76,8 +76,15 @@
 
     <!-- Dashboard -->
     <string name="dashboard_title_default">CosRay 操作台</string>
+    <string name="dashboard_topbar_title">设备控制</string>
     <string name="dashboard_device_connected">连接设备:%1$s</string>
     <string name="dashboard_device_disconnected">尚未连接设备</string>
+    <string name="dashboard_status_connected">已连接</string>
+    <string name="dashboard_status_waiting">等待连接</string>
+    <string name="dashboard_hero_waiting_title">等待设备接入</string>
+    <string name="dashboard_hero_waiting_subtitle">连接后将在这里显示实时状态与数据概览</string>
+    <string name="dashboard_last_packet_label">最新数据</string>
+    <string name="dashboard_buffered_events_label">缓冲事件</string>
     <string name="dashboard_live_data">实时数据</string>
     <string name="dashboard_uploading">上传中…</string>
     <string name="dashboard_upload">同步后台</string>
@@ -98,6 +105,7 @@
     <string name="dashboard_command_timeline">时间线</string>
     <string name="dashboard_command_stop">停止</string>
     <string name="dashboard_command_sending">正在发送固件指令…</string>
+    <string name="dashboard_command_hint">连接设备后可手动请求状态或触发数据发送。</string>
     <string name="dashboard_command_failed">固件指令发送失败</string>
     <string name="dashboard_command_status_success">已发送状态指令</string>
     <string name="dashboard_command_muon_success">已发送 μ子启动指令</string>
@@ -109,7 +117,9 @@
     <string name="dashboard_timeline_events_tab">时间线 (%1$d)</string>
     <string name="dashboard_gps_location">GPS位置</string>
     <string name="dashboard_altitude_meters">海拔 %1$d m</string>
+    <string name="dashboard_location_waiting">尚未收到有效定位数据</string>
     <string name="dashboard_orientation">设备姿态</string>
+    <string name="dashboard_orientation_waiting">尚未收到有效姿态数据</string>
     <string name="dashboard_sipm_monitoring">SiPM监测</string>
     <string name="dashboard_sipm_voltage">偏压</string>
     <string name="dashboard_sipm_voltage_value">%1$d mV</string>
@@ -124,6 +134,7 @@
     <string name="dashboard_timeline_packets">时间线包</string>
     <string name="dashboard_total_events">总事件数</string>
     <string name="dashboard_average_energy">平均能量: %1$d ADC</string>
+    <string name="dashboard_last_packet_summary">最近一包: %1$s</string>
     <string name="dashboard_no_muon_events">暂无μ子事件记录</string>
     <string name="dashboard_no_timeline_events">暂无时间线事件记录</string>
     <string name="dashboard_event_index">事件 %1$d/%2$d</string>

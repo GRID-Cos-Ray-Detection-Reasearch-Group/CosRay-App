@@ -5,28 +5,34 @@ package com.grid.cosrayapp.feature.dashboard
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BluetoothConnected
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.SnackbarHost
@@ -97,7 +103,7 @@ fun DashboardScreen(
   Scaffold(
           topBar = {
             CenterAlignedTopAppBar(
-                    title = { Text(stringResource(R.string.dashboard_title_default)) },
+                    title = { Text(stringResource(R.string.dashboard_topbar_title)) },
                     navigationIcon = {
                       IconButton(onClick = onOpenDrawer) {
                         Icon(imageVector = Icons.Default.Menu, contentDescription = "Menu")
@@ -108,7 +114,11 @@ fun DashboardScreen(
           snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
   ) { innerPadding ->
     Column(
-            modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp),
+            modifier =
+                    Modifier.fillMaxSize()
+                            .padding(innerPadding)
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
       // Header Section
@@ -169,7 +179,7 @@ fun DashboardScreen(
 
       // Event List based on selected tab
       Surface(
-              modifier = Modifier.weight(1f).fillMaxWidth(),
+              modifier = Modifier.fillMaxWidth().heightIn(min = 220.dp),
               shape = RoundedCornerShape(16.dp),
               tonalElevation = 2.dp,
       ) {
@@ -192,88 +202,236 @@ private fun HeaderSection(
         onSendTimelineClicked: () -> Unit,
         onSendStopClicked: () -> Unit,
 ) {
-  Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-    Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-    ) {
-      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-                text = state.user?.displayName ?: stringResource(R.string.dashboard_title_default),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-        )
-        Text(
-                text =
-                        state.device?.let {
-                          val name = it.name ?: it.macAddress
-                          stringResource(R.string.dashboard_device_connected, name)
-                        }
-                                ?: stringResource(R.string.dashboard_device_disconnected),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-      }
+  val deviceName = state.device?.name ?: state.device?.macAddress
+  val commandEnabled = state.device != null && !state.isSendingCommand
 
-      Button(
-              onClick = onUploadClicked,
-              enabled = !state.isUploading,
-              contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+  Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors =
+                    CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ),
+    ) {
+      Column(
+              modifier = Modifier.fillMaxWidth().padding(16.dp),
+              verticalArrangement = Arrangement.spacedBy(14.dp),
       ) {
-        if (state.isUploading) {
-          androidx.compose.material3.CircularProgressIndicator(
-                  modifier = Modifier.size(16.dp).padding(end = 8.dp),
-                  color = MaterialTheme.colorScheme.onPrimary,
-                  strokeWidth = 2.dp,
-          )
-        } else {
-          Icon(
-                  imageVector = Icons.Default.CloudUpload,
-                  contentDescription = null,
-                  modifier = Modifier.size(16.dp).padding(end = 8.dp),
+        Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
+        ) {
+          Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                    text = deviceName ?: stringResource(R.string.dashboard_hero_waiting_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+            )
+            Text(
+                    text =
+                            if (deviceName != null) {
+                              stringResource(R.string.dashboard_device_connected, deviceName)
+                            } else {
+                              stringResource(R.string.dashboard_hero_waiting_subtitle)
+                            },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+          }
+
+          StatusBadge(
+                  connected = state.device != null,
+                  text =
+                          if (state.device != null) {
+                            stringResource(R.string.dashboard_status_connected)
+                          } else {
+                            stringResource(R.string.dashboard_status_waiting)
+                          },
           )
         }
-        Text(stringResource(R.string.dashboard_upload_button))
+
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+          val compactLayout = maxWidth < 420.dp
+          if (compactLayout) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+              SummaryPill(
+                      icon = Icons.Default.Schedule,
+                      label = stringResource(R.string.dashboard_last_packet_label),
+                      value = formatLastPacketText(state.packetStats.lastPacketTime),
+              )
+              SummaryPill(
+                      icon = Icons.Default.BluetoothConnected,
+                      label = stringResource(R.string.dashboard_buffered_events_label),
+                      value = state.packetStats.totalEventCount.toString(),
+              )
+            }
+          } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              SummaryPill(
+                      icon = Icons.Default.Schedule,
+                      label = stringResource(R.string.dashboard_last_packet_label),
+                      value = formatLastPacketText(state.packetStats.lastPacketTime),
+                      modifier = Modifier.weight(1f),
+              )
+              SummaryPill(
+                      icon = Icons.Default.BluetoothConnected,
+                      label = stringResource(R.string.dashboard_buffered_events_label),
+                      value = state.packetStats.totalEventCount.toString(),
+                      modifier = Modifier.weight(1f),
+              )
+            }
+          }
+        }
+
+        Button(
+                onClick = onUploadClicked,
+                enabled = !state.isUploading,
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+          if (state.isUploading) {
+            androidx.compose.material3.CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp).padding(end = 8.dp),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.dp,
+            )
+          } else {
+            Icon(
+                    imageVector = Icons.Default.CloudUpload,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp).padding(end = 8.dp),
+            )
+          }
+          Text(stringResource(R.string.dashboard_upload_button))
+        }
       }
     }
 
-    val commandEnabled = state.device != null && !state.isSendingCommand
-    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-      Text(
-              text = stringResource(R.string.dashboard_command_section_title),
-              style = MaterialTheme.typography.labelLarge,
-              color = MaterialTheme.colorScheme.primary,
-      )
-      Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(
-                onClick = onSendStatusClicked,
-                enabled = commandEnabled,
-                modifier = Modifier.weight(1f),
-        ) { Text(stringResource(R.string.dashboard_command_status)) }
-        Button(
-                onClick = onSendMuonClicked,
-                enabled = commandEnabled,
-                modifier = Modifier.weight(1f),
-        ) { Text(stringResource(R.string.dashboard_command_muon)) }
-      }
-      Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(
-                onClick = onSendTimelineClicked,
-                enabled = commandEnabled,
-                modifier = Modifier.weight(1f),
-        ) { Text(stringResource(R.string.dashboard_command_timeline)) }
-        Button(
-                onClick = onSendStopClicked,
-                enabled = commandEnabled,
-                modifier = Modifier.weight(1f),
-        ) { Text(stringResource(R.string.dashboard_command_stop)) }
-      }
-      if (state.isSendingCommand) {
+    Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors =
+                    CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+    ) {
+      Column(
+              modifier = Modifier.fillMaxWidth().padding(14.dp),
+              verticalArrangement = Arrangement.spacedBy(10.dp),
+      ) {
         Text(
-                text = stringResource(R.string.dashboard_command_sending),
+                text = stringResource(R.string.dashboard_command_section_title),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+        )
+
+        Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+          FilledTonalButton(
+                  onClick = onSendStatusClicked,
+                  enabled = commandEnabled,
+                  modifier = Modifier.weight(1f),
+          ) { Text(stringResource(R.string.dashboard_command_status)) }
+          FilledTonalButton(
+                  onClick = onSendMuonClicked,
+                  enabled = commandEnabled,
+                  modifier = Modifier.weight(1f),
+          ) { Text(stringResource(R.string.dashboard_command_muon)) }
+        }
+        Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+          FilledTonalButton(
+                  onClick = onSendTimelineClicked,
+                  enabled = commandEnabled,
+                  modifier = Modifier.weight(1f),
+          ) { Text(stringResource(R.string.dashboard_command_timeline)) }
+          OutlinedButton(
+                  onClick = onSendStopClicked,
+                  enabled = commandEnabled,
+                  modifier = Modifier.weight(1f),
+          ) { Text(stringResource(R.string.dashboard_command_stop)) }
+        }
+
+        Text(
+                text =
+                        if (state.isSendingCommand) {
+                          stringResource(R.string.dashboard_command_sending)
+                        } else {
+                          stringResource(R.string.dashboard_command_hint)
+                        },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun StatusBadge(connected: Boolean, text: String) {
+  Surface(
+          shape = RoundedCornerShape(999.dp),
+          color =
+                  if (connected) {
+                    MaterialTheme.colorScheme.primary
+                  } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                  },
+  ) {
+    Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color =
+                    if (connected) {
+                      MaterialTheme.colorScheme.onPrimary
+                    } else {
+                      MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+            fontWeight = FontWeight.SemiBold,
+    )
+  }
+}
+
+@Composable
+private fun SummaryPill(
+        icon: androidx.compose.ui.graphics.vector.ImageVector,
+        label: String,
+        value: String,
+        modifier: Modifier = Modifier,
+) {
+  Surface(
+          modifier = modifier,
+          shape = RoundedCornerShape(18.dp),
+          color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
+  ) {
+    Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Icon(
+              imageVector = icon,
+              contentDescription = null,
+              tint = MaterialTheme.colorScheme.primary,
+              modifier = Modifier.size(18.dp),
+      )
+      Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+                text = value,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
         )
       }
     }
@@ -297,15 +455,23 @@ private fun LocationCard(location: LocationSnapshot, modifier: Modifier = Modifi
               fontWeight = FontWeight.SemiBold,
               color = MaterialTheme.colorScheme.primary,
       )
-      Text(
-              text = "%.6f°, %.6f°".format(location.latitudeDegrees, location.longitudeDegrees),
-              style = MaterialTheme.typography.bodySmall,
-      )
-      Text(
-              text = stringResource(R.string.dashboard_altitude_meters, location.altitudeMeters),
-              style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
+      if (location.isMeaningful()) {
+        Text(
+                text = "%.6f°, %.6f°".format(location.latitudeDegrees, location.longitudeDegrees),
+                style = MaterialTheme.typography.bodySmall,
+        )
+        Text(
+                text = stringResource(R.string.dashboard_altitude_meters, location.altitudeMeters),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      } else {
+        Text(
+                text = stringResource(R.string.dashboard_location_waiting),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
     }
   }
 }
@@ -327,10 +493,18 @@ private fun OrientationCard(acceleration: AccelerationSnapshot, modifier: Modifi
               fontWeight = FontWeight.SemiBold,
               color = MaterialTheme.colorScheme.primary,
       )
-      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        AxisIndicator("X", acceleration.xAxis)
-        AxisIndicator("Y", acceleration.yAxis)
-        AxisIndicator("Z", acceleration.zAxis)
+      if (acceleration.isMeaningful()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          AxisIndicator("X", acceleration.xAxis)
+          AxisIndicator("Y", acceleration.yAxis)
+          AxisIndicator("Z", acceleration.zAxis)
+        }
+      } else {
+        Text(
+                text = stringResource(R.string.dashboard_orientation_waiting),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
       }
     }
   }
@@ -458,6 +632,15 @@ private fun PacketStatsCard(stats: PacketStatistics) {
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
         )
       }
+      Text(
+              text =
+                      stringResource(
+                              R.string.dashboard_last_packet_summary,
+                              formatLastPacketText(stats.lastPacketTime),
+                      ),
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSecondaryContainer,
+      )
     }
   }
 }
@@ -477,7 +660,10 @@ private fun StatItem(label: String, value: String) {
 @Composable
 private fun MuonEventsList(events: List<TelemetrySample>) {
   if (events.isEmpty()) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 220.dp),
+            contentAlignment = Alignment.Center
+    ) {
       Text(
               text = stringResource(R.string.dashboard_no_muon_events),
               style = MaterialTheme.typography.bodyMedium,
@@ -485,10 +671,10 @@ private fun MuonEventsList(events: List<TelemetrySample>) {
       )
     }
   } else {
-    LazyColumn(
-            modifier = Modifier.padding(12.dp),
+    Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) { items(events) { sample -> MuonEventCard(sample) } }
+    ) { events.forEach { sample -> MuonEventCard(sample) } }
   }
 }
 
@@ -563,7 +749,10 @@ private fun MuonEventCard(sample: TelemetrySample) {
 @Composable
 private fun TimelineEventsList(events: List<TelemetrySample>) {
   if (events.isEmpty()) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 220.dp),
+            contentAlignment = Alignment.Center
+    ) {
       Text(
               text = stringResource(R.string.dashboard_no_timeline_events),
               style = MaterialTheme.typography.bodyMedium,
@@ -571,10 +760,10 @@ private fun TimelineEventsList(events: List<TelemetrySample>) {
       )
     }
   } else {
-    LazyColumn(
-            modifier = Modifier.padding(12.dp),
+    Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) { items(events) { sample -> TimelineEventCard(sample) } }
+    ) { events.forEach { sample -> TimelineEventCard(sample) } }
   }
 }
 
@@ -593,7 +782,7 @@ private fun TimelineEventCard(sample: TelemetrySample) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       Text(
-              text = formatInstant(sample.recordedAt),
+              text = formatSampleInstant(sample.recordedAt),
               style = MaterialTheme.typography.labelLarge,
               fontWeight = FontWeight.Medium,
       )
@@ -616,32 +805,36 @@ private fun TimelineEventCard(sample: TelemetrySample) {
 
       // Location Data
       sample.location?.let { location ->
-        Text(
-                text =
-                        stringResource(
-                                R.string.dashboard_location_coords,
-                                location.latitudeDegrees,
-                                location.longitudeDegrees,
-                                location.altitudeMeters,
-                        ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        if (location.isMeaningful()) {
+          Text(
+                  text =
+                          stringResource(
+                                  R.string.dashboard_location_coords,
+                                  location.latitudeDegrees,
+                                  location.longitudeDegrees,
+                                  location.altitudeMeters,
+                          ),
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
       }
 
       // Acceleration Data
       sample.acceleration?.let { accel ->
-        Text(
-                text =
-                        stringResource(
-                                R.string.dashboard_acceleration_xyz,
-                                accel.xAxis,
-                                accel.yAxis,
-                                accel.zAxis,
-                        ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        if (accel.isMeaningful()) {
+          Text(
+                  text =
+                          stringResource(
+                                  R.string.dashboard_acceleration_xyz,
+                                  accel.xAxis,
+                                  accel.yAxis,
+                                  accel.zAxis,
+                          ),
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
       }
 
       // Packet Metadata
@@ -670,10 +863,32 @@ private fun MetricItem(label: String, value: String) {
 
 private fun formatInstant(instant: Instant): String = TIME_FORMATTER.format(instant)
 
+private fun formatSampleInstant(instant: Instant): String =
+        if (instant.toEpochMilli() <= 0L) {
+          "--"
+        } else {
+          formatInstant(instant)
+        }
+
+private fun formatLastPacketText(instant: Instant?): String =
+        if (instant == null || instant.toEpochMilli() <= 0L) {
+          "等待数据"
+        } else {
+          formatInstant(instant)
+        }
+
+private fun LocationSnapshot.isMeaningful(): Boolean =
+        latitudeDegrees != 0.0 || longitudeDegrees != 0.0 || altitudeMeters != 0
+
+private fun AccelerationSnapshot.isMeaningful(): Boolean = xAxis != 0 || yAxis != 0 || zAxis != 0
+
 @Composable
 private fun RawPacketsList(packets: List<RawPacket>) {
   if (packets.isEmpty()) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 220.dp),
+            contentAlignment = Alignment.Center
+    ) {
       Text(
               text = stringResource(R.string.dashboard_no_raw_packets),
               style = MaterialTheme.typography.bodyMedium,
@@ -681,10 +896,10 @@ private fun RawPacketsList(packets: List<RawPacket>) {
       )
     }
   } else {
-    LazyColumn(
-            modifier = Modifier.padding(12.dp),
+    Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) { items(packets) { packet -> RawPacketCard(packet) } }
+    ) { packets.forEach { packet -> RawPacketCard(packet) } }
   }
 }
 
