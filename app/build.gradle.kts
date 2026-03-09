@@ -1,9 +1,9 @@
 import org.gradle.testing.jacoco.tasks.JacocoReport
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-val debugBaseUrl =
+val debugBaseUrl: String? =
   providers.gradleProperty("COSRAY_DEBUG_BASE_URL").getOrElse("http://59.66.16.192:8000")
-val releaseBaseUrl =
+val releaseBaseUrl: String? =
   providers.gradleProperty("COSRAY_RELEASE_BASE_URL").getOrElse("https://cosray.top")
 
 plugins {
@@ -136,8 +136,10 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
 
   classDirectories.setFrom(
     files(
-      fileTree("$buildDir/tmp/kotlin-classes/debug") { exclude(excludes) },
-      fileTree("$buildDir/intermediates/javac/debug/compileDebugJavaWithJavac/classes") {
+      fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) { exclude(excludes) },
+      fileTree(
+        layout.buildDirectory.dir("intermediates/javac/debug/compileDebugJavaWithJavac/classes")
+      ) {
         exclude(excludes)
       },
     )
@@ -146,7 +148,7 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
   sourceDirectories.setFrom(files("src/main/java", "src/main/kotlin"))
 
   executionData.setFrom(
-    fileTree(buildDir) {
+    fileTree(layout.buildDirectory) {
       include(
         "jacoco/testDebugUnitTest.exec",
         "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
