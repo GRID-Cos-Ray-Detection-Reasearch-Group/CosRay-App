@@ -2,11 +2,13 @@ package com.grid.cosrayapp.data.auth
 
 import com.grid.cosrayapp.core.common.CosRayResult
 import com.grid.cosrayapp.core.common.runCosRayCatching
+import com.grid.cosrayapp.core.datastore.AuthPreferences
 import com.grid.cosrayapp.core.datastore.StoredAuthData
-import com.grid.cosrayapp.core.datastore.UserPreferencesDataSource
 import com.grid.cosrayapp.core.network.CosRayApi
 import com.grid.cosrayapp.domain.model.AuthTokens
 import com.grid.cosrayapp.domain.model.User
+import io.ktor.client.plugins.ResponseException
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +19,7 @@ import kotlinx.coroutines.sync.withLock
 
 class AuthRepository(
   private val api: CosRayApi,
-  private val userPreferences: UserPreferencesDataSource,
+  private val userPreferences: AuthPreferences,
   externalScope: CoroutineScope,
 ) {
   private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
@@ -116,9 +118,28 @@ class AuthRepository(
     _tokens.value = tokens
   }
 
-  private suspend fun refreshTokensLocked(user: User, tokens: AuthTokens): CosRayResult<Unit> =
-    runCosRayCatching {
+  private suspend fun refreshTokensLocked(user: User, tokens: AuthTokens): CosRayResult<Unit> {
+    return try {
       val refreshed = api.refreshToken(tokens.refreshToken)
       persistAuth(user, refreshed)
+      CosRayResult.Success(Unit)
+    } catch (error: Throwable) {
+      if (error.isRefreshUnauthorized()) {
+        runCatching { forceUnauthenticated() }
+          .onFailure { clearError -> error.addSuppressed(clearError) }
+      }
+      CosRayResult.Error(error)
     }
+  }
+
+  private suspend fun forceUnauthenticated() {
+    userPreferences.clear()
+    _tokens.value = null
+    _authState.value = AuthState.Unauthenticated
+  }
+
+  private fun Throwable.isRefreshUnauthorized(): Boolean {
+    val status = (this as? ResponseException)?.response?.status
+    return status == HttpStatusCode.Unauthorized
+  }
 }

@@ -6,6 +6,18 @@ val debugBaseUrl: String? =
 val releaseBaseUrl: String? =
   providers.gradleProperty("COSRAY_RELEASE_BASE_URL").getOrElse("https://cosray.top")
 
+val releaseCertPins: List<String> =
+  providers
+    .gradleProperty("COSRAY_RELEASE_CERT_PINS")
+    .orNull
+    ?.split(',')
+    ?.map(String::trim)
+    ?.filter(String::isNotBlank)
+    ?: listOf("sha256/5lyRQ3JztmzrjYDVkWCkL+ZvTglL6DqE72KrwbLrDW0=")
+
+val releaseCertPinsLiteral =
+  releaseCertPins.joinToString(prefix = "{", postfix = "}") { pin -> "\"$pin\"" }
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.ksp)
@@ -30,6 +42,7 @@ android {
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     buildConfigField("String", "BASE_URL", "\"$releaseBaseUrl\"")
+    buildConfigField("String[]", "CERT_PINS", "{}")
   }
 
   buildTypes {
@@ -38,6 +51,12 @@ android {
       isMinifyEnabled = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       buildConfigField("String", "BASE_URL", "\"$releaseBaseUrl\"")
+
+      buildConfigField(
+        "String[]",
+        "CERT_PINS",
+        releaseCertPinsLiteral,
+      )
     }
   }
   compileOptions {
@@ -66,7 +85,10 @@ ktfmt {
   googleStyle()
 }
 
-detekt { config.setFrom("detekt-config.yml") }
+detekt {
+  config.setFrom("detekt-config.yml")
+  baseline = file("detekt-baseline.xml")
+}
 
 dependencies {
   implementation(libs.androidx.core.ktx)
@@ -89,6 +111,7 @@ dependencies {
   implementation(libs.okio)
   implementation(libs.androidx.datastore.preferences)
   implementation(libs.ktor.client.android)
+  implementation("io.ktor:ktor-client-okhttp:${libs.versions.ktor.get()}")
   implementation("io.ktor:ktor-client-core:${libs.versions.ktor.get()}")
   implementation(libs.ktor.client.auth)
   implementation(libs.ktor.client.content.negotiation)
@@ -100,7 +123,9 @@ dependencies {
   ksp(libs.dagger.hilt.compiler)
   implementation(libs.androidx.navigation.common.ktx)
   testImplementation(libs.junit)
+  testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:${libs.versions.coroutines.get()}")
   testImplementation("io.ktor:ktor-client-java:${libs.versions.ktor.get()}")
+  testImplementation("io.ktor:ktor-client-mock:${libs.versions.ktor.get()}")
   androidTestImplementation(libs.androidx.junit)
   androidTestImplementation(libs.androidx.espresso.core)
   androidTestImplementation(platform(libs.androidx.compose.bom))

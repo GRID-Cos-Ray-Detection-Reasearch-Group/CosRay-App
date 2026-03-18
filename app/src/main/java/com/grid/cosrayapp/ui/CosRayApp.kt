@@ -31,8 +31,10 @@ fun CosRayApp(authRepository: AuthRepository) {
       AuthState.Loading -> {
         Unit
       }
-      else -> {
-        Unit
+      AuthState.Unauthenticated -> {
+        if (!appState.isGuestMode) {
+          appState.navigateTo(CosRayDestination.Login, popUpToStart = true)
+        }
       }
     }
   }

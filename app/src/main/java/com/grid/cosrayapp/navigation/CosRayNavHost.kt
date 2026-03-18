@@ -142,9 +142,7 @@ fun CosRayNavHost(appState: CosRayAppState) {
                         selected = false,
                         onClick = {
                           scope.launch { drawerState.close() }
-                          // NOTE: Logout callback placeholder (implement if needed)
-                          appState.exitGuestMode()
-                          appState.navigateTo(CosRayDestination.Login, popUpToStart = true)
+                          appState.onLogout()
                         },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                 )

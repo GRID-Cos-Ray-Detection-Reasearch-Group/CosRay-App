@@ -8,7 +8,7 @@ import org.junit.Test
 class FirmwarePacketAssemblerTest {
   @Test
   fun `consume complete muon ble fragments should return one request`() {
-    val assembler = FirmwarePacketAssembler()
+    val assembler = FirmwarePacketAssembler(logger = NoopFirmwarePacketAssemblerLogger)
     val packet = buildMuonPacketBytes(pkgCnt = 1, utc = 1_710_000_000)
     val chunks = buildBleFragments(packet, globalTotal = 1, globalIndex = 1)
 
@@ -23,7 +23,7 @@ class FirmwarePacketAssemblerTest {
 
   @Test
   fun `consume split timeline fragments should assemble across chunks`() {
-    val assembler = FirmwarePacketAssembler()
+    val assembler = FirmwarePacketAssembler(logger = NoopFirmwarePacketAssemblerLogger)
     val packet = buildTimelinePacketBytes(pkgCnt = 7)
     val chunks = buildBleFragments(packet, globalTotal = 2, globalIndex = 1)
 
@@ -39,7 +39,7 @@ class FirmwarePacketAssemblerTest {
 
   @Test
   fun `consume invalid fragment then packet should still parse`() {
-    val assembler = FirmwarePacketAssembler()
+    val assembler = FirmwarePacketAssembler(logger = NoopFirmwarePacketAssemblerLogger)
     val packet = buildMuonPacketBytes(pkgCnt = 9, utc = 1_710_000_999)
     val invalid = byteArrayOf(0x00, 0x00, 0x00, 0x00, 0x05)
     val chunks = buildBleFragments(packet, globalTotal = 1, globalIndex = 1)
@@ -54,7 +54,7 @@ class FirmwarePacketAssemblerTest {
 
   @Test
   fun `consume muon packet should drop zero-filled placeholder events`() {
-    val assembler = FirmwarePacketAssembler()
+    val assembler = FirmwarePacketAssembler(logger = NoopFirmwarePacketAssemblerLogger)
     val packet = buildMuonPacketBytes(pkgCnt = 5, utc = 1_710_000_321, validEventCount = 2)
     val chunks = buildBleFragments(packet, globalTotal = 1, globalIndex = 1)
 
@@ -63,6 +63,67 @@ class FirmwarePacketAssemblerTest {
     assertEquals(1, requests.size)
     assertEquals(2, requests[0].uploadRequest.muonPacket?.events?.size)
     assertEquals(2, requests[0].samples.size)
+  }
+
+  @Test
+  fun `consume out-of-order fragments should still assemble`() {
+    val assembler = FirmwarePacketAssembler(logger = NoopFirmwarePacketAssemblerLogger)
+    val packet = buildMuonPacketBytes(pkgCnt = 2, utc = 1_710_000_111)
+    val chunks = buildBleFragments(packet, globalTotal = 1, globalIndex = 1)
+    val reordered = chunks.toMutableList().apply {
+      if (size >= 3) {
+        val tmp = this[0]
+        this[0] = this[2]
+        this[2] = tmp
+      }
+    }
+
+    val requests = reordered.flatMap { assembler.consume(it, "AA:BB:CC:DD:EE:00") }
+
+    assertEquals(1, requests.size)
+    assertEquals("muon", requests[0].uploadRequest.packetType)
+  }
+
+  @Test
+  fun `consume missing fragment should expire after ttl`() {
+    var now = 1_000L
+    val assembler =
+      FirmwarePacketAssembler(
+        nowMillis = { now },
+        packetTtlMillis = 10,
+        logger = NoopFirmwarePacketAssemblerLogger,
+      )
+    val packet = buildMuonPacketBytes(pkgCnt = 3, utc = 1_710_000_222)
+    val chunks = buildBleFragments(packet, globalTotal = 1, globalIndex = 1)
+    val partial = chunks.take(1)
+    partial.forEach { assembler.consume(it, "00:11:22:33:44:55") }
+    assertEquals(1, assembler.snapshotStats().activePackets)
+
+    now += 20
+    assembler.consume(
+      byteArrayOf(
+        0x01.toByte(),
+        0x01.toByte(),
+        0x01.toByte(),
+        0x01.toByte(),
+        0xFF.toByte(),
+      ),
+      "00:11:22:33:44:55",
+    )
+    assertEquals(0, assembler.snapshotStats().activePackets)
+  }
+
+  @Test
+  fun `consume assembled packet with unknown header should count parse failure`() {
+    val assembler = FirmwarePacketAssembler(logger = NoopFirmwarePacketAssemblerLogger)
+    val packet = ByteArray(512) { 0 }
+    val chunks = buildBleFragments(packet, globalTotal = 1, globalIndex = 1)
+
+    val requests = chunks.flatMap { assembler.consume(it, "FE:DC:BA:98:76:54") }
+
+    assertEquals(0, requests.size)
+    val stats = assembler.snapshotStats()
+    assertEquals(1, stats.parseFailures)
   }
 
   private fun buildBleFragments(

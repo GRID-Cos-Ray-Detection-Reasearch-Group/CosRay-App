@@ -18,11 +18,11 @@ private const val USER_PREFERENCES_NAME = "cosray_user_preferences"
 private val Context.dataStore: DataStore<Preferences> by
   preferencesDataStore(name = USER_PREFERENCES_NAME)
 
-class UserPreferencesDataSource(context: Context) {
+class UserPreferencesDataSource(context: Context) : AuthPreferences {
   private val store: DataStore<Preferences> = context.dataStore
 
   @Suppress("ComplexCondition")
-  val authData: Flow<StoredAuthData?> =
+  override val authData: Flow<StoredAuthData?> =
     store.data.map { preferences ->
       val access = preferences[Keys.ACCESS_TOKEN]
       val refresh = preferences[Keys.REFRESH_TOKEN]
@@ -72,7 +72,7 @@ class UserPreferencesDataSource(context: Context) {
     store.edit { preferences -> preferences[Keys.OLED_DARK] = enabled }
   }
 
-  suspend fun persistAuth(user: User, tokens: AuthTokens) {
+  override suspend fun persistAuth(user: User, tokens: AuthTokens) {
     store.edit { preferences ->
       preferences[Keys.ACCESS_TOKEN] = tokens.accessToken
       preferences[Keys.REFRESH_TOKEN] = tokens.refreshToken
@@ -92,7 +92,7 @@ class UserPreferencesDataSource(context: Context) {
     }
   }
 
-  suspend fun clear() {
+  override suspend fun clear() {
     store.edit { preferences -> preferences.clear() }
   }
 

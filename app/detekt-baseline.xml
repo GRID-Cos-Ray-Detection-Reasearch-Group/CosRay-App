@@ -1,0 +1,37 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:TelemetryRepository.kt:FirmwarePacketAssembler$globalTotal == 0 || globalIndex == 0 || localTotal == 0 || localIndex !in 1..localTotal</ID>
+    <ID>ComplexCondition:TelemetryRepository.kt:FirmwarePacketAssembler$partialPacket == null || partialPacket.globalTotal != globalTotal || partialPacket.localTotal != localTotal || partialPacket.payloadSize != payload.size</ID>
+    <ID>CyclomaticComplexMethod:ProtocolMapper.kt:ProtocolMapper$private fun isMeaningfulTimelineEvent: Boolean</ID>
+    <ID>CyclomaticComplexMethod:TelemetryRepository.kt:FirmwarePacketAssembler$fun consume: List&lt;ParsedFirmwarePacket&gt;</ID>
+    <ID>FunctionNaming:SettingsScreen.kt:@Composable private fun SettingsSection</ID>
+    <ID>FunctionNaming:SettingsScreen.kt:@Composable private fun SettingsToggleRow</ID>
+    <ID>FunctionNaming:SettingsScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun SettingsScreen</ID>
+    <ID>LongMethod:HttpClientFactory.kt:HttpClientFactory$fun create: HttpClient</ID>
+    <ID>LongMethod:SettingsScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun SettingsScreen</ID>
+    <ID>LongMethod:TelemetryRepository.kt:FirmwarePacketAssembler$fun consume: List&lt;ParsedFirmwarePacket&gt;</ID>
+    <ID>MagicNumber:FirmwarePacketMapper.kt:FirmwarePacketMapper$0x12</ID>
+    <ID>MagicNumber:FirmwarePacketMapper.kt:FirmwarePacketMapper$0x34</ID>
+    <ID>MagicNumber:FirmwarePacketMapper.kt:FirmwarePacketMapper$0x56</ID>
+    <ID>MagicNumber:FirmwarePacketMapper.kt:FirmwarePacketMapper$0xFFFFFFFFL</ID>
+    <ID>MagicNumber:FirmwarePacketMapper.kt:FirmwarePacketMapper$1000L</ID>
+    <ID>MagicNumber:FirmwarePacketMapper.kt:FirmwarePacketMapper$360.0</ID>
+    <ID>MagicNumber:FirmwarePacketMapper.kt:FirmwarePacketMapper$90.0</ID>
+    <ID>MagicNumber:SettingsViewModel.kt:SettingsViewModel$5_000</ID>
+    <ID>MagicNumber:TelemetryRepository.kt:FirmwarePacketAssembler$0xFF</ID>
+    <ID>MagicNumber:TelemetryRepository.kt:FirmwarePacketAssembler$3</ID>
+    <ID>MaxLineLength:DashboardScreen.kt:modifier = Modifier.fillMaxWidth().heightIn(min = EVENT_LIST_MIN_HEIGHT, max = EVENT_LIST_MAX_HEIGHT).padding(12.dp)</ID>
+    <ID>MaxLineLength:TelemetryRepository.kt:FirmwarePacketAssembler$"consume drop reason=${reason.code} mac=${macAddress ?: "?"} globalIndex=${globalIndex ?: "?"} globalTotal=${globalTotal ?: "?"} localIndex=${localIndex ?: "?"} localTotal=${localTotal ?: "?"} payloadSize=${payloadSize ?: "?"}"</ID>
+    <ID>MaxLineLength:TelemetryRepository.kt:FirmwarePacketAssembler$"summary mac=$macAddress assembled=${s.assembledPackets} droppedFragments=${s.droppedFragments} droppedPackets=${s.droppedPackets} parseFailures=${s.parseFailures} duplicates=${s.duplicateFragments} outOfOrder=${s.outOfOrderFragments} active=${s.activePackets}"</ID>
+    <ID>ReturnCount:FirmwarePacketMapper.kt:FirmwarePacketMapper$private fun parseMuonPacket: ParsedFirmwarePacket?</ID>
+    <ID>ReturnCount:FirmwarePacketMapper.kt:FirmwarePacketMapper$private fun parseTimelinePacket: ParsedFirmwarePacket?</ID>
+    <ID>ReturnCount:TelemetryRepository.kt:FirmwarePacketAssembler$fun consume: List&lt;ParsedFirmwarePacket&gt;</ID>
+    <ID>ReturnCount:UploadQueue.kt:DataStoreUploadQueue$override suspend fun peekBatch: List&lt;UploadQueueItem&gt;</ID>
+    <ID>SwallowedException:SettingsScreen.kt:e: PackageManager.NameNotFoundException</ID>
+    <ID>TooGenericExceptionCaught:AuthRepository.kt:AuthRepository$error: Throwable</ID>
+    <ID>TooManyFunctions:DashboardScreen.kt:com.grid.cosrayapp.feature.dashboard.DashboardScreen.kt</ID>
+    <ID>TooManyFunctions:TelemetryRepository.kt:TelemetryRepository</ID>
+  </CurrentIssues>
+</SmellBaseline>
