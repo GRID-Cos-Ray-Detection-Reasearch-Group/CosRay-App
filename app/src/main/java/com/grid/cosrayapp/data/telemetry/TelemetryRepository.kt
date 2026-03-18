@@ -8,6 +8,7 @@ import com.grid.cosrayapp.core.network.CosRayApi
 import com.grid.cosrayapp.data.auth.AuthRepository
 import com.grid.cosrayapp.data.ble.BleRepository
 import com.grid.cosrayapp.data.telemetry.upload.UploadQueue
+import com.grid.cosrayapp.data.telemetry.upload.UploadQueueItem
 import com.grid.cosrayapp.data.telemetry.upload.UploadQueueStats
 import com.grid.cosrayapp.domain.model.BleDevice
 import com.grid.cosrayapp.domain.model.Protocol
@@ -151,16 +152,15 @@ class TelemetryRepository(
               while (true) {
                 val batch = uploadQueue.peekBatch(limit = UPLOAD_BATCH_SIZE)
                 if (batch.isEmpty()) break
-                batch.forEach { item ->
-                  val tokenResult = authRepository.ensureValidToken()
-                  val accessToken =
-                          when (tokenResult) {
-                            is CosRayResult.Success -> tokenResult.data
-                            is CosRayResult.Error -> throw tokenResult.throwable
-                          }
-                  api.uploadPacket(accessToken, item.request)
-                  uploadQueue.delete(listOf(item.id))
-                }
+
+                val tokenResult = authRepository.ensureValidToken()
+                val accessToken =
+                        when (tokenResult) {
+                          is CosRayResult.Success -> tokenResult.data
+                          is CosRayResult.Error -> throw tokenResult.throwable
+                        }
+                val uploadedIds = uploadBatch(accessToken = accessToken, batch = batch)
+                if (uploadedIds.isNotEmpty()) uploadQueue.delete(uploadedIds)
               }
             }
 
@@ -171,6 +171,31 @@ class TelemetryRepository(
     } else {
       uploadResult
     }
+  }
+
+  private suspend fun uploadBatch(
+    accessToken: String,
+    batch: List<UploadQueueItem>,
+  ): List<Long> {
+    if (batch.isEmpty()) return emptyList()
+
+    val uploadedIds = mutableListOf<Long>()
+    val failure =
+      runCatching {
+        batch.forEach { item ->
+          api.uploadPacket(accessToken, item.request)
+          uploadedIds += item.id
+        }
+      }
+        .exceptionOrNull()
+
+    if (failure != null && uploadedIds.isNotEmpty()) {
+      runCatching { uploadQueue.delete(uploadedIds) }
+        .onFailure { deleteError -> failure.addSuppressed(deleteError) }
+    }
+
+    if (failure != null) throw failure
+    return uploadedIds
   }
 
   fun clearBuffer() {
@@ -297,15 +322,6 @@ class FirmwarePacketAssembler(
     trimActivePackets(macAddress)
 
     if (partialPacket.fragments.size < localTotal) {
-      logDrop(
-              reason = DropReason.INCOMPLETE_PACKET,
-              macAddress = macAddress,
-              globalIndex = globalIndex,
-              globalTotal = globalTotal,
-              localIndex = localIndex,
-              localTotal = localTotal,
-              payloadSize = payload.size,
-      )
       return emptyList()
     }
 
@@ -506,7 +522,6 @@ private enum class DropReason(val code: String) {
   EMPTY_PAYLOAD("empty_payload"),
   PARTIAL_RESET("partial_reset"),
   DUPLICATE_FRAGMENT("duplicate_fragment"),
-  INCOMPLETE_PACKET("incomplete_packet"),
   MISSING_FRAGMENT_ON_ASSEMBLE("missing_fragment_on_assemble"),
   PACKET_TOO_SHORT("packet_too_short"),
   PARSE_FAILED("parse_failed"),

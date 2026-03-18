@@ -26,4 +26,23 @@ class InMemoryUploadQueueTest {
     assertEquals("D5", batch[2].request.device)
     assertEquals(2L, queue.dropCount())
   }
+
+  @Test
+  fun `peekBatch should purge corrupt entries`() = runTest {
+    val queue = InMemoryUploadQueue(json = json, maxSize = 10)
+    queue.enqueue(listOf(PacketUploadRequest(device = "D1", packetType = "muon")))
+
+    // Simulate corruption by injecting a bad payload into the backing map.
+    val itemsField = queue.javaClass.getDeclaredField("items")
+    itemsField.isAccessible = true
+    @Suppress("UNCHECKED_CAST")
+    val items = itemsField.get(queue) as MutableMap<Long, String>
+    items[2L] = "not-json"
+
+    val batch = queue.peekBatch(limit = 10)
+    assertEquals(1, batch.size)
+    assertEquals("D1", batch.first().request.device)
+    assertEquals(1, queue.size())
+    assertEquals(1L, queue.dropCount())
+  }
 }

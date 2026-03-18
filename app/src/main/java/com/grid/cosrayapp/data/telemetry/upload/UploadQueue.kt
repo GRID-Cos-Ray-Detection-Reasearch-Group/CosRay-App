@@ -75,14 +75,33 @@ class DataStoreUploadQueue(
   override suspend fun peekBatch(limit: Int): List<UploadQueueItem> {
     if (limit <= 0) return emptyList()
     val prefs = store.data.first()
-    val ids = idsAscending(prefs).take(limit)
+    val ids = idsAscending(prefs)
     if (ids.isEmpty()) return emptyList()
-    return ids.mapNotNull { id ->
-      val encoded = prefs[Keys.itemKey(id)] ?: return@mapNotNull null
-      val request = runCatching { json.decodeFromString(PacketUploadRequest.serializer(), encoded) }.getOrNull()
-        ?: return@mapNotNull null
-      UploadQueueItem(id = id, request = request)
+
+    val corruptIds = mutableListOf<Long>()
+    val items = mutableListOf<UploadQueueItem>()
+    ids.forEach { id ->
+      if (items.size >= limit) return@forEach
+      val key = Keys.itemKey(id)
+      val encoded = prefs[key] ?: return@forEach
+      val request =
+        runCatching { json.decodeFromString(PacketUploadRequest.serializer(), encoded) }.getOrNull()
+      if (request == null) {
+        corruptIds += id
+      } else {
+        items += UploadQueueItem(id = id, request = request)
+      }
     }
+
+    if (corruptIds.isNotEmpty()) {
+      store.edit { editPrefs ->
+        corruptIds.forEach { id -> editPrefs.remove(Keys.itemKey(id)) }
+        val currentDrop = editPrefs[Keys.DROP_COUNT] ?: 0L
+        editPrefs[Keys.DROP_COUNT] = currentDrop + corruptIds.size
+      }
+    }
+
+    return items
   }
 
   override suspend fun delete(ids: List<Long>) {
@@ -148,14 +167,27 @@ class InMemoryUploadQueue(private val json: Json, private val maxSize: Int) : Up
   }
 
   override suspend fun peekBatch(limit: Int): List<UploadQueueItem> {
-    if (limit <= 0) return emptyList()
-    return items.entries
-      .take(limit)
-      .mapNotNull { (id, encoded) ->
-        val request = runCatching { json.decodeFromString(PacketUploadRequest.serializer(), encoded) }.getOrNull()
-          ?: return@mapNotNull null
-        UploadQueueItem(id = id, request = request)
+    if (limit <= 0 || items.isEmpty()) return emptyList()
+
+    val corruptIds = mutableListOf<Long>()
+    val result = mutableListOf<UploadQueueItem>()
+    items.forEach { (id, encoded) ->
+      if (result.size >= limit) return@forEach
+      val request =
+        runCatching { json.decodeFromString(PacketUploadRequest.serializer(), encoded) }.getOrNull()
+      if (request == null) {
+        corruptIds += id
+      } else {
+        result += UploadQueueItem(id = id, request = request)
       }
+    }
+
+    if (corruptIds.isNotEmpty()) {
+      corruptIds.forEach { id -> items.remove(id) }
+      dropped += corruptIds.size
+    }
+
+    return result
   }
 
   override suspend fun delete(ids: List<Long>) {
