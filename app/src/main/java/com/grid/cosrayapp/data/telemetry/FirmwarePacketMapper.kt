@@ -17,7 +17,7 @@ import com.grid.cosrayapp.domain.model.TelemetryId
 import com.grid.cosrayapp.domain.model.TelemetrySample
 import java.time.Instant
 
-internal data class ParsedFirmwarePacket(
+data class ParsedFirmwarePacket(
         val uploadRequest: PacketUploadRequest,
         val samples: List<TelemetrySample>,
 )
