@@ -110,6 +110,8 @@ dependencies {
   implementation(libs.kotlinx.serialization.json)
   implementation(libs.okio)
   implementation(libs.androidx.datastore.preferences)
+  implementation(libs.androidx.security.crypto)
+  implementation(libs.errorprone.annotations)
   implementation(libs.ktor.client.android)
   implementation("io.ktor:ktor-client-okhttp:${libs.versions.ktor.get()}")
   implementation("io.ktor:ktor-client-core:${libs.versions.ktor.get()}")

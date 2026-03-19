@@ -23,6 +23,40 @@ object HttpClientFactory {
   private const val SOCKET_TIMEOUT_MS = 30_000L
   private const val MAX_RETRIES = 3
 
+  /**
+   * 网络日志脱敏规则（任何构建类型都生效）。
+   *
+   * 原则：永不在日志中输出 token 明文（包括 Authorization: Bearer ...）。
+   */
+  internal fun redactNetworkLog(message: String): String {
+    // Header: Authorization: Bearer <token>
+    val authorizationHeaderRegex = Regex("(?i)(Authorization:)(\\s*)(Bearer\\s+)?([^\\r\\n]+)")
+    // JSON: "access": "..." / "refresh": "..." / "access_token": "..." / "refresh_token": "..."
+    val tokenFieldRegex =
+      Regex(
+        "(?i)\"(access|refresh|access_token|refresh_token)\"\\s*:\\s*\"[^\"]*\""
+      )
+
+    return message
+      .replace(authorizationHeaderRegex) { match ->
+        val headerName = match.groupValues[1]
+        "$headerName: [REDACTED]"
+      }
+      .replace(tokenFieldRegex) { match ->
+        // 保留字段名，仅替换值
+        val key = match.value.substringBefore(':')
+        "$key: \"[REDACTED]\""
+      }
+  }
+
+  private fun debugLogger(): Logger =
+    object : Logger {
+      override fun log(message: String) {
+        if (!BuildConfig.DEBUG) return
+        Log.d(TAG, redactNetworkLog(message))
+      }
+    }
+
   fun create(): HttpClient =
     if (shouldEnablePinning()) {
       HttpClient(OkHttp) {
@@ -51,14 +85,7 @@ object HttpClientFactory {
         }
 
         install(Logging) {
-          logger =
-            object : Logger {
-              override fun log(message: String) {
-                if (BuildConfig.DEBUG) {
-                  Log.d(TAG, message)
-                }
-              }
-            }
+          logger = debugLogger()
           level = if (BuildConfig.DEBUG) LogLevel.INFO else LogLevel.NONE
         }
 
@@ -94,14 +121,8 @@ object HttpClientFactory {
       }
 
       install(Logging) {
-        logger =
-          object : Logger {
-            override fun log(message: String) {
-              if (BuildConfig.DEBUG) {
-                Log.d(TAG, message)
-      }
-    }
-          }
+        // DEBUG 下也不输出 header/body（只保留基本可观测性），并额外兜底脱敏。
+        logger = debugLogger()
         level = if (BuildConfig.DEBUG) LogLevel.INFO else LogLevel.NONE
       }
 
@@ -137,14 +158,7 @@ object HttpClientFactory {
       }
 
       install(Logging) {
-        logger =
-          object : Logger {
-            override fun log(message: String) {
-              if (BuildConfig.DEBUG) {
-                Log.d(TAG, message)
-              }
-            }
-          }
+        logger = debugLogger()
         level = if (BuildConfig.DEBUG) LogLevel.INFO else LogLevel.NONE
       }
 
