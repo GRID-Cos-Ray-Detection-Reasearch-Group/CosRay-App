@@ -12,8 +12,7 @@ val releaseCertPins: List<String> =
     .orNull
     ?.split(',')
     ?.map(String::trim)
-    ?.filter(String::isNotBlank)
-    ?: listOf("sha256/5lyRQ3JztmzrjYDVkWCkL+ZvTglL6DqE72KrwbLrDW0=")
+    ?.filter(String::isNotBlank) ?: listOf("sha256/5lyRQ3JztmzrjYDVkWCkL+ZvTglL6DqE72KrwbLrDW0=")
 
 val releaseCertPinsLiteral =
   releaseCertPins.joinToString(prefix = "{", postfix = "}") { pin -> "\"$pin\"" }
@@ -52,11 +51,7 @@ android {
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       buildConfigField("String", "BASE_URL", "\"$releaseBaseUrl\"")
 
-      buildConfigField(
-        "String[]",
-        "CERT_PINS",
-        releaseCertPinsLiteral,
-      )
+      buildConfigField("String[]", "CERT_PINS", releaseCertPinsLiteral)
     }
   }
   compileOptions {
@@ -125,7 +120,9 @@ dependencies {
   ksp(libs.dagger.hilt.compiler)
   implementation(libs.androidx.navigation.common.ktx)
   testImplementation(libs.junit)
-  testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:${libs.versions.coroutines.get()}")
+  testImplementation(
+    "org.jetbrains.kotlinx:kotlinx-coroutines-test:${libs.versions.coroutines.get()}"
+  )
   testImplementation("io.ktor:ktor-client-java:${libs.versions.ktor.get()}")
   testImplementation("io.ktor:ktor-client-mock:${libs.versions.ktor.get()}")
   androidTestImplementation(libs.androidx.junit)
