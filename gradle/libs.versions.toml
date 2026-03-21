@@ -24,7 +24,7 @@ navigationCommonKtx = "2.9.7"
 detekt = "2.0.0-alpha.2"
 ktfmtPlugin = "0.26.0"
 okio = "3.17.0"
-securityCrypto = "1.1.0-alpha06"
+securityCrypto = "1.1.0"
 errorProneAnnotations = "2.48.0"
 
 [libraries]
