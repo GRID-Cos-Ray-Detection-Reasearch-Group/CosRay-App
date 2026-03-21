@@ -26,6 +26,7 @@ ktfmtPlugin = "0.26.0"
 okio = "3.17.0"
 securityCrypto = "1.1.0"
 errorProneAnnotations = "2.48.0"
+room = "2.8.4"
 
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }
@@ -64,6 +65,10 @@ androidx-navigation-common-ktx = { group = "androidx.navigation", name = "naviga
 okio = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 errorprone-annotations = { group = "com.google.errorprone", name = "error_prone_annotations", version.ref = "errorProneAnnotations" }
+
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

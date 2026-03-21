@@ -7,6 +7,10 @@ import com.grid.cosrayapp.core.common.runCosRayCatching
 import com.grid.cosrayapp.core.network.CosRayApi
 import com.grid.cosrayapp.data.auth.AuthRepository
 import com.grid.cosrayapp.data.ble.BleRepository
+import com.grid.cosrayapp.data.telemetry.db.RawPacketDao
+import com.grid.cosrayapp.data.telemetry.db.RawPacketEntity
+import com.grid.cosrayapp.data.telemetry.db.TelemetrySampleDao
+import com.grid.cosrayapp.data.telemetry.db.toEntity
 import com.grid.cosrayapp.data.telemetry.upload.UploadQueue
 import com.grid.cosrayapp.data.telemetry.upload.UploadQueueItem
 import com.grid.cosrayapp.data.telemetry.upload.UploadQueueStats
@@ -25,6 +29,8 @@ class TelemetryRepository(
         private val bleRepository: BleRepository,
         private val authRepository: AuthRepository,
         private val uploadQueue: UploadQueue,
+        private val telemetrySampleDao: TelemetrySampleDao,
+        private val rawPacketDao: RawPacketDao,
         externalScope: CoroutineScope,
 ) {
   private val externalScope: CoroutineScope = externalScope
@@ -59,6 +65,7 @@ class TelemetryRepository(
     externalScope.launch {
       bleRepository.rawPackets.collect { rawPacket ->
         val deviceMac = _connectedDevice.value?.macAddress ?: return@collect
+        persistRawPacket(deviceMac = deviceMac, rawPacket = rawPacket)
         val packets = packetAssembler.consume(rawPacket.data, deviceMac)
         if (packets.isNotEmpty()) {
           Log.d(
@@ -66,9 +73,42 @@ class TelemetryRepository(
                   "Assembled ${packets.size} firmware packet(s) from ${rawPacket.data.size}-byte BLE notification"
           )
           uploadQueue.enqueue(packets.map(ParsedFirmwarePacket::uploadRequest))
-          appendSamples(packets.flatMap(ParsedFirmwarePacket::samples))
+          val samples = packets.flatMap(ParsedFirmwarePacket::samples)
+          persistSamples(samples)
+          appendSamples(samples)
         }
       }
+    }
+  }
+
+  private fun persistRawPacket(deviceMac: String, rawPacket: com.grid.cosrayapp.core.ble.RawPacket) {
+    externalScope.launch {
+      runCatching {
+        rawPacketDao.insert(
+          RawPacketEntity(
+            detectorId = deviceMac,
+            characteristicId = rawPacket.characteristicId.toString(),
+            receivedAtEpochMillis = rawPacket.timestamp,
+            data = rawPacket.data,
+          )
+        )
+        rawPacketDao.pruneToLatest(detectorId = deviceMac, keepLatest = MAX_DB_RAW_PACKETS_PER_DETECTOR)
+      }
+        .onFailure { e -> Log.w(TAG, "Failed to persist raw packet", e) }
+    }
+  }
+
+  private fun persistSamples(samples: List<TelemetrySample>) {
+    if (samples.isEmpty()) return
+    externalScope.launch {
+      runCatching {
+        telemetrySampleDao.upsertAll(samples.map(TelemetrySample::toEntity))
+        val detectorId = samples.firstOrNull()?.detectorId?.value
+        if (detectorId != null) {
+          telemetrySampleDao.pruneToLatest(detectorId = detectorId, keepLatest = MAX_DB_SAMPLES_PER_DETECTOR)
+        }
+      }
+        .onFailure { e -> Log.w(TAG, "Failed to persist telemetry samples", e) }
     }
   }
 
@@ -214,6 +254,8 @@ class TelemetryRepository(
     private const val BUFFER_SIZE = 128
     private const val MAX_LIVE_SAMPLES = 30
     private const val UPLOAD_BATCH_SIZE = 32
+    private const val MAX_DB_SAMPLES_PER_DETECTOR = 10_000
+    private const val MAX_DB_RAW_PACKETS_PER_DETECTOR = 2_000
   }
 }
 

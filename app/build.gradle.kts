@@ -106,6 +106,8 @@ dependencies {
   implementation(libs.okio)
   implementation(libs.androidx.datastore.preferences)
   implementation(libs.androidx.security.crypto)
+  implementation(libs.androidx.room.runtime)
+  implementation(libs.androidx.room.ktx)
   implementation(libs.errorprone.annotations)
   implementation(libs.ktor.client.android)
   implementation("io.ktor:ktor-client-okhttp:${libs.versions.ktor.get()}")
@@ -118,6 +120,7 @@ dependencies {
   implementation(libs.ble.scanner.compat)
   implementation(libs.dagger.hilt.android)
   ksp(libs.dagger.hilt.compiler)
+  ksp(libs.androidx.room.compiler)
   implementation(libs.androidx.navigation.common.ktx)
   testImplementation(libs.junit)
   testImplementation(

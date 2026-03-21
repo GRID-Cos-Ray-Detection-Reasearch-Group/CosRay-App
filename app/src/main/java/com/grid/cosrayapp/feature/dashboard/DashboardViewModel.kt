@@ -8,8 +8,10 @@ import com.grid.cosrayapp.core.common.CosRayResult
 import com.grid.cosrayapp.core.ui.UiMessage
 import com.grid.cosrayapp.data.auth.AuthRepository
 import com.grid.cosrayapp.data.auth.AuthState
-import com.grid.cosrayapp.data.ble.BleRepository
 import com.grid.cosrayapp.data.telemetry.TelemetryRepository
+import com.grid.cosrayapp.data.telemetry.db.RawPacketDao
+import com.grid.cosrayapp.data.telemetry.db.TelemetrySampleDao
+import com.grid.cosrayapp.data.telemetry.db.toDomain
 import com.grid.cosrayapp.domain.model.AccelerationSnapshot
 import com.grid.cosrayapp.domain.model.BleDevice
 import com.grid.cosrayapp.domain.model.LocationSnapshot
@@ -24,6 +26,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -33,57 +38,116 @@ class DashboardViewModel
 constructor(
         private val telemetryRepository: TelemetryRepository,
         private val authRepository: AuthRepository,
-        private val bleRepository: BleRepository,
+        private val telemetrySampleDao: TelemetrySampleDao,
+        private val rawPacketDao: RawPacketDao,
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(DashboardUiState())
   val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
   init {
     viewModelScope.launch {
-      combine(
-                      telemetryRepository.liveTelemetry,
-                      telemetryRepository.connectedDevice,
-                      authRepository.authState,
-              ) { samples, device, authState ->
-        val allSamples = samples.take(MAX_SAMPLES)
-        val muonSamples = allSamples.filter { it.packetMetadata?.packetType == PacketType.MUON }
-        val timelineSamples =
-                allSamples.filter { it.packetMetadata?.packetType == PacketType.TIMELINE }
+      val detectorIdFlow = telemetryRepository.connectedDevice.map { it?.macAddress }
 
-        // Extract latest location, orientation, and SiPM data from timeline events
-        val latestTimeline = timelineSamples.firstOrNull()
+      val samplesFlow =
+        detectorIdFlow.flatMapLatest { detectorId ->
+          if (detectorId == null) {
+            flowOf(emptyList<TelemetrySample>())
+          } else {
+            telemetrySampleDao.observeLatest(detectorId = detectorId, limit = MAX_SAMPLES)
+              .map { list -> list.map { it.toDomain() } }
+          }
+        }
 
-        // Calculate packet statistics
-        val stats = calculatePacketStatistics(allSamples)
+      val muonFlow =
+        detectorIdFlow.flatMapLatest { detectorId ->
+          if (detectorId == null) {
+            flowOf(emptyList<TelemetrySample>())
+          } else {
+            telemetrySampleDao.observeLatestByPacketType(
+              detectorId = detectorId,
+              packetType = PacketType.MUON,
+              limit = MAX_MUON_EVENTS,
+            ).map { list -> list.map { it.toDomain() } }
+          }
+        }
+
+      val timelineFlow =
+        detectorIdFlow.flatMapLatest { detectorId ->
+          if (detectorId == null) {
+            flowOf(emptyList<TelemetrySample>())
+          } else {
+            telemetrySampleDao.observeLatestByPacketType(
+              detectorId = detectorId,
+              packetType = PacketType.TIMELINE,
+              limit = MAX_TIMELINE_EVENTS,
+            ).map { list -> list.map { it.toDomain() } }
+          }
+        }
+
+      val rawPacketsFlow =
+        detectorIdFlow.flatMapLatest { detectorId ->
+          if (detectorId == null) {
+            flowOf(emptyList<RawPacket>())
+          } else {
+            rawPacketDao.observeLatest(detectorId = detectorId, limit = MAX_RAW_PACKETS)
+              .map { entities ->
+                entities.map {
+                  RawPacket(
+                    id = it.id,
+                    characteristicId = java.util.UUID.fromString(it.characteristicId),
+                    data = it.data,
+                    timestamp = it.receivedAtEpochMillis,
+                  )
+                }
+              }
+          }
+        }
+
+      data class DbBackedDashboardSnapshot(
+        val samples: List<TelemetrySample>,
+        val muonEvents: List<TelemetrySample>,
+        val timelineEvents: List<TelemetrySample>,
+        val rawPackets: List<RawPacket>,
+        val device: BleDevice?,
+      )
+
+      val snapshotFlow =
+        combine(
+          samplesFlow,
+          muonFlow,
+          timelineFlow,
+          rawPacketsFlow,
+          telemetryRepository.connectedDevice,
+        ) { samples, muonEvents, timelineEvents, rawPackets, device ->
+          DbBackedDashboardSnapshot(
+            samples = samples,
+            muonEvents = muonEvents,
+            timelineEvents = timelineEvents,
+            rawPackets = rawPackets,
+            device = device,
+          )
+        }
+
+      combine(snapshotFlow, authRepository.authState) { snapshot, authState ->
+        val latestTimeline = snapshot.timelineEvents.firstOrNull()
+        val stats = calculatePacketStatistics(snapshot.samples)
 
         DashboardUiState(
-                user = (authState as? AuthState.Authenticated)?.user,
-                device = device,
-                samples = allSamples,
-                muonEvents = muonSamples.take(MAX_MUON_EVENTS),
-                timelineEvents = timelineSamples.take(MAX_TIMELINE_EVENTS),
-                rawPackets = emptyList(), // We will update this via a separate flow
-                deviceLocation = latestTimeline?.location,
-                deviceOrientation = latestTimeline?.acceleration,
-                sipmStatus = latestTimeline?.sipmMonitoring,
-                packetStats = stats,
-                isUploading = _uiState.value.isUploading,
-                isSendingCommand = _uiState.value.isSendingCommand,
-                uploadMessage = _uiState.value.uploadMessage,
+          user = (authState as? AuthState.Authenticated)?.user,
+          device = snapshot.device,
+          samples = snapshot.samples,
+          muonEvents = snapshot.muonEvents,
+          timelineEvents = snapshot.timelineEvents,
+          rawPackets = snapshot.rawPackets,
+          deviceLocation = latestTimeline?.location,
+          deviceOrientation = latestTimeline?.acceleration,
+          sipmStatus = latestTimeline?.sipmMonitoring,
+          packetStats = stats,
+          isUploading = _uiState.value.isUploading,
+          isSendingCommand = _uiState.value.isSendingCommand,
+          uploadMessage = _uiState.value.uploadMessage,
         )
-      }
-              .collect { state ->
-                _uiState.value = state.copy(rawPackets = _uiState.value.rawPackets)
-              }
-    }
-
-    viewModelScope.launch {
-      bleRepository.rawPackets.collect { rawPacket ->
-        _uiState.update { state ->
-          val newRawPackets = (listOf(rawPacket) + state.rawPackets).take(MAX_RAW_PACKETS)
-          state.copy(rawPackets = newRawPackets)
-        }
-      }
+      }.collect { state -> _uiState.value = state }
     }
   }
 
@@ -203,10 +267,10 @@ constructor(
   }
 
   companion object {
-    private const val MAX_SAMPLES = 30
-    private const val MAX_MUON_EVENTS = 50
-    private const val MAX_TIMELINE_EVENTS = 20
-    private const val MAX_RAW_PACKETS = 50
+    private const val MAX_SAMPLES = 500
+    private const val MAX_MUON_EVENTS = 200
+    private const val MAX_TIMELINE_EVENTS = 200
+    private const val MAX_RAW_PACKETS = 200
   }
 }
 
