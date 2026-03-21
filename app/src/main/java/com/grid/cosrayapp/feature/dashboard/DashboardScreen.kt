@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -75,6 +76,9 @@ private val RAW_PACKET_TIME_FORMATTER: DateTimeFormatter =
 private const val HIGH_ENERGY_THRESHOLD = 40000
 private const val MEDIUM_ENERGY_THRESHOLD = 20000
 
+private val DASHBOARD_HORIZONTAL_PADDING = 20.dp
+private val DASHBOARD_SECTION_SPACING = 20.dp
+
 // Height constraints for event/packet list composables
 private val EVENT_LIST_MIN_HEIGHT = 220.dp
 private val EVENT_LIST_MAX_HEIGHT = 420.dp
@@ -112,7 +116,11 @@ fun DashboardScreen(
                     title = { Text(stringResource(R.string.dashboard_topbar_title)) },
                     navigationIcon = {
                       IconButton(onClick = onOpenDrawer) {
-                        Icon(imageVector = Icons.Default.Menu, contentDescription = "Menu")
+                        Icon(
+                                imageVector = Icons.Default.Menu,
+                                contentDescription =
+                                        stringResource(R.string.dashboard_navigation_menu),
+                        )
                       }
                     },
             )
@@ -124,75 +132,148 @@ fun DashboardScreen(
                     Modifier.fillMaxSize()
                             .padding(innerPadding)
                             .verticalScroll(rememberScrollState())
-                            .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            .padding(horizontal = DASHBOARD_HORIZONTAL_PADDING, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(DASHBOARD_SECTION_SPACING),
     ) {
-      // Header Section
-      HeaderSection(
-              state = state,
-              onUploadClicked = onUploadClicked,
-              onSendStatusClicked = onSendStatusClicked,
-              onSendMuonClicked = onSendMuonClicked,
-              onSendTimelineClicked = onSendTimelineClicked,
-              onSendStopClicked = onSendStopClicked,
-      )
-
-      // Device Status Cards Row
-      Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        state.deviceLocation?.let { location ->
-          LocationCard(location = location, modifier = Modifier.weight(1f))
-        }
-        state.deviceOrientation?.let { accel ->
-          OrientationCard(acceleration = accel, modifier = Modifier.weight(1f))
-        }
-      }
-
-      // SiPM Status (if available)
-      state.sipmStatus?.let { sipm -> SipmMonitoringCard(sipm) }
-
-      // Packet Statistics
-      PacketStatsCard(stats = state.packetStats)
-
-      // Tab Selector for Muon / Timeline Events / Raw Packets
-      SecondaryTabRow(selectedTabIndex = selectedTab) {
-        Tab(
-                selected = selectedTab == 0,
-                onClick = { selectedTab = 0 },
-                text = {
-                  Text(stringResource(R.string.dashboard_muon_events_tab, state.muonEvents.size))
-                },
-        )
-        Tab(
-                selected = selectedTab == 1,
-                onClick = { selectedTab = 1 },
-                text = {
-                  Text(
-                          stringResource(
-                                  R.string.dashboard_timeline_events_tab,
-                                  state.timelineEvents.size
-                          )
-                  )
-                },
-        )
-        Tab(
-                selected = selectedTab == 2,
-                onClick = { selectedTab = 2 },
-                text = {
-                  Text(stringResource(R.string.dashboard_raw_packets_tab, state.rawPackets.size))
-                },
+      DashboardSection(
+              title = stringResource(R.string.dashboard_topbar_title),
+              subtitle = stringResource(R.string.dashboard_section_overview_subtitle),
+      ) {
+        HeaderSection(
+                state = state,
+                onUploadClicked = onUploadClicked,
+                onSendStatusClicked = onSendStatusClicked,
+                onSendMuonClicked = onSendMuonClicked,
+                onSendTimelineClicked = onSendTimelineClicked,
+                onSendStopClicked = onSendStopClicked,
         )
       }
 
-      // Event List based on selected tab
-      Surface(
-              modifier = Modifier.fillMaxWidth().heightIn(min = EVENT_LIST_MIN_HEIGHT),
-              shape = RoundedCornerShape(16.dp),
-              tonalElevation = 2.dp,
+      DashboardSection(
+              title = stringResource(R.string.dashboard_section_live_metrics),
+              subtitle = stringResource(R.string.dashboard_section_live_metrics_subtitle),
+      ) {
+        LiveMetricsSection(
+                location = state.deviceLocation,
+                acceleration = state.deviceOrientation,
+                sipm = state.sipmStatus,
+        )
+      }
+
+      DashboardSection(
+              title = stringResource(R.string.dashboard_packet_statistics),
+              subtitle = stringResource(R.string.dashboard_section_packet_statistics_subtitle),
+      ) {
+        PacketStatsCard(stats = state.packetStats)
+      }
+
+      EventHistorySection(
+              selectedTab = selectedTab,
+              muonCount = state.muonEvents.size,
+              timelineCount = state.timelineEvents.size,
+              rawPacketCount = state.rawPackets.size,
+              onTabSelected = { selectedTab = it },
       ) {
         when (selectedTab) {
           0 -> MuonEventsList(events = state.muonEvents)
           1 -> TimelineEventsList(events = state.timelineEvents)
           2 -> RawPacketsList(packets = state.rawPackets)
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun DashboardSection(
+        title: String,
+        subtitle: String? = null,
+        content: @Composable () -> Unit,
+) {
+  Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+      Text(
+              text = title,
+              style = MaterialTheme.typography.titleMedium,
+              fontWeight = FontWeight.SemiBold,
+      )
+      subtitle?.let {
+        Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    }
+    content()
+  }
+}
+
+@Composable
+private fun EventHistorySection(
+        selectedTab: Int,
+        muonCount: Int,
+        timelineCount: Int,
+        rawPacketCount: Int,
+        onTabSelected: (Int) -> Unit,
+        content: @Composable () -> Unit,
+) {
+  val summaryText =
+          when (selectedTab) {
+            0 -> stringResource(R.string.dashboard_event_history_muon_summary, muonCount)
+            1 ->
+                    stringResource(
+                            R.string.dashboard_event_history_timeline_summary,
+                            timelineCount,
+                    )
+            else ->
+                    stringResource(R.string.dashboard_event_history_raw_summary, rawPacketCount)
+          }
+
+  DashboardSection(
+          title = stringResource(R.string.dashboard_section_event_history),
+          subtitle = summaryText,
+  ) {
+    Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            tonalElevation = 2.dp,
+            color = MaterialTheme.colorScheme.surface,
+    ) {
+      Column(
+              modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+              verticalArrangement = Arrangement.spacedBy(12.dp),
+      ) {
+        SecondaryTabRow(selectedTabIndex = selectedTab) {
+          Tab(
+                  selected = selectedTab == 0,
+                  onClick = { onTabSelected(0) },
+                  text = {
+                    Text(stringResource(R.string.dashboard_muon_events_tab, muonCount))
+                  },
+          )
+          Tab(
+                  selected = selectedTab == 1,
+                  onClick = { onTabSelected(1) },
+                  text = {
+                    Text(stringResource(R.string.dashboard_timeline_events_tab, timelineCount))
+                  },
+          )
+          Tab(
+                  selected = selectedTab == 2,
+                  onClick = { onTabSelected(2) },
+                  text = {
+                    Text(stringResource(R.string.dashboard_raw_packets_tab, rawPacketCount))
+                  },
+          )
+        }
+
+        Surface(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        ) {
+          content()
         }
       }
     }
@@ -210,6 +291,12 @@ private fun HeaderSection(
 ) {
   val deviceName = state.device?.name ?: state.device?.macAddress
   val commandEnabled = state.device != null && !state.isSendingCommand
+  val connectionSummary =
+          if (deviceName != null) {
+            stringResource(R.string.dashboard_device_connected, deviceName)
+          } else {
+            stringResource(R.string.dashboard_hero_waiting_subtitle)
+          }
 
   Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     Card(
@@ -231,17 +318,17 @@ private fun HeaderSection(
         ) {
           Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
+                    text = stringResource(R.string.dashboard_detector_label),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+            Text(
                     text = deviceName ?: stringResource(R.string.dashboard_hero_waiting_title),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
             )
             Text(
-                    text =
-                            if (deviceName != null) {
-                              stringResource(R.string.dashboard_device_connected, deviceName)
-                            } else {
-                              stringResource(R.string.dashboard_hero_waiting_subtitle)
-                            },
+                    text = connectionSummary,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
@@ -262,12 +349,12 @@ private fun HeaderSection(
           val compactLayout = maxWidth < 420.dp
           if (compactLayout) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-              SummaryPill(
+              OverviewMetricCard(
                       icon = Icons.Default.Schedule,
                       label = stringResource(R.string.dashboard_last_packet_label),
                       value = formatLastPacketText(state.packetStats.lastPacketTime),
               )
-              SummaryPill(
+              OverviewMetricCard(
                       icon = Icons.Default.BluetoothConnected,
                       label = stringResource(R.string.dashboard_buffered_events_label),
                       value = state.packetStats.totalEventCount.toString(),
@@ -275,13 +362,13 @@ private fun HeaderSection(
             }
           } else {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-              SummaryPill(
+              OverviewMetricCard(
                       icon = Icons.Default.Schedule,
                       label = stringResource(R.string.dashboard_last_packet_label),
                       value = formatLastPacketText(state.packetStats.lastPacketTime),
                       modifier = Modifier.weight(1f),
               )
-              SummaryPill(
+              OverviewMetricCard(
                       icon = Icons.Default.BluetoothConnected,
                       label = stringResource(R.string.dashboard_buffered_events_label),
                       value = state.packetStats.totalEventCount.toString(),
@@ -290,6 +377,12 @@ private fun HeaderSection(
             }
           }
         }
+
+        Text(
+                text = stringResource(R.string.dashboard_upload_supporting_text),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
 
         Button(
                 onClick = onUploadClicked,
@@ -332,37 +425,19 @@ private fun HeaderSection(
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
         )
+        Text(
+                text = stringResource(R.string.dashboard_command_supporting_text),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
-        Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-          FilledTonalButton(
-                  onClick = onSendStatusClicked,
-                  enabled = commandEnabled,
-                  modifier = Modifier.weight(1f),
-          ) { Text(stringResource(R.string.dashboard_command_status)) }
-          FilledTonalButton(
-                  onClick = onSendMuonClicked,
-                  enabled = commandEnabled,
-                  modifier = Modifier.weight(1f),
-          ) { Text(stringResource(R.string.dashboard_command_muon)) }
-        }
-        Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-          FilledTonalButton(
-                  onClick = onSendTimelineClicked,
-                  enabled = commandEnabled,
-                  modifier = Modifier.weight(1f),
-          ) { Text(stringResource(R.string.dashboard_command_timeline)) }
-          OutlinedButton(
-                  onClick = onSendStopClicked,
-                  enabled = commandEnabled,
-                  modifier = Modifier.weight(1f),
-          ) { Text(stringResource(R.string.dashboard_command_stop)) }
-        }
+        CommandButtonGrid(
+                commandEnabled = commandEnabled,
+                onSendStatusClicked = onSendStatusClicked,
+                onSendMuonClicked = onSendMuonClicked,
+                onSendTimelineClicked = onSendTimelineClicked,
+                onSendStopClicked = onSendStopClicked,
+        )
 
         Text(
                 text =
@@ -406,7 +481,7 @@ private fun StatusBadge(connected: Boolean, text: String) {
 }
 
 @Composable
-private fun SummaryPill(
+private fun OverviewMetricCard(
         icon: androidx.compose.ui.graphics.vector.ImageVector,
         label: String,
         value: String,
@@ -415,7 +490,7 @@ private fun SummaryPill(
   Surface(
           modifier = modifier,
           shape = RoundedCornerShape(18.dp),
-          color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
+          color = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f),
   ) {
     Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
@@ -445,6 +520,102 @@ private fun SummaryPill(
 }
 
 @Composable
+private fun CommandButtonGrid(
+        commandEnabled: Boolean,
+        onSendStatusClicked: () -> Unit,
+        onSendMuonClicked: () -> Unit,
+        onSendTimelineClicked: () -> Unit,
+        onSendStopClicked: () -> Unit,
+) {
+  BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+    val compactLayout = maxWidth < 420.dp
+    if (compactLayout) {
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilledTonalButton(
+                onClick = onSendStatusClicked,
+                enabled = commandEnabled,
+                modifier = Modifier.fillMaxWidth(),
+        ) { Text(stringResource(R.string.dashboard_command_status)) }
+        FilledTonalButton(
+                onClick = onSendMuonClicked,
+                enabled = commandEnabled,
+                modifier = Modifier.fillMaxWidth(),
+        ) { Text(stringResource(R.string.dashboard_command_muon)) }
+        FilledTonalButton(
+                onClick = onSendTimelineClicked,
+                enabled = commandEnabled,
+                modifier = Modifier.fillMaxWidth(),
+        ) { Text(stringResource(R.string.dashboard_command_timeline)) }
+        OutlinedButton(
+                onClick = onSendStopClicked,
+                enabled = commandEnabled,
+                modifier = Modifier.fillMaxWidth(),
+        ) { Text(stringResource(R.string.dashboard_command_stop)) }
+      }
+    } else {
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          FilledTonalButton(
+                  onClick = onSendStatusClicked,
+                  enabled = commandEnabled,
+                  modifier = Modifier.weight(1f),
+          ) { Text(stringResource(R.string.dashboard_command_status)) }
+          FilledTonalButton(
+                  onClick = onSendMuonClicked,
+                  enabled = commandEnabled,
+                  modifier = Modifier.weight(1f),
+          ) { Text(stringResource(R.string.dashboard_command_muon)) }
+        }
+        Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          FilledTonalButton(
+                  onClick = onSendTimelineClicked,
+                  enabled = commandEnabled,
+                  modifier = Modifier.weight(1f),
+          ) { Text(stringResource(R.string.dashboard_command_timeline)) }
+          OutlinedButton(
+                  onClick = onSendStopClicked,
+                  enabled = commandEnabled,
+                  modifier = Modifier.weight(1f),
+          ) { Text(stringResource(R.string.dashboard_command_stop)) }
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun LiveMetricsSection(
+        location: LocationSnapshot?,
+        acceleration: AccelerationSnapshot?,
+        sipm: SipmMonitoring?,
+) {
+  BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+    val wideLayout = maxWidth >= 520.dp
+    if (wideLayout) {
+      Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+          location?.let { LocationCard(location = it, modifier = Modifier.weight(1f)) }
+          acceleration?.let { OrientationCard(acceleration = it, modifier = Modifier.weight(1f)) }
+        }
+        sipm?.let { SipmMonitoringCard(sipm = it) }
+      }
+    } else {
+      Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        location?.let { LocationCard(location = it) }
+        acceleration?.let { OrientationCard(acceleration = it) }
+        sipm?.let { SipmMonitoringCard(sipm = it) }
+      }
+    }
+  }
+}
+
+@Composable
 private fun LocationCard(location: LocationSnapshot, modifier: Modifier = Modifier) {
   androidx.compose.material3.Card(
           modifier = modifier,
@@ -454,7 +625,7 @@ private fun LocationCard(location: LocationSnapshot, modifier: Modifier = Modifi
                           containerColor = MaterialTheme.colorScheme.surfaceVariant
                   ),
   ) {
-    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Text(
               text = stringResource(R.string.dashboard_gps_location),
               style = MaterialTheme.typography.labelMedium,
@@ -463,8 +634,14 @@ private fun LocationCard(location: LocationSnapshot, modifier: Modifier = Modifi
       )
       if (location.isMeaningful()) {
         Text(
-                text = "%.6f°, %.6f°".format(location.latitudeDegrees, location.longitudeDegrees),
-                style = MaterialTheme.typography.bodySmall,
+                text =
+                        stringResource(
+                                R.string.dashboard_location_coordinates_short,
+                                location.latitudeDegrees,
+                                location.longitudeDegrees,
+                        ),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
         )
         Text(
                 text = stringResource(R.string.dashboard_altitude_meters, location.altitudeMeters),
@@ -492,7 +669,7 @@ private fun OrientationCard(acceleration: AccelerationSnapshot, modifier: Modifi
                           containerColor = MaterialTheme.colorScheme.surfaceVariant
                   ),
   ) {
-    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Text(
               text = stringResource(R.string.dashboard_orientation),
               style = MaterialTheme.typography.labelMedium,
@@ -500,7 +677,7 @@ private fun OrientationCard(acceleration: AccelerationSnapshot, modifier: Modifi
               color = MaterialTheme.colorScheme.primary,
       )
       if (acceleration.isMeaningful()) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
           AxisIndicator("X", acceleration.xAxis)
           AxisIndicator("Y", acceleration.yAxis)
           AxisIndicator("Z", acceleration.zAxis)
@@ -518,7 +695,7 @@ private fun OrientationCard(acceleration: AccelerationSnapshot, modifier: Modifi
 
 @Composable
 private fun AxisIndicator(label: String, value: Int) {
-  Column(horizontalAlignment = Alignment.CenterHorizontally) {
+  Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
     Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
@@ -539,7 +716,7 @@ private fun AxisIndicator(label: String, value: Int) {
     ) {
       Text(
               text = value.toString(),
-              style = MaterialTheme.typography.labelMedium,
+              style = MaterialTheme.typography.labelSmall,
               color = Color.White,
               fontWeight = FontWeight.Bold,
       )
@@ -557,45 +734,27 @@ private fun SipmMonitoringCard(sipm: SipmMonitoring) {
                           containerColor = MaterialTheme.colorScheme.primaryContainer
                   ),
   ) {
-    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
       Text(
               text = stringResource(R.string.dashboard_sipm_monitoring),
               style = MaterialTheme.typography.titleSmall,
               fontWeight = FontWeight.Bold,
       )
-      Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Column {
-          Text(
-                  text = stringResource(R.string.dashboard_sipm_voltage),
-                  style = MaterialTheme.typography.bodySmall,
-                  color = MaterialTheme.colorScheme.onPrimaryContainer,
-          )
-          Text(
-                  text =
-                          stringResource(
-                                  R.string.dashboard_sipm_voltage_value,
-                                  sipm.voltageMillivolts
-                          ),
-                  style = MaterialTheme.typography.bodyMedium,
-                  fontWeight = FontWeight.Medium,
-          )
-        }
-        Column {
-          Text(
-                  text = stringResource(R.string.dashboard_sipm_current),
-                  style = MaterialTheme.typography.bodySmall,
-                  color = MaterialTheme.colorScheme.onPrimaryContainer,
-          )
-          Text(
-                  text =
-                          stringResource(
-                                  R.string.dashboard_sipm_current_value,
-                                  sipm.currentMicroamps
-                          ),
-                  style = MaterialTheme.typography.bodyMedium,
-                  fontWeight = FontWeight.Medium,
-          )
-        }
+      Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        HighlightMetric(
+                label = stringResource(R.string.dashboard_sipm_voltage),
+                value = stringResource(R.string.dashboard_sipm_voltage_value, sipm.voltageMillivolts),
+                modifier = Modifier.weight(1f),
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
+        HighlightMetric(
+                label = stringResource(R.string.dashboard_sipm_current),
+                value = stringResource(R.string.dashboard_sipm_current_value, sipm.currentMicroamps),
+                modifier = Modifier.weight(1f),
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
       }
     }
   }
@@ -611,54 +770,125 @@ private fun PacketStatsCard(stats: PacketStatistics) {
                           containerColor = MaterialTheme.colorScheme.secondaryContainer
                   ),
   ) {
-    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-      Text(
-              text = stringResource(R.string.dashboard_packet_statistics),
-              style = MaterialTheme.typography.titleSmall,
-              fontWeight = FontWeight.Bold,
-      )
-      Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        StatItem(
-                label = stringResource(R.string.dashboard_muon_packets),
-                value = stats.muonPacketCount.toString(),
-        )
-        StatItem(
-                label = stringResource(R.string.dashboard_timeline_packets),
-                value = stats.timelinePacketCount.toString(),
-        )
-        StatItem(
-                label = stringResource(R.string.dashboard_total_events),
-                value = stats.totalEventCount.toString(),
-        )
+    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+      BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val compactLayout = maxWidth < 420.dp
+        if (compactLayout) {
+          Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            HighlightMetric(
+                    label = stringResource(R.string.dashboard_muon_packets),
+                    value = stats.muonPacketCount.toString(),
+                    modifier = Modifier.fillMaxWidth(),
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            HighlightMetric(
+                    label = stringResource(R.string.dashboard_timeline_packets),
+                    value = stats.timelinePacketCount.toString(),
+                    modifier = Modifier.fillMaxWidth(),
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            HighlightMetric(
+                    label = stringResource(R.string.dashboard_total_events),
+                    value = stats.totalEventCount.toString(),
+                    modifier = Modifier.fillMaxWidth(),
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+          }
+        } else {
+          Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.spacedBy(8.dp),
+          ) {
+            HighlightMetric(
+                    label = stringResource(R.string.dashboard_muon_packets),
+                    value = stats.muonPacketCount.toString(),
+                    modifier = Modifier.weight(1f),
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            HighlightMetric(
+                    label = stringResource(R.string.dashboard_timeline_packets),
+                    value = stats.timelinePacketCount.toString(),
+                    modifier = Modifier.weight(1f),
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            HighlightMetric(
+                    label = stringResource(R.string.dashboard_total_events),
+                    value = stats.totalEventCount.toString(),
+                    modifier = Modifier.weight(1f),
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+          }
+        }
       }
+
       stats.averageEnergyAdcCounts?.let { avgEnergy ->
-        Text(
-                text = stringResource(R.string.dashboard_average_energy, avgEnergy.toInt()),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
+        MetricRow(
+                label = stringResource(R.string.dashboard_average_energy, avgEnergy.toInt()),
+                value = stringResource(R.string.dashboard_mean_signal_strength),
+                valueColor = MaterialTheme.colorScheme.onSecondaryContainer,
         )
       }
-      Text(
-              text =
-                      stringResource(
-                              R.string.dashboard_last_packet_summary,
-                              formatLastPacketText(stats.lastPacketTime),
-                      ),
-              style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.onSecondaryContainer,
+      MetricRow(
+              label = stringResource(R.string.dashboard_last_packet_label),
+              value = formatLastPacketText(stats.lastPacketTime),
+              valueColor = MaterialTheme.colorScheme.onSecondaryContainer,
       )
     }
   }
 }
 
 @Composable
-private fun StatItem(label: String, value: String) {
-  Column(horizontalAlignment = Alignment.CenterHorizontally) {
-    Text(text = value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+private fun HighlightMetric(
+        label: String,
+        value: String,
+        modifier: Modifier = Modifier,
+        containerColor: Color,
+        contentColor: Color,
+) {
+  Surface(modifier = modifier, shape = RoundedCornerShape(14.dp), color = containerColor) {
+    Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+      Text(
+              text = label,
+              style = MaterialTheme.typography.labelSmall,
+              color = contentColor,
+      )
+      Text(
+              text = value,
+              style = MaterialTheme.typography.titleMedium,
+              fontWeight = FontWeight.Bold,
+              color = contentColor,
+      )
+    }
+  }
+}
+
+@Composable
+private fun MetricRow(label: String, value: String, valueColor: Color = MaterialTheme.colorScheme.onSurface) {
+  Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically,
+  ) {
     Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(modifier = Modifier.size(12.dp))
+    Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = valueColor,
     )
   }
 }
@@ -680,7 +910,14 @@ private fun MuonEventsList(events: List<TelemetrySample>) {
     LazyColumn(
             modifier = Modifier.fillMaxWidth().heightIn(min = EVENT_LIST_MIN_HEIGHT, max = EVENT_LIST_MAX_HEIGHT).padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) { items(events) { sample -> MuonEventCard(sample) } }
+    ) {
+      items(
+              items = events,
+              key = { sample -> sample.id.value },
+      ) { sample ->
+        MuonEventCard(sample)
+      }
+    }
   }
 }
 
@@ -709,11 +946,16 @@ private fun MuonEventCard(sample: TelemetrySample) {
                   ),
   ) {
     Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
     ) {
       Column(modifier = Modifier.weight(1f)) {
+        Text(
+                text = stringResource(R.string.dashboard_muon_event_label),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Text(
                 text = formatInstant(sample.recordedAt),
                 style = MaterialTheme.typography.labelMedium,
@@ -735,7 +977,7 @@ private fun MuonEventCard(sample: TelemetrySample) {
       Column(horizontalAlignment = Alignment.End) {
         Text(
                 text = stringResource(R.string.dashboard_energy_adc, energy),
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
         )
         Text(
@@ -769,7 +1011,14 @@ private fun TimelineEventsList(events: List<TelemetrySample>) {
     LazyColumn(
             modifier = Modifier.fillMaxWidth().heightIn(min = EVENT_LIST_MIN_HEIGHT, max = EVENT_LIST_MAX_HEIGHT).padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) { items(events) { sample -> TimelineEventCard(sample) } }
+    ) {
+      items(
+              items = events,
+              key = { sample -> sample.id.value },
+      ) { sample ->
+        TimelineEventCard(sample)
+      }
+    }
   }
 }
 
@@ -784,86 +1033,70 @@ private fun TimelineEventCard(sample: TelemetrySample) {
                   ),
   ) {
     Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+      Text(
+              text = stringResource(R.string.dashboard_timeline_sample_label),
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
       Text(
               text = formatSampleInstant(sample.recordedAt),
               style = MaterialTheme.typography.labelLarge,
               fontWeight = FontWeight.Medium,
       )
 
-      // Environment Data
-      Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        sample.environment.sipmTemperatureCelsius?.let { temp ->
-          MetricItem(
-                  label = stringResource(R.string.dashboard_sipm_temp),
-                  value = stringResource(R.string.dashboard_temperature_value, temp),
-          )
-        }
-        sample.environment.mcuTemperatureCelsius?.let { temp ->
-          MetricItem(
-                  label = stringResource(R.string.dashboard_mcu_temp),
-                  value = stringResource(R.string.dashboard_temperature_value, temp),
-          )
-        }
+      sample.environment.sipmTemperatureCelsius?.let { temp ->
+        MetricRow(
+                label = stringResource(R.string.dashboard_sipm_temp),
+                value = stringResource(R.string.dashboard_temperature_value, temp),
+        )
+      }
+      sample.environment.mcuTemperatureCelsius?.let { temp ->
+        MetricRow(
+                label = stringResource(R.string.dashboard_mcu_temp),
+                value = stringResource(R.string.dashboard_temperature_value, temp),
+        )
       }
 
-      // Location Data
       sample.location?.let { location ->
         if (location.isMeaningful()) {
-          Text(
-                  text =
+          MetricRow(
+                  label = stringResource(R.string.dashboard_gps_location),
+                  value =
                           stringResource(
                                   R.string.dashboard_location_coords,
                                   location.latitudeDegrees,
                                   location.longitudeDegrees,
                                   location.altitudeMeters,
                           ),
-                  style = MaterialTheme.typography.bodySmall,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
         }
       }
 
-      // Acceleration Data
       sample.acceleration?.let { accel ->
         if (accel.isMeaningful()) {
-          Text(
-                  text =
+          MetricRow(
+                  label = stringResource(R.string.dashboard_orientation),
+                  value =
                           stringResource(
                                   R.string.dashboard_acceleration_xyz,
                                   accel.xAxis,
                                   accel.yAxis,
                                   accel.zAxis,
                           ),
-                  style = MaterialTheme.typography.bodySmall,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
         }
       }
 
-      // Packet Metadata
       sample.packetMetadata?.let { metadata ->
-        Text(
-                text = stringResource(R.string.dashboard_packet_counter, metadata.packageCounter),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        MetricRow(
+                label = stringResource(R.string.dashboard_packet_label),
+                value = stringResource(R.string.dashboard_packet_counter, metadata.packageCounter),
         )
       }
     }
-  }
-}
-
-@Composable
-private fun MetricItem(label: String, value: String) {
-  Column {
-    Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    Text(text = value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
   }
 }
 
@@ -906,7 +1139,14 @@ private fun RawPacketsList(packets: List<RawPacket>) {
     LazyColumn(
             modifier = Modifier.fillMaxWidth().heightIn(min = EVENT_LIST_MIN_HEIGHT, max = EVENT_LIST_MAX_HEIGHT).padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) { items(packets) { packet -> RawPacketCard(packet) } }
+    ) {
+      items(
+              items = packets,
+                                                        key = { packet -> packet.id },
+      ) { packet ->
+        RawPacketCard(packet)
+      }
+    }
   }
 }
 
@@ -921,8 +1161,8 @@ private fun RawPacketCard(packet: RawPacket) {
                   ),
   ) {
     Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         val instant = Instant.ofEpochMilli(packet.timestamp)
@@ -937,7 +1177,7 @@ private fun RawPacketCard(packet: RawPacket) {
                 color = MaterialTheme.colorScheme.primary,
         )
         Text(
-                text = "${packet.data.size} bytes",
+                text = stringResource(R.string.dashboard_packet_size_bytes, packet.data.size),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -946,6 +1186,11 @@ private fun RawPacketCard(packet: RawPacket) {
       val hexString = remember(packet.data) {
         packet.data.joinToString(" ") { String.format("%02X", it) }
       }
+      Text(
+              text = stringResource(R.string.dashboard_payload_label),
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
       Text(
               text = hexString,
               style =

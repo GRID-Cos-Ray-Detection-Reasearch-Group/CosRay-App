@@ -142,6 +142,7 @@
     <string name="dashboard_sipm_temp">SiPM温度</string>
     <string name="dashboard_mcu_temp">MCU温度</string>
     <string name="dashboard_location_coords">位置: %1$.6f°, %2$.6f° (海拔 %3$d m)</string>
+    <string name="dashboard_location_coordinates_short">%1$.6f°, %2$.6f°</string>
     <string name="dashboard_acceleration_xyz">加速度: X=%1$d, Y=%2$d, Z=%3$d</string>
     <string name="dashboard_packet_counter">数据包#%1$d</string>
 
@@ -171,4 +172,22 @@
     <string name="api_test_no_response">暂无响应</string>
     <string name="settings_navigation_menu">菜单</string>
     <string name="dashboard_waiting_for_data">等待数据</string>
+    <string name="dashboard_navigation_menu">菜单</string>
+    <string name="dashboard_section_overview_subtitle">连接概览与主要操作</string>
+    <string name="dashboard_section_live_metrics">实时指标</string>
+    <string name="dashboard_section_live_metrics_subtitle">当前设备位置、姿态和探测器状态</string>
+    <string name="dashboard_section_packet_statistics_subtitle">最近采集规模与数据包健康度</string>
+    <string name="dashboard_section_event_history">事件历史</string>
+    <string name="dashboard_event_history_muon_summary">已捕获 %1$d 个 μ 子事件</string>
+    <string name="dashboard_event_history_timeline_summary">已采集 %1$d 条时间线样本</string>
+    <string name="dashboard_event_history_raw_summary">可查看 %1$d 条原始数据包</string>
+    <string name="dashboard_detector_label">探测器</string>
+    <string name="dashboard_upload_supporting_text">上传最新缓冲数据，或向设备请求指定数据流。</string>
+    <string name="dashboard_command_supporting_text">选择探测器接下来要发送的数据类型。</string>
+    <string name="dashboard_mean_signal_strength">平均信号强度</string>
+    <string name="dashboard_muon_event_label">μ 子事件</string>
+    <string name="dashboard_timeline_sample_label">时间线样本</string>
+    <string name="dashboard_packet_label">数据包</string>
+    <string name="dashboard_payload_label">载荷</string>
+    <string name="dashboard_packet_size_bytes">%1$d 字节</string>
 </resources>
