@@ -15,22 +15,37 @@ class DatabaseInspectionRepository(
   fun observeInspection(limit: Int): Flow<DatabaseInspectionSnapshot> =
     combine(
       combine(
-        telemetrySampleDao.observeDetectorCounts(),
-        rawPacketDao.observeDetectorCounts(),
-        telemetrySampleDao.observeLatestForInspection(limit = limit)
+        telemetrySampleDao.observeDetectorCounts(isUploaded = false),
+        rawPacketDao.observeDetectorCounts(isUploaded = false),
+        telemetrySampleDao.observeLatestForInspection(isUploaded = false, limit = limit)
       ) { a, b, c -> Triple(a, b, c) },
       combine(
-        rawPacketDao.observeLatestForInspection(limit = limit),
-        telemetrySampleDao.observeTelemetryRowCount(),
-        rawPacketDao.observeRawPacketRowCount()
+        rawPacketDao.observeLatestForInspection(isUploaded = false, limit = limit),
+        telemetrySampleDao.observeTelemetryRowCount(isUploaded = false),
+        rawPacketDao.observeRawPacketRowCount(isUploaded = false)
+      ) { a, b, c -> Triple(a, b, c) },
+      combine(
+        telemetrySampleDao.observeDetectorCounts(isUploaded = true),
+        rawPacketDao.observeDetectorCounts(isUploaded = true),
+        telemetrySampleDao.observeLatestForInspection(isUploaded = true, limit = limit)
+      ) { a, b, c -> Triple(a, b, c) },
+      combine(
+        rawPacketDao.observeLatestForInspection(isUploaded = true, limit = limit),
+        telemetrySampleDao.observeTelemetryRowCount(isUploaded = true),
+        rawPacketDao.observeRawPacketRowCount(isUploaded = true)
       ) { a, b, c -> Triple(a, b, c) }
-    ) { first, second ->
+    ) { p1, p2, h1, h2 ->
       DatabaseInspectionSnapshot(
-        detectorSummaries = mergeDetectorSummaries(telemetryCounts = first.first, rawCounts = first.second),
-        telemetryRows = first.third,
-        rawPacketRows = second.first,
-        telemetryRowCount = second.second,
-        rawPacketRowCount = second.third,
+        pendingDetectorSummaries = mergeDetectorSummaries(telemetryCounts = p1.first, rawCounts = p1.second),
+        pendingTelemetryRows = p1.third,
+        pendingRawPacketRows = p2.first,
+        pendingTelemetryRowCount = p2.second,
+        pendingRawPacketRowCount = p2.third,
+        historyDetectorSummaries = mergeDetectorSummaries(telemetryCounts = h1.first, rawCounts = h1.second),
+        historyTelemetryRows = h1.third,
+        historyRawPacketRows = h2.first,
+        historyTelemetryRowCount = h2.second,
+        historyRawPacketRowCount = h2.third,
       )
     }
 
@@ -54,11 +69,16 @@ class DatabaseInspectionRepository(
 }
 
 data class DatabaseInspectionSnapshot(
-  val detectorSummaries: List<DetectorDatabaseSummary> = emptyList(),
-  val telemetryRows: List<TelemetrySampleEntity> = emptyList(),
-  val rawPacketRows: List<RawPacketEntity> = emptyList(),
-  val telemetryRowCount: Int = 0,
-  val rawPacketRowCount: Int = 0,
+  val pendingDetectorSummaries: List<DetectorDatabaseSummary> = emptyList(),
+  val pendingTelemetryRows: List<TelemetrySampleEntity> = emptyList(),
+  val pendingRawPacketRows: List<RawPacketEntity> = emptyList(),
+  val pendingTelemetryRowCount: Int = 0,
+  val pendingRawPacketRowCount: Int = 0,
+  val historyDetectorSummaries: List<DetectorDatabaseSummary> = emptyList(),
+  val historyTelemetryRows: List<TelemetrySampleEntity> = emptyList(),
+  val historyRawPacketRows: List<RawPacketEntity> = emptyList(),
+  val historyTelemetryRowCount: Int = 0,
+  val historyRawPacketRowCount: Int = 0,
 )
 
 data class DetectorDatabaseSummary(

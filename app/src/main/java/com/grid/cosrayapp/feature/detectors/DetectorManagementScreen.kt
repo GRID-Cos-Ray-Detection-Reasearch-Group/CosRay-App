@@ -45,6 +45,7 @@ fun DetectorManagementScreen(
   onDescriptionChanged: (String) -> Unit,
   onSubmit: () -> Unit,
   onRefresh: () -> Unit,
+  onUseConnectedDevice: () -> Unit,
   onRequestLogin: () -> Unit,
   onOpenDrawer: () -> Unit,
 ) {
@@ -180,6 +181,16 @@ fun DetectorManagementScreen(
               CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
             }
             Text(stringResource(R.string.detector_management_submit))
+          }
+          if (state.connectedDeviceMac != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+              onClick = onUseConnectedDevice,
+              enabled = state.isAuthenticated && !state.isSubmitting,
+              modifier = Modifier.fillMaxWidth(),
+            ) {
+              Text(stringResource(R.string.detector_management_quick_register_connected))
+            }
           }
         }
       }

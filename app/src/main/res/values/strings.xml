@@ -210,10 +210,13 @@
     <string name="detector_management_status_inactive">离线</string>
     <string name="detector_management_owner">所有者: %1$s</string>
     <string name="detector_management_last_seen">最后在线: %1$s</string>
+    <string name="detector_management_quick_register_connected">快捷绑定当前连接的设备</string>
 
     <!-- Database Viewer -->
     <string name="database_viewer_title">本地数据库查看</string>
     <string name="database_viewer_subtitle">查看 Androidx Room 数据</string>
+    <string name="database_viewer_pending_section">当前未上传数据 (Pending)</string>
+    <string name="database_viewer_history_section">已上传历史数据 (Historical)</string>
     <string name="database_viewer_detectors">探测器统计</string>
     <string name="database_viewer_detector_id">设备: %1$s</string>
     <string name="database_viewer_telemetry_count">遥测数据: %1$d</string>

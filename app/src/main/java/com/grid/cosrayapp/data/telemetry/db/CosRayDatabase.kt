@@ -6,7 +6,7 @@ import androidx.room.TypeConverters
 
 @Database(
   entities = [TelemetrySampleEntity::class, RawPacketEntity::class],
-  version = 2,
+  version = 3,
   exportSchema = false,
 )
 @TypeConverters(InstantConverters::class, PacketTypeConverters::class)

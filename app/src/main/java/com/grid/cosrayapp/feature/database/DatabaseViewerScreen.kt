@@ -62,10 +62,10 @@ fun DatabaseViewerScreen(
         ) {
             item {
                 SectionCard(
-                    title = stringResource(R.string.database_viewer_detectors),
-                    subtitle = stringResource(R.string.database_viewer_subtitle)
+                    title = stringResource(R.string.database_viewer_pending_section),
+                    subtitle = stringResource(R.string.database_viewer_detectors)
                 ) {
-                    if (state.detectorSummaries.isEmpty()) {
+                    if (state.pendingDetectorSummaries.isEmpty()) {
                         Text(
                             text = stringResource(R.string.database_viewer_empty),
                             style = MaterialTheme.typography.bodyMedium,
@@ -73,7 +73,7 @@ fun DatabaseViewerScreen(
                         )
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            state.detectorSummaries.forEach { summary ->
+                            state.pendingDetectorSummaries.forEach { summary ->
                                 DetectorSummaryItem(summary)
                             }
                         }
@@ -81,19 +81,19 @@ fun DatabaseViewerScreen(
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = stringResource(R.string.database_viewer_row_count, state.telemetryRowCount + state.rawPacketRowCount),
+                        text = stringResource(R.string.database_viewer_row_count, state.pendingTelemetryRowCount + state.pendingRawPacketRowCount),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-            }
 
-            item {
-                SectionCard(
-                    title = stringResource(R.string.database_viewer_recent_rows),
-                    subtitle = "Telemetry: ${state.telemetryRows.size} | Raw: ${state.rawPacketRows.size}"
-                ) {
-                    if (state.telemetryRows.isEmpty() && state.rawPacketRows.isEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = stringResource(R.string.database_viewer_recent_rows) + " (Telemetry: ${state.pendingTelemetryRows.size} | Raw: ${state.pendingRawPacketRows.size})",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (state.pendingTelemetryRows.isEmpty() && state.pendingRawPacketRows.isEmpty()) {
                         Text(
                             text = stringResource(R.string.database_viewer_empty),
                             style = MaterialTheme.typography.bodyMedium,
@@ -101,7 +101,56 @@ fun DatabaseViewerScreen(
                         )
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            state.telemetryRows.take(10).forEach { row ->
+                            state.pendingTelemetryRows.take(5).forEach { row ->
+                                TelemetryRowItem(row)
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
+                SectionCard(
+                    title = stringResource(R.string.database_viewer_history_section),
+                    subtitle = stringResource(R.string.database_viewer_detectors)
+                ) {
+                    if (state.historyDetectorSummaries.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.database_viewer_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            state.historyDetectorSummaries.forEach { summary ->
+                                DetectorSummaryItem(summary)
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = stringResource(R.string.database_viewer_row_count, state.historyTelemetryRowCount + state.historyRawPacketRowCount),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = stringResource(R.string.database_viewer_recent_rows) + " (Telemetry: ${state.historyTelemetryRows.size} | Raw: ${state.historyRawPacketRows.size})",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (state.historyTelemetryRows.isEmpty() && state.historyRawPacketRows.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.database_viewer_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            state.historyTelemetryRows.take(5).forEach { row ->
                                 TelemetryRowItem(row)
                             }
                         }

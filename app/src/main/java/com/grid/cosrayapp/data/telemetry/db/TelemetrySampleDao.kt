@@ -44,45 +44,50 @@ interface TelemetrySampleDao {
     limit: Int,
   ): Flow<List<TelemetrySampleEntity>>
 
+  @Query("UPDATE telemetry_samples SET is_uploaded = 1 WHERE is_uploaded = 0 AND recorded_at_epoch_millis <= :maxTimestamp")
+  suspend fun markAsUploaded(maxTimestamp: Long)
+
   @Query(
     """
       DELETE
       FROM telemetry_samples
-      WHERE detector_id = :detectorId
+      WHERE is_uploaded = 1
         AND recorded_at_epoch_millis < (
           SELECT MIN(recorded_at_epoch_millis)
           FROM (
             SELECT recorded_at_epoch_millis
             FROM telemetry_samples
-            WHERE detector_id = :detectorId
+            WHERE is_uploaded = 1
             ORDER BY recorded_at_epoch_millis DESC
             LIMIT :keepLatest
           )
         )
     """
   )
-  suspend fun pruneToLatest(detectorId: String, keepLatest: Int)
+  suspend fun pruneUploaded(keepLatest: Int)
 
-  @Query("SELECT COUNT(*) FROM telemetry_samples")
-  fun observeTelemetryRowCount(): Flow<Int>
+  @Query("SELECT COUNT(*) FROM telemetry_samples WHERE is_uploaded = :isUploaded")
+  fun observeTelemetryRowCount(isUploaded: Boolean): Flow<Int>
 
   @Query(
     """
       SELECT detector_id AS detectorId, COUNT(*) AS rowCount
       FROM telemetry_samples
+      WHERE is_uploaded = :isUploaded
       GROUP BY detector_id
       ORDER BY detector_id ASC
     """
   )
-  fun observeDetectorCounts(): Flow<List<DetectorRowCount>>
+  fun observeDetectorCounts(isUploaded: Boolean): Flow<List<DetectorRowCount>>
 
   @Query(
     """
       SELECT *
       FROM telemetry_samples
+      WHERE is_uploaded = :isUploaded
       ORDER BY recorded_at_epoch_millis DESC
       LIMIT :limit
     """
   )
-  fun observeLatestForInspection(limit: Int): Flow<List<TelemetrySampleEntity>>
+  fun observeLatestForInspection(isUploaded: Boolean, limit: Int): Flow<List<TelemetrySampleEntity>>
 }

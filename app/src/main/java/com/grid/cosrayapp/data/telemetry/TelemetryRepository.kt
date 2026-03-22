@@ -90,9 +90,9 @@ class TelemetryRepository(
             characteristicId = rawPacket.characteristicId.toString(),
             receivedAtEpochMillis = rawPacket.timestamp,
             data = rawPacket.data,
+            isUploaded = false,
           )
         )
-        rawPacketDao.pruneToLatest(detectorId = deviceMac, keepLatest = MAX_DB_RAW_PACKETS_PER_DETECTOR)
       }
         .onFailure { e -> Log.w(TAG, "Failed to persist raw packet", e) }
     }
@@ -102,11 +102,7 @@ class TelemetryRepository(
     if (samples.isEmpty()) return
     externalScope.launch {
       runCatching {
-        telemetrySampleDao.upsertAll(samples.map(TelemetrySample::toEntity))
-        val detectorId = samples.firstOrNull()?.detectorId?.value
-        if (detectorId != null) {
-          telemetrySampleDao.pruneToLatest(detectorId = detectorId, keepLatest = MAX_DB_SAMPLES_PER_DETECTOR)
-        }
+        telemetrySampleDao.upsertAll(samples.map { it.toEntity().copy(isUploaded = false) })
       }
         .onFailure { e -> Log.w(TAG, "Failed to persist telemetry samples", e) }
     }
@@ -180,13 +176,14 @@ class TelemetryRepository(
 
   private fun appendSamples(samples: List<TelemetrySample>) {
     if (samples.isEmpty()) return
-    _buffer.update { list -> (list + samples).takeLast(BUFFER_SIZE) }
+    _buffer.update { list -> list + samples }
     _liveTelemetry.update { list ->
-      (list + samples).sortedByDescending(TelemetrySample::recordedAt).take(MAX_LIVE_SAMPLES)
+      (list + samples).sortedByDescending(TelemetrySample::recordedAt)
     }
   }
 
   suspend fun uploadBufferedSamples(): CosRayResult<Unit> {
+    val uploadStartTime = System.currentTimeMillis()
     val uploadResult: CosRayResult<Unit> =
             runCosRayCatching {
               while (true) {
@@ -205,8 +202,14 @@ class TelemetryRepository(
             }
 
     return if (uploadResult is CosRayResult.Success) {
-      _buffer.value = emptyList()
-      _liveTelemetry.value = emptyList()
+      externalScope.launch {
+        runCatching {
+          telemetrySampleDao.markAsUploaded(maxTimestamp = uploadStartTime)
+          rawPacketDao.markAsUploaded(maxTimestamp = uploadStartTime)
+          telemetrySampleDao.pruneUploaded(keepLatest = MAX_DB_SAMPLES_PER_DETECTOR)
+          rawPacketDao.pruneUploaded(keepLatest = MAX_DB_RAW_PACKETS_PER_DETECTOR)
+        }
+      }
       CosRayResult.Success(Unit)
     } else {
       uploadResult

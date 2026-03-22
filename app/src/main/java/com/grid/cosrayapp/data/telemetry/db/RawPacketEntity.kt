@@ -23,4 +23,5 @@ data class RawPacketEntity(
   @ColumnInfo(name = "characteristic_id") val characteristicId: String,
   @ColumnInfo(name = "received_at_epoch_millis") val receivedAtEpochMillis: Long,
   @ColumnInfo(name = "data") val data: ByteArray,
+  @ColumnInfo(name = "is_uploaded", defaultValue = "0") val isUploaded: Boolean = false,
 )

@@ -69,6 +69,7 @@ data class TelemetrySampleEntity(
   @ColumnInfo(name = "uptime_millis") val uptimeMillis: Long?,
   @ColumnInfo(name = "error_code") val errorCode: Int?,
   @ColumnInfo(name = "diagnostic_message") val diagnosticMessage: String?,
+  @ColumnInfo(name = "is_uploaded", defaultValue = "0") val isUploaded: Boolean = false,
 ) {
   val recordedAt: Instant
     get() = Instant.ofEpochMilli(recordedAtEpochMillis)

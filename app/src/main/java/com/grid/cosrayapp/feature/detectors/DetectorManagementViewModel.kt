@@ -3,10 +3,12 @@ package com.grid.cosrayapp.feature.detectors
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.grid.cosrayapp.R
+import com.grid.cosrayapp.core.ble.BleConnectionState
 import com.grid.cosrayapp.core.common.CosRayResult
 import com.grid.cosrayapp.core.ui.UiMessage
 import com.grid.cosrayapp.data.auth.AuthRepository
 import com.grid.cosrayapp.data.auth.AuthState
+import com.grid.cosrayapp.data.ble.BleRepository
 import com.grid.cosrayapp.data.device.DetectorManagementRepository
 import com.grid.cosrayapp.domain.model.User
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,6 +25,7 @@ class DetectorManagementViewModel
 constructor(
   private val authRepository: AuthRepository,
   private val detectorManagementRepository: DetectorManagementRepository,
+  private val bleRepository: BleRepository,
 ) : ViewModel() {
   private val _uiState = MutableStateFlow(DetectorManagementUiState())
   val uiState: StateFlow<DetectorManagementUiState> = _uiState.asStateFlow()
@@ -47,6 +50,26 @@ constructor(
         }
       }
     }
+
+    viewModelScope.launch {
+      bleRepository.connectionState.collect { state ->
+        if (state is BleConnectionState.Connected) {
+          _uiState.update { 
+            it.copy(
+              connectedDeviceMac = state.device.macAddress,
+              connectedDeviceName = state.device.name
+            ) 
+          }
+        } else {
+          _uiState.update { 
+            it.copy(
+              connectedDeviceMac = null,
+              connectedDeviceName = null
+            ) 
+          }
+        }
+      }
+    }
   }
 
   fun onMacAddressChanged(value: String) {
@@ -63,6 +86,19 @@ constructor(
 
   fun refresh() {
     viewModelScope.launch { refreshDevices() }
+  }
+
+  fun useConnectedDevice() {
+    val currentState = _uiState.value
+    currentState.connectedDeviceMac?.let { mac ->
+      _uiState.update { 
+        it.copy(
+          macAddress = mac, 
+          name = currentState.connectedDeviceName ?: it.name,
+          statusMessage = null
+        ) 
+      }
+    }
   }
 
   fun submit() {
@@ -203,6 +239,8 @@ data class DetectorManagementUiState(
   val name: String = "",
   val description: String = "",
   val statusMessage: UiMessage? = null,
+  val connectedDeviceMac: String? = null,
+  val connectedDeviceName: String? = null,
 )
 
 data class ManagedDetector(

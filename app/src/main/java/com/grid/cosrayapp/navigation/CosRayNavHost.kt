@@ -331,6 +331,7 @@ private fun NavGraphBuilder.detectorManagementDestination(appState: CosRayAppSta
       onDescriptionChanged = viewModel::onDescriptionChanged,
       onSubmit = viewModel::submit,
       onRefresh = viewModel::refresh,
+      onUseConnectedDevice = viewModel::useConnectedDevice,
       onRequestLogin = {
         appState.exitGuestMode()
         appState.navigateTo(CosRayDestination.Login, popUpToStart = true)

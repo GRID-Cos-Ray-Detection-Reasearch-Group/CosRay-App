@@ -912,7 +912,7 @@ private fun MuonEventsList(events: List<TelemetrySample>) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       items(
-              items = events,
+              items = events.take(100),
               key = { sample -> sample.id.value },
       ) { sample ->
         MuonEventCard(sample)
@@ -1013,7 +1013,7 @@ private fun TimelineEventsList(events: List<TelemetrySample>) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       items(
-              items = events,
+              items = events.take(100),
               key = { sample -> sample.id.value },
       ) { sample ->
         TimelineEventCard(sample)
