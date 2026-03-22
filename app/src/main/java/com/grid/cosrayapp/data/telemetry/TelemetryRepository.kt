@@ -288,10 +288,10 @@ class FirmwarePacketAssembler(
       return emptyList()
     }
 
-    val globalTotal = chunk[0].toUnsignedInt()
-    val globalIndex = chunk[1].toUnsignedInt()
-    val localTotal = chunk[2].toUnsignedInt()
-    val localIndex = chunk[3].toUnsignedInt()
+    val globalTotal = (chunk[0].toUnsignedInt()) or (chunk[1].toUnsignedInt() shl 8)
+    val globalIndex = (chunk[2].toUnsignedInt()) or (chunk[3].toUnsignedInt() shl 8)
+    val localTotal = chunk[4].toUnsignedInt()
+    val localIndex = chunk[5].toUnsignedInt()
     if (globalTotal == 0 || globalIndex == 0 || localTotal == 0 || localIndex !in 1..localTotal) {
       stats.droppedFragments++
       logDrop(
@@ -521,7 +521,7 @@ class FirmwarePacketAssembler(
 
   companion object {
     private const val TAG = "FirmwarePacketAsm"
-    private const val BLE_HEADER_SIZE = 4
+    private const val BLE_HEADER_SIZE = 6
     private const val COMPLETE_PACKET_SIZE = 512
     private const val MAX_ACTIVE_PACKETS = 8
     private const val DEFAULT_PACKET_TTL_MILLIS = 5_000L

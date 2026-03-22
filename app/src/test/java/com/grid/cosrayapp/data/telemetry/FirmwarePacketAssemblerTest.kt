@@ -41,7 +41,7 @@ class FirmwarePacketAssemblerTest {
   fun `consume invalid fragment then packet should still parse`() {
     val assembler = FirmwarePacketAssembler(logger = NoopFirmwarePacketAssemblerLogger)
     val packet = buildMuonPacketBytes(pkgCnt = 9, utc = 1_710_000_999)
-    val invalid = byteArrayOf(0x00, 0x00, 0x00, 0x00, 0x05)
+    val invalid = byteArrayOf(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05)
     val chunks = buildBleFragments(packet, globalTotal = 1, globalIndex = 1)
 
     val requests = mutableListOf<ParsedFirmwarePacket>()
@@ -103,7 +103,9 @@ class FirmwarePacketAssemblerTest {
     assembler.consume(
       byteArrayOf(
         0x01.toByte(),
+        0x00.toByte(),
         0x01.toByte(),
+        0x00.toByte(),
         0x01.toByte(),
         0x01.toByte(),
         0xFF.toByte(),
@@ -131,19 +133,21 @@ class FirmwarePacketAssemblerTest {
     globalTotal: Int,
     globalIndex: Int,
   ): List<ByteArray> {
-    val payloadSize = 18
+    val payloadSize = 16
     val localTotal = (packet.size + payloadSize - 1) / payloadSize
     return (0 until localTotal).map { localIndex ->
       val fragment = ByteArray(22)
-      fragment[0] = globalTotal.toByte()
-      fragment[1] = globalIndex.toByte()
-      fragment[2] = localTotal.toByte()
-      fragment[3] = (localIndex + 1).toByte()
+      fragment[0] = (globalTotal and 0xFF).toByte()
+      fragment[1] = ((globalTotal shr 8) and 0xFF).toByte()
+      fragment[2] = (globalIndex and 0xFF).toByte()
+      fragment[3] = ((globalIndex shr 8) and 0xFF).toByte()
+      fragment[4] = localTotal.toByte()
+      fragment[5] = (localIndex + 1).toByte()
       val start = localIndex * payloadSize
       val end = minOf(start + payloadSize, packet.size)
       packet.copyInto(
         destination = fragment,
-        destinationOffset = 4,
+        destinationOffset = 6,
         startIndex = start,
         endIndex = end,
       )
