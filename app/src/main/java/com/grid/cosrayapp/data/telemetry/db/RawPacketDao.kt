@@ -39,4 +39,27 @@ interface RawPacketDao {
     """
   )
   suspend fun pruneToLatest(detectorId: String, keepLatest: Int)
+
+  @Query("SELECT COUNT(*) FROM raw_packets")
+  fun observeRawPacketRowCount(): Flow<Int>
+
+  @Query(
+    """
+      SELECT detector_id AS detectorId, COUNT(*) AS rowCount
+      FROM raw_packets
+      GROUP BY detector_id
+      ORDER BY detector_id ASC
+    """
+  )
+  fun observeDetectorCounts(): Flow<List<DetectorRowCount>>
+
+  @Query(
+    """
+      SELECT *
+      FROM raw_packets
+      ORDER BY received_at_epoch_millis DESC, id DESC
+      LIMIT :limit
+    """
+  )
+  fun observeLatestForInspection(limit: Int): Flow<List<RawPacketEntity>>
 }

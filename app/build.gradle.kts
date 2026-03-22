@@ -2,7 +2,7 @@ import org.gradle.testing.jacoco.tasks.JacocoReport
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 val debugBaseUrl: String? =
-  providers.gradleProperty("COSRAY_DEBUG_BASE_URL").getOrElse("http://59.66.16.192:8000")
+  providers.gradleProperty("COSRAY_DEBUG_BASE_URL").getOrElse("https://cosray.top")
 val releaseBaseUrl: String? =
   providers.gradleProperty("COSRAY_RELEASE_BASE_URL").getOrElse("https://cosray.top")
 
@@ -12,7 +12,7 @@ val releaseCertPins: List<String> =
     .orNull
     ?.split(',')
     ?.map(String::trim)
-    ?.filter(String::isNotBlank) ?: listOf("sha256/5lyRQ3JztmzrjYDVkWCkL+ZvTglL6DqE72KrwbLrDW0=")
+    ?.filter(String::isNotBlank) ?: listOf("sha256/e7TaFGNqw+8BNIiGrE8Ow84BMpChc3SoKyj/Qe8OSQ0=")
 
 val releaseCertPinsLiteral =
   releaseCertPins.joinToString(prefix = "{", postfix = "}") { pin -> "\"$pin\"" }

@@ -9,6 +9,7 @@ import com.grid.cosrayapp.core.network.CosRayApi
 import com.grid.cosrayapp.core.network.HttpClientFactory
 import com.grid.cosrayapp.data.auth.AuthRepository
 import com.grid.cosrayapp.data.ble.BleRepository
+import com.grid.cosrayapp.data.device.DetectorManagementRepository
 import com.grid.cosrayapp.data.telemetry.TelemetryRepository
 import com.grid.cosrayapp.data.telemetry.db.CosRayDatabase
 import com.grid.cosrayapp.data.telemetry.db.RawPacketDao
@@ -81,6 +82,11 @@ object HiltModules {
 
   @Provides
   @Singleton
+  fun provideDetectorManagementRepository(api: CosRayApi): DetectorManagementRepository =
+    DetectorManagementRepository(api)
+
+  @Provides
+  @Singleton
   fun provideTelemetryRepository(
     api: CosRayApi,
     bleRepository: BleRepository,
@@ -121,4 +127,15 @@ object HiltModules {
   @Provides
   @Singleton
   fun provideRawPacketDao(db: CosRayDatabase): RawPacketDao = db.rawPacketDao()
+
+  @Provides
+  @Singleton
+  fun provideDatabaseInspectionRepository(
+    telemetrySampleDao: TelemetrySampleDao,
+    rawPacketDao: RawPacketDao,
+  ): com.grid.cosrayapp.data.telemetry.DatabaseInspectionRepository =
+    com.grid.cosrayapp.data.telemetry.DatabaseInspectionRepository(
+      telemetrySampleDao,
+      rawPacketDao,
+    )
 }
