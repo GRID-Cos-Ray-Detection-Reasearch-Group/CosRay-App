@@ -82,6 +82,7 @@ private val DASHBOARD_SECTION_SPACING = 20.dp
 // Height constraints for event/packet list composables
 private val EVENT_LIST_MIN_HEIGHT = 220.dp
 private val EVENT_LIST_MAX_HEIGHT = 420.dp
+private const val MAX_VISIBLE_EVENTS = 100
 
 // Reusable DateTimeFormatter for timestamp display
 private val TIME_FORMATTER: DateTimeFormatter =
@@ -912,7 +913,7 @@ private fun MuonEventsList(events: List<TelemetrySample>) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       items(
-              items = events.take(100),
+                                                        items = events.take(MAX_VISIBLE_EVENTS),
               key = { sample -> sample.id.value },
       ) { sample ->
         MuonEventCard(sample)
@@ -1013,7 +1014,7 @@ private fun TimelineEventsList(events: List<TelemetrySample>) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       items(
-              items = events.take(100),
+                                                        items = events.take(MAX_VISIBLE_EVENTS),
               key = { sample -> sample.id.value },
       ) { sample ->
         TimelineEventCard(sample)

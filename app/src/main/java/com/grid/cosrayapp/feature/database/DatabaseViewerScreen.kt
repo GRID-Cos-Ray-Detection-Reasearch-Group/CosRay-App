@@ -224,12 +224,20 @@ private fun TelemetryRowItem(row: TelemetrySampleEntity) {
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
-                text = "ID: ${row.telemetryId} | Detector: ${row.detectorId}",
+                text = stringResource(
+                    R.string.database_viewer_telemetry_row_id_detector,
+                    row.telemetryId,
+                    row.detectorId,
+                ),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = "Type: ${row.packetType} | Particles: ${row.particleCount}",
+                text = stringResource(
+                    R.string.database_viewer_telemetry_row_type_particles,
+                    row.packetType,
+                    row.particleCount,
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

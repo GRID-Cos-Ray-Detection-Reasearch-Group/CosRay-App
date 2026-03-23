@@ -221,6 +221,8 @@
     <string name="database_viewer_detector_id">设备: %1$s</string>
     <string name="database_viewer_telemetry_count">遥测数据: %1$d</string>
     <string name="database_viewer_raw_count">原始数据包: %1$d</string>
+    <string name="database_viewer_telemetry_row_id_detector">遥测 ID: %1$s | 探测器: %2$s</string>
+    <string name="database_viewer_telemetry_row_type_particles">类型: %1$s | 粒子数: %2$d</string>
     <string name="database_viewer_recent_rows">最近数据</string>
     <string name="database_viewer_empty">数据库为空</string>
     <string name="database_viewer_row_count">总行数: %1$d</string>

@@ -28,17 +28,19 @@ interface RawPacketDao {
     """
       DELETE
       FROM raw_packets
-      WHERE is_uploaded = 1
+      WHERE detector_id = :detectorId
+        AND is_uploaded = 1
         AND id NOT IN (
           SELECT id
           FROM raw_packets
-          WHERE is_uploaded = 1
+          WHERE detector_id = :detectorId
+            AND is_uploaded = 1
           ORDER BY received_at_epoch_millis DESC, id DESC
           LIMIT :keepLatest
         )
     """
   )
-  suspend fun pruneUploaded(keepLatest: Int)
+  suspend fun pruneUploaded(detectorId: String, keepLatest: Int)
 
   @Query("SELECT COUNT(*) FROM raw_packets WHERE is_uploaded = :isUploaded")
   fun observeRawPacketRowCount(isUploaded: Boolean): Flow<Int>

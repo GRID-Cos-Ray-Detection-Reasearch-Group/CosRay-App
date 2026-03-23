@@ -51,20 +51,19 @@ interface TelemetrySampleDao {
     """
       DELETE
       FROM telemetry_samples
-      WHERE is_uploaded = 1
-        AND recorded_at_epoch_millis < (
-          SELECT MIN(recorded_at_epoch_millis)
-          FROM (
-            SELECT recorded_at_epoch_millis
-            FROM telemetry_samples
-            WHERE is_uploaded = 1
-            ORDER BY recorded_at_epoch_millis DESC
-            LIMIT :keepLatest
-          )
+      WHERE detector_id = :detectorId
+        AND is_uploaded = 1
+        AND telemetry_id NOT IN (
+          SELECT telemetry_id
+          FROM telemetry_samples
+          WHERE detector_id = :detectorId
+            AND is_uploaded = 1
+          ORDER BY recorded_at_epoch_millis DESC, telemetry_id DESC
+          LIMIT :keepLatest
         )
     """
   )
-  suspend fun pruneUploaded(keepLatest: Int)
+  suspend fun pruneUploaded(detectorId: String, keepLatest: Int)
 
   @Query("SELECT COUNT(*) FROM telemetry_samples WHERE is_uploaded = :isUploaded")
   fun observeTelemetryRowCount(isUploaded: Boolean): Flow<Int>

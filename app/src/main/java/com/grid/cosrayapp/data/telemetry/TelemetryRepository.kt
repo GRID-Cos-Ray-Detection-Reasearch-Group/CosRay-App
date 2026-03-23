@@ -176,14 +176,15 @@ class TelemetryRepository(
 
   private fun appendSamples(samples: List<TelemetrySample>) {
     if (samples.isEmpty()) return
-    _buffer.update { list -> list + samples }
+    _buffer.update { list -> (list + samples).takeLast(BUFFER_SIZE) }
     _liveTelemetry.update { list ->
-      (list + samples).sortedByDescending(TelemetrySample::recordedAt)
+      (list + samples).sortedByDescending(TelemetrySample::recordedAt).take(MAX_LIVE_SAMPLES)
     }
   }
 
   suspend fun uploadBufferedSamples(): CosRayResult<Unit> {
     val uploadStartTime = System.currentTimeMillis()
+    val detectorId = _connectedDevice.value?.macAddress
     val uploadResult: CosRayResult<Unit> =
             runCosRayCatching {
               while (true) {
@@ -206,8 +207,18 @@ class TelemetryRepository(
         runCatching {
           telemetrySampleDao.markAsUploaded(maxTimestamp = uploadStartTime)
           rawPacketDao.markAsUploaded(maxTimestamp = uploadStartTime)
-          telemetrySampleDao.pruneUploaded(keepLatest = MAX_DB_SAMPLES_PER_DETECTOR)
-          rawPacketDao.pruneUploaded(keepLatest = MAX_DB_RAW_PACKETS_PER_DETECTOR)
+          if (detectorId != null) {
+            telemetrySampleDao.pruneUploaded(
+              detectorId = detectorId,
+              keepLatest = MAX_DB_SAMPLES_PER_DETECTOR,
+            )
+            rawPacketDao.pruneUploaded(
+              detectorId = detectorId,
+              keepLatest = MAX_DB_RAW_PACKETS_PER_DETECTOR,
+            )
+          }
+          _buffer.value = emptyList()
+          _liveTelemetry.value = emptyList()
         }
       }
       CosRayResult.Success(Unit)
