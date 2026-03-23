@@ -54,18 +54,18 @@ constructor(
     viewModelScope.launch {
       bleRepository.connectionState.collect { state ->
         if (state is BleConnectionState.Connected) {
-          _uiState.update { 
+          _uiState.update {
             it.copy(
               connectedDeviceMac = state.device.macAddress,
               connectedDeviceName = state.device.name
-            ) 
+            )
           }
         } else {
-          _uiState.update { 
+          _uiState.update {
             it.copy(
               connectedDeviceMac = null,
               connectedDeviceName = null
-            ) 
+            )
           }
         }
       }
@@ -91,12 +91,12 @@ constructor(
   fun useConnectedDevice() {
     val currentState = _uiState.value
     currentState.connectedDeviceMac?.let { mac ->
-      _uiState.update { 
+      _uiState.update {
         it.copy(
-          macAddress = mac, 
+          macAddress = mac,
           name = currentState.connectedDeviceName ?: it.name,
           statusMessage = null
-        ) 
+        )
       }
     }
   }

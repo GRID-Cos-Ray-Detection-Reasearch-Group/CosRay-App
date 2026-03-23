@@ -78,7 +78,7 @@ fun DatabaseViewerScreen(
                             }
                         }
                     }
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = stringResource(R.string.database_viewer_row_count, state.pendingTelemetryRowCount + state.pendingRawPacketRowCount),
@@ -127,7 +127,7 @@ fun DatabaseViewerScreen(
                             }
                         }
                     }
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = stringResource(R.string.database_viewer_row_count, state.historyTelemetryRowCount + state.historyRawPacketRowCount),
