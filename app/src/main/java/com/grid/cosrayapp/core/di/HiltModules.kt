@@ -1,6 +1,7 @@
 package com.grid.cosrayapp.core.di
 
 import android.content.Context
+import androidx.room.Room
 import com.grid.cosrayapp.core.ble.BleController
 import com.grid.cosrayapp.core.datastore.AuthPreferences
 import com.grid.cosrayapp.core.datastore.UserPreferencesDataSource
@@ -8,7 +9,11 @@ import com.grid.cosrayapp.core.network.CosRayApi
 import com.grid.cosrayapp.core.network.HttpClientFactory
 import com.grid.cosrayapp.data.auth.AuthRepository
 import com.grid.cosrayapp.data.ble.BleRepository
+import com.grid.cosrayapp.data.device.DetectorManagementRepository
 import com.grid.cosrayapp.data.telemetry.TelemetryRepository
+import com.grid.cosrayapp.data.telemetry.db.CosRayDatabase
+import com.grid.cosrayapp.data.telemetry.db.RawPacketDao
+import com.grid.cosrayapp.data.telemetry.db.TelemetrySampleDao
 import com.grid.cosrayapp.data.telemetry.upload.DataStoreUploadQueue
 import com.grid.cosrayapp.data.telemetry.upload.UploadQueue
 import dagger.Module
@@ -77,11 +82,18 @@ object HiltModules {
 
   @Provides
   @Singleton
+  fun provideDetectorManagementRepository(api: CosRayApi): DetectorManagementRepository =
+    DetectorManagementRepository(api)
+
+  @Provides
+  @Singleton
   fun provideTelemetryRepository(
     api: CosRayApi,
     bleRepository: BleRepository,
     authRepository: AuthRepository,
     uploadQueue: UploadQueue,
+    telemetrySampleDao: TelemetrySampleDao,
+    rawPacketDao: RawPacketDao,
     applicationScope: CoroutineScope,
   ): TelemetryRepository =
     TelemetryRepository(
@@ -89,6 +101,8 @@ object HiltModules {
       bleRepository = bleRepository,
       authRepository = authRepository,
       uploadQueue = uploadQueue,
+      telemetrySampleDao = telemetrySampleDao,
+      rawPacketDao = rawPacketDao,
       externalScope = applicationScope,
     )
 
@@ -98,4 +112,30 @@ object HiltModules {
     @ApplicationContext context: Context,
     json: Json,
   ): UploadQueue = DataStoreUploadQueue(context = context, json = json, maxSize = 10_000)
+
+  @Provides
+  @Singleton
+  fun provideDatabase(@ApplicationContext context: Context): CosRayDatabase =
+    Room.databaseBuilder(context, CosRayDatabase::class.java, "cosray.db")
+      .fallbackToDestructiveMigration()
+      .build()
+
+  @Provides
+  @Singleton
+  fun provideTelemetrySampleDao(db: CosRayDatabase): TelemetrySampleDao = db.telemetrySampleDao()
+
+  @Provides
+  @Singleton
+  fun provideRawPacketDao(db: CosRayDatabase): RawPacketDao = db.rawPacketDao()
+
+  @Provides
+  @Singleton
+  fun provideDatabaseInspectionRepository(
+    telemetrySampleDao: TelemetrySampleDao,
+    rawPacketDao: RawPacketDao,
+  ): com.grid.cosrayapp.data.telemetry.DatabaseInspectionRepository =
+    com.grid.cosrayapp.data.telemetry.DatabaseInspectionRepository(
+      telemetrySampleDao,
+      rawPacketDao,
+    )
 }

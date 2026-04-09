@@ -7,7 +7,11 @@ sealed class CosRayDestination(val route: String) {
 
   data object Device : CosRayDestination("device")
 
+  data object DetectorManagement : CosRayDestination("detector_management")
+
   data object Dashboard : CosRayDestination("dashboard")
+
+  data object DatabaseViewer : CosRayDestination("database_viewer")
 
   data object Settings : CosRayDestination("settings")
 

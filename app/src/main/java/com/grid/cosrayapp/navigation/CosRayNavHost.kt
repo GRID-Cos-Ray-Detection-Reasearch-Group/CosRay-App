@@ -39,6 +39,10 @@ import com.grid.cosrayapp.feature.auth.RegisterScreen
 import com.grid.cosrayapp.feature.auth.RegisterViewModel
 import com.grid.cosrayapp.feature.dashboard.DashboardScreen
 import com.grid.cosrayapp.feature.dashboard.DashboardViewModel
+import com.grid.cosrayapp.feature.database.DatabaseViewerScreen
+import com.grid.cosrayapp.feature.database.DatabaseViewerViewModel
+import com.grid.cosrayapp.feature.detectors.DetectorManagementScreen
+import com.grid.cosrayapp.feature.detectors.DetectorManagementViewModel
 import com.grid.cosrayapp.feature.device.DeviceScreen
 import com.grid.cosrayapp.feature.device.DeviceViewModel
 import com.grid.cosrayapp.feature.settings.SettingsScreen
@@ -111,6 +115,36 @@ fun CosRayNavHost(appState: CosRayAppState) {
                       modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
               )
 
+              NavigationDrawerItem(
+                      label = {
+                        Text(
+                                stringResource(R.string.detector_management_title),
+                                style = MaterialTheme.typography.titleMedium,
+                        )
+                      },
+                      selected = currentDestination == CosRayDestination.DetectorManagement.route,
+                      onClick = {
+                        scope.launch { drawerState.close() }
+                        appState.navigateTo(CosRayDestination.DetectorManagement)
+                      },
+                      modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+              )
+
+              NavigationDrawerItem(
+                      label = {
+                        Text(
+                                stringResource(R.string.database_viewer_title),
+                                style = MaterialTheme.typography.titleMedium,
+                        )
+                      },
+                      selected = currentDestination == CosRayDestination.DatabaseViewer.route,
+                      onClick = {
+                        scope.launch { drawerState.close() }
+                        appState.navigateTo(CosRayDestination.DatabaseViewer)
+                      },
+                      modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+              )
+
               // API Test menu (Debug only)
               if (BuildConfig.DEBUG) {
                 NavigationDrawerItem(
@@ -174,6 +208,8 @@ fun CosRayNavHost(appState: CosRayAppState) {
       registerDestination(appState)
       deviceDestination(appState, onOpenDrawer = { scope.launch { drawerState.open() } })
       dashboardDestination(onOpenDrawer = { scope.launch { drawerState.open() } })
+      detectorManagementDestination(appState, onOpenDrawer = { scope.launch { drawerState.open() } })
+      databaseViewerDestination(onOpenDrawer = { scope.launch { drawerState.open() } })
       settingsDestination(appState, onOpenDrawer = { scope.launch { drawerState.open() } })
       // API Test destination (Debug only)
       if (BuildConfig.DEBUG) {
@@ -280,6 +316,38 @@ private fun NavGraphBuilder.dashboardDestination(onOpenDrawer: () -> Unit) {
             onSendMuonClicked = viewModel::sendMuonStartCommand,
             onSendTimelineClicked = viewModel::sendTimelineStartCommand,
             onSendStopClicked = viewModel::sendStopCommand,
+    )
+  }
+}
+
+private fun NavGraphBuilder.detectorManagementDestination(appState: CosRayAppState, onOpenDrawer: () -> Unit) {
+  composable(CosRayDestination.DetectorManagement.route) {
+    val viewModel: DetectorManagementViewModel = hiltViewModel()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    DetectorManagementScreen(
+      state = state,
+      onMacAddressChanged = viewModel::onMacAddressChanged,
+      onNameChanged = viewModel::onNameChanged,
+      onDescriptionChanged = viewModel::onDescriptionChanged,
+      onSubmit = viewModel::submit,
+      onRefresh = viewModel::refresh,
+      onUseConnectedDevice = viewModel::useConnectedDevice,
+      onRequestLogin = {
+        appState.exitGuestMode()
+        appState.navigateTo(CosRayDestination.Login, popUpToStart = true)
+      },
+      onOpenDrawer = onOpenDrawer,
+    )
+  }
+}
+
+private fun NavGraphBuilder.databaseViewerDestination(onOpenDrawer: () -> Unit) {
+  composable(CosRayDestination.DatabaseViewer.route) {
+    val viewModel: DatabaseViewerViewModel = hiltViewModel()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    DatabaseViewerScreen(
+      state = state,
+      onOpenDrawer = onOpenDrawer,
     )
   }
 }

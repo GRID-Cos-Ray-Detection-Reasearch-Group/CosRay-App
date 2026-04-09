@@ -16,6 +16,7 @@ import com.grid.cosrayapp.domain.model.SipmMonitoring
 import com.grid.cosrayapp.domain.model.TelemetryId
 import com.grid.cosrayapp.domain.model.TelemetrySample
 import java.time.Instant
+import java.util.Locale
 
 data class ParsedFirmwarePacket(
         val uploadRequest: PacketUploadRequest,
@@ -74,7 +75,15 @@ internal object FirmwarePacketMapper {
         return validEvents.mapIndexed { index, event ->
             val eventTimestampMillis = packetUtcMillis + index
             TelemetrySample(
-                    id = TelemetryId.fromTimestamp(eventTimestampMillis, detectorId),
+                    id =
+                            buildTelemetryId(
+                                    detectorId = detectorId,
+                                    packetType = PacketType.MUON,
+                                    packageCounter = packet.pkgCnt,
+                                    eventIndex = index,
+                                    eventTimestampMillis = eventTimestampMillis,
+                                    cpuTime = event.cpuTime,
+                            ),
                     detectorId = detectorId,
                     recordedAt = Instant.ofEpochMilli(eventTimestampMillis),
                     acquisition =
@@ -108,7 +117,15 @@ internal object FirmwarePacketMapper {
             val eventUtcMillis = (event.utc.toLong() and 0xFFFFFFFFL) * 1000L
             val eventTimestampMillis = eventUtcMillis + index
             TelemetrySample(
-                    id = TelemetryId.fromTimestamp(eventTimestampMillis, detectorId),
+                    id =
+                            buildTelemetryId(
+                                    detectorId = detectorId,
+                                    packetType = PacketType.TIMELINE,
+                                    packageCounter = packet.pkgCnt,
+                                    eventIndex = index,
+                                    eventTimestampMillis = eventTimestampMillis,
+                                    cpuTime = event.cpuTime,
+                            ),
                     detectorId = detectorId,
                     recordedAt = Instant.ofEpochMilli(eventTimestampMillis),
                     acquisition = AcquisitionMetrics(particleCount = 0),
@@ -159,6 +176,28 @@ internal object FirmwarePacketMapper {
     }
 
     private fun scaleLatitude(rawLatitude: Int): Double = rawLatitude * 90.0 / INT32_MAX
+
+    internal fun buildTelemetryId(
+            detectorId: DetectorId,
+            packetType: PacketType,
+            packageCounter: Int,
+            eventIndex: Int,
+            eventTimestampMillis: Long,
+            cpuTime: Long,
+    ): TelemetryId {
+        val seed =
+                "%s:%s:%d:%d:%d:%d"
+                        .format(
+                                Locale.US,
+                                detectorId.value,
+                                packetType.name,
+                                packageCounter,
+                                eventIndex,
+                                eventTimestampMillis,
+                                cpuTime,
+                        )
+        return TelemetryId(java.util.UUID.nameUUIDFromBytes(seed.toByteArray()).toString())
+    }
 
     private fun hasHeader(packetBytes: ByteArray, header: ByteArray): Boolean =
             packetBytes[0] == header[0] &&

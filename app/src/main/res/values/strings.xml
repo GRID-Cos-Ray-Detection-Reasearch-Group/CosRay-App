@@ -142,6 +142,7 @@
     <string name="dashboard_sipm_temp">SiPM温度</string>
     <string name="dashboard_mcu_temp">MCU温度</string>
     <string name="dashboard_location_coords">位置: %1$.6f°, %2$.6f° (海拔 %3$d m)</string>
+    <string name="dashboard_location_coordinates_short">%1$.6f°, %2$.6f°</string>
     <string name="dashboard_acceleration_xyz">加速度: X=%1$d, Y=%2$d, Z=%3$d</string>
     <string name="dashboard_packet_counter">数据包#%1$d</string>
 
@@ -171,4 +172,58 @@
     <string name="api_test_no_response">暂无响应</string>
     <string name="settings_navigation_menu">菜单</string>
     <string name="dashboard_waiting_for_data">等待数据</string>
+    <string name="dashboard_navigation_menu">菜单</string>
+    <string name="dashboard_section_overview_subtitle">连接概览与主要操作</string>
+    <string name="dashboard_section_live_metrics">实时指标</string>
+    <string name="dashboard_section_live_metrics_subtitle">当前设备位置、姿态和探测器状态</string>
+    <string name="dashboard_section_packet_statistics_subtitle">最近采集规模与数据包健康度</string>
+    <string name="dashboard_section_event_history">事件历史</string>
+    <string name="dashboard_event_history_muon_summary">已捕获 %1$d 个 μ 子事件</string>
+    <string name="dashboard_event_history_timeline_summary">已采集 %1$d 条时间线样本</string>
+    <string name="dashboard_event_history_raw_summary">可查看 %1$d 条原始数据包</string>
+    <string name="dashboard_detector_label">探测器</string>
+    <string name="dashboard_upload_supporting_text">上传最新缓冲数据，或向设备请求指定数据流。</string>
+    <string name="dashboard_command_supporting_text">选择探测器接下来要发送的数据类型。</string>
+    <string name="dashboard_mean_signal_strength">平均信号强度</string>
+    <string name="dashboard_muon_event_label">μ 子事件</string>
+    <string name="dashboard_timeline_sample_label">时间线样本</string>
+    <string name="dashboard_packet_label">数据包</string>
+    <string name="dashboard_payload_label">载荷</string>
+    <string name="dashboard_packet_size_bytes">%1$d 字节</string>
+    <!-- Detector Management -->
+    <string name="detector_management_title">设备管理</string>
+    <string name="detector_management_account_section">当前账户</string>
+    <string name="detector_management_guest_prompt">未登录</string>
+    <string name="detector_management_refresh">刷新设备列表</string>
+    <string name="detector_management_bound_devices">已绑定探测器</string>
+    <string name="detector_management_bound_devices_subtitle">当前账户下的所有设备</string>
+    <string name="detector_management_empty">暂无绑定的设备</string>
+    <string name="detector_management_register_title">绑定新探测器</string>
+    <string name="detector_management_register_subtitle">注册一个新的探测器到您的账户</string>
+    <string name="detector_management_invalid_mac">MAC地址格式不正确</string>
+    <string name="detector_management_name_required">设备名称不能为空</string>
+    <string name="detector_management_submit_success">设备绑定成功</string>
+    <string name="detector_management_submit_failed">设备绑定失败</string>
+    <string name="detector_management_load_failed">获取设备列表失败</string>
+    <string name="detector_management_submit">提交</string>
+    <string name="detector_management_status_active">在线</string>
+    <string name="detector_management_status_inactive">离线</string>
+    <string name="detector_management_owner">所有者: %1$s</string>
+    <string name="detector_management_last_seen">最后在线: %1$s</string>
+    <string name="detector_management_quick_register_connected">快捷绑定当前连接的设备</string>
+
+    <!-- Database Viewer -->
+    <string name="database_viewer_title">本地数据库查看</string>
+    <string name="database_viewer_subtitle">查看 Androidx Room 数据</string>
+    <string name="database_viewer_pending_section">当前未上传数据 (Pending)</string>
+    <string name="database_viewer_history_section">已上传历史数据 (Historical)</string>
+    <string name="database_viewer_detectors">探测器统计</string>
+    <string name="database_viewer_detector_id">设备: %1$s</string>
+    <string name="database_viewer_telemetry_count">遥测数据: %1$d</string>
+    <string name="database_viewer_raw_count">原始数据包: %1$d</string>
+    <string name="database_viewer_telemetry_row_id_detector">遥测 ID: %1$s | 探测器: %2$s</string>
+    <string name="database_viewer_telemetry_row_type_particles">类型: %1$s | 粒子数: %2$d</string>
+    <string name="database_viewer_recent_rows">最近数据</string>
+    <string name="database_viewer_empty">数据库为空</string>
+    <string name="database_viewer_row_count">总行数: %1$d</string>
 </resources>

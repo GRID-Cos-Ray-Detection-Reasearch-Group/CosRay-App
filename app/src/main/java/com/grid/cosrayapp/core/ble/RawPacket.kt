@@ -5,11 +5,13 @@ import java.util.UUID
 /**
  * Represents raw data received from a BLE characteristic.
  *
+ * @property id Stable database identifier when the packet is loaded from persistence.
  * @property characteristicId UUID of the characteristic that sent the data.
  * @property data Raw byte data received.
  * @property timestamp System timestamp when data was received.
  */
 data class RawPacket(
+  val id: Long = 0,
   val characteristicId: UUID,
   val data: ByteArray,
   val timestamp: Long = System.currentTimeMillis(),

@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
 data class ApiTestUiState(
-  val baseUrl: String = "http://10.0.2.2:8000",
+  val baseUrl: String = "https://cosray.top",
   val token: String = "",
   val username: String = "test",
   val password: String = "LocalPass123!",
