@@ -31,7 +31,7 @@ repos:
   #       args: [--ktfmt, --ktfmt-style=google, --autofix]
 
   - repo: https://github.com/oxipng/oxipng
-    rev: v10.1.0
+    rev: v10.1.1
     hooks:
       - id: oxipng
         name: Image Compression
