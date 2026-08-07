@@ -13,9 +13,7 @@ import androidx.security.crypto.MasterKey
  */
 class EncryptedTokenStore(context: Context) {
   private val masterKey: MasterKey =
-    MasterKey.Builder(context)
-      .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-      .build()
+    MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
 
   private val prefs =
     EncryptedSharedPreferences.create(
