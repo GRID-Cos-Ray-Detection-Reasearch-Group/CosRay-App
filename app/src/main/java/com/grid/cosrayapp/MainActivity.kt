@@ -16,8 +16,7 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
   @Inject lateinit var authRepository: AuthRepository
 
-  @Inject
-  lateinit var userPreferences: com.grid.cosrayapp.core.datastore.UserPreferencesDataSource
+  @Inject lateinit var userPreferences: com.grid.cosrayapp.core.datastore.UserPreferencesDataSource
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)

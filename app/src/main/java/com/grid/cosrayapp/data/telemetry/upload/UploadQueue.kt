@@ -67,7 +67,6 @@ class DataStoreUploadQueue(
         toDrop.forEach { dropId -> prefs.remove(Keys.itemKey(dropId)) }
         val currentDrop = prefs[Keys.DROP_COUNT] ?: 0L
         prefs[Keys.DROP_COUNT] = currentDrop + overflow
-
       }
     }
   }
@@ -84,8 +83,9 @@ class DataStoreUploadQueue(
       if (items.size >= limit) return@forEach
       val key = Keys.itemKey(id)
       val encoded = prefs[key] ?: return@forEach
-      val request =
-        runCatching { json.decodeFromString(PacketUploadRequest.serializer(), encoded) }.getOrNull()
+      val request = runCatching {
+        json.decodeFromString(PacketUploadRequest.serializer(), encoded)
+      }.getOrNull()
       if (request == null) {
         corruptIds += id
       } else {
@@ -106,9 +106,7 @@ class DataStoreUploadQueue(
 
   override suspend fun delete(ids: List<Long>) {
     if (ids.isEmpty()) return
-    store.edit { prefs ->
-      ids.distinct().forEach { id -> prefs.remove(Keys.itemKey(id)) }
-    }
+    store.edit { prefs -> ids.distinct().forEach { id -> prefs.remove(Keys.itemKey(id)) } }
   }
 
   override suspend fun size(): Int {
@@ -122,13 +120,13 @@ class DataStoreUploadQueue(
   }
 
   override suspend fun clear() {
-    store.edit { prefs ->
-      idsAscending(prefs).forEach { id -> prefs.remove(Keys.itemKey(id)) }
-    }
+    store.edit { prefs -> idsAscending(prefs).forEach { id -> prefs.remove(Keys.itemKey(id)) } }
   }
 
   private fun idsAscending(prefs: Preferences): List<Long> {
-    return prefs.asMap().keys
+    return prefs
+      .asMap()
+      .keys
       .mapNotNull { key ->
         val name = key.name
         if (!name.startsWith(Keys.ITEM_PREFIX)) return@mapNotNull null
@@ -173,8 +171,9 @@ class InMemoryUploadQueue(private val json: Json, private val maxSize: Int) : Up
     val result = mutableListOf<UploadQueueItem>()
     items.forEach { (id, encoded) ->
       if (result.size >= limit) return@forEach
-      val request =
-        runCatching { json.decodeFromString(PacketUploadRequest.serializer(), encoded) }.getOrNull()
+      val request = runCatching {
+        json.decodeFromString(PacketUploadRequest.serializer(), encoded)
+      }.getOrNull()
       if (request == null) {
         corruptIds += id
       } else {

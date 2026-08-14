@@ -56,48 +56,46 @@ class AuthRepository(
     }
 
   /** Refresh authentication tokens with mutex protection to prevent concurrent refresh attempts */
-  suspend fun refreshTokens(): CosRayResult<Unit> =
-    refreshMutex.withLock {
-      val currentTokens = _tokens.value
-      val currentUser = (authState.value as? AuthState.Authenticated)?.user
-      return if (currentTokens == null || currentUser == null) {
-        CosRayResult.Error(IllegalStateException("Missing authentication context"))
-      } else if (!currentTokens.isExpired) {
-        CosRayResult.Success(Unit)
-      } else {
-        refreshTokensLocked(currentUser, currentTokens)
-      }
+  suspend fun refreshTokens(): CosRayResult<Unit> = refreshMutex.withLock {
+    val currentTokens = _tokens.value
+    val currentUser = (authState.value as? AuthState.Authenticated)?.user
+    return if (currentTokens == null || currentUser == null) {
+      CosRayResult.Error(IllegalStateException("Missing authentication context"))
+    } else if (!currentTokens.isExpired) {
+      CosRayResult.Success(Unit)
+    } else {
+      refreshTokensLocked(currentUser, currentTokens)
     }
+  }
 
   /** Ensure we have a valid access token, refreshing if necessary */
-  suspend fun ensureValidToken(): CosRayResult<String> =
-    refreshMutex.withLock {
-      val current =
-        _tokens.value ?: return CosRayResult.Error(IllegalStateException("Missing access token"))
+  suspend fun ensureValidToken(): CosRayResult<String> = refreshMutex.withLock {
+    val current =
+      _tokens.value ?: return CosRayResult.Error(IllegalStateException("Missing access token"))
 
-      if (!current.isExpired) {
-        return CosRayResult.Success(current.accessToken)
-      }
+    if (!current.isExpired) {
+      return CosRayResult.Success(current.accessToken)
+    }
 
-      val currentUser =
-        (authState.value as? AuthState.Authenticated)?.user
-          ?: return CosRayResult.Error(IllegalStateException("Missing authentication context"))
+    val currentUser =
+      (authState.value as? AuthState.Authenticated)?.user
+        ?: return CosRayResult.Error(IllegalStateException("Missing authentication context"))
 
-      refreshTokensLocked(currentUser, current).let { result ->
-        when (result) {
-          is CosRayResult.Success -> {
-            _tokens.value?.accessToken?.let { CosRayResult.Success(it) }
-              ?: CosRayResult.Error(
-                IllegalStateException("Token refresh succeeded but token is null")
-              )
-          }
+    refreshTokensLocked(currentUser, current).let { result ->
+      when (result) {
+        is CosRayResult.Success -> {
+          _tokens.value?.accessToken?.let { CosRayResult.Success(it) }
+            ?: CosRayResult.Error(
+              IllegalStateException("Token refresh succeeded but token is null")
+            )
+        }
 
-          is CosRayResult.Error -> {
-            result
-          }
+        is CosRayResult.Error -> {
+          result
         }
       }
     }
+  }
 
   suspend fun fetchCurrentUser(): CosRayResult<User> {
     val currentTokens = _tokens.value
