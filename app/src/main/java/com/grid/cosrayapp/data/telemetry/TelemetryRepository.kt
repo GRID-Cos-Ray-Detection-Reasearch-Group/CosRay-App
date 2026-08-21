@@ -21,14 +21,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class TelemetryRepository(
-        private val api: CosRayApi,
-        private val bleRepository: BleRepository,
-        private val authRepository: AuthRepository,
-        private val uploadQueue: UploadQueue,
-        externalScope: CoroutineScope,
+  private val api: CosRayApi,
+  private val bleRepository: BleRepository,
+  private val authRepository: AuthRepository,
+  private val uploadQueue: UploadQueue,
+  externalScope: CoroutineScope,
 ) {
   private val externalScope: CoroutineScope = externalScope
-  private val packetAssembler = FirmwarePacketAssembler(logger = AndroidFirmwarePacketAssemblerLogger)
+  private val packetAssembler =
+    FirmwarePacketAssembler(logger = AndroidFirmwarePacketAssemblerLogger)
   private var lastRequestedDeviceMac: String? = null
 
   private val _buffer = MutableStateFlow<List<TelemetrySample>>(emptyList())
@@ -62,8 +63,8 @@ class TelemetryRepository(
         val packets = packetAssembler.consume(rawPacket.data, deviceMac)
         if (packets.isNotEmpty()) {
           Log.d(
-                  TAG,
-                  "Assembled ${packets.size} firmware packet(s) from ${rawPacket.data.size}-byte BLE notification"
+            TAG,
+            "Assembled ${packets.size} firmware packet(s) from ${rawPacket.data.size}-byte BLE notification",
           )
           uploadQueue.enqueue(packets.map(ParsedFirmwarePacket::uploadRequest))
           appendSamples(packets.flatMap(ParsedFirmwarePacket::samples))
@@ -74,26 +75,24 @@ class TelemetryRepository(
 
   suspend fun requestFirmwarePackets(): CosRayResult<Unit> {
     val deviceMac =
-            _connectedDevice.value?.macAddress
-                    ?: return CosRayResult.Error(IllegalStateException("No connected device"))
+      _connectedDevice.value?.macAddress
+        ?: return CosRayResult.Error(IllegalStateException("No connected device"))
     return sendInitialCommands(deviceMac)
   }
 
   suspend fun sendStatusCommand(): CosRayResult<Unit> =
-          sendSingleCommand(Protocol.Command.buildStatusCommand())
+    sendSingleCommand(Protocol.Command.buildStatusCommand())
 
   suspend fun sendMuonStartCommand(): CosRayResult<Unit> =
-          sendSingleCommand(
-                  Protocol.Command.buildStartCommand(packetType = Protocol.Command.TYPE_MUON)
-          )
+    sendSingleCommand(Protocol.Command.buildStartCommand(packetType = Protocol.Command.TYPE_MUON))
 
   suspend fun sendTimelineStartCommand(): CosRayResult<Unit> =
-          sendSingleCommand(
-                  Protocol.Command.buildStartCommand(packetType = Protocol.Command.TYPE_TIMELINE)
-          )
+    sendSingleCommand(
+      Protocol.Command.buildStartCommand(packetType = Protocol.Command.TYPE_TIMELINE)
+    )
 
   suspend fun sendStopCommand(): CosRayResult<Unit> =
-          sendSingleCommand(Protocol.Command.buildStopCommand())
+    sendSingleCommand(Protocol.Command.buildStopCommand())
 
   private suspend fun requestFirmwarePacketsIfNeeded(deviceMac: String) {
     if (lastRequestedDeviceMac == deviceMac) return
@@ -107,11 +106,11 @@ class TelemetryRepository(
 
   private suspend fun sendInitialCommands(deviceMac: String): CosRayResult<Unit> {
     val commands =
-            listOf(
-                    Protocol.Command.buildStatusCommand(),
-                    Protocol.Command.buildStartCommand(packetType = Protocol.Command.TYPE_MUON),
-                    Protocol.Command.buildStartCommand(packetType = Protocol.Command.TYPE_TIMELINE),
-            )
+      listOf(
+        Protocol.Command.buildStatusCommand(),
+        Protocol.Command.buildStartCommand(packetType = Protocol.Command.TYPE_MUON),
+        Protocol.Command.buildStartCommand(packetType = Protocol.Command.TYPE_TIMELINE),
+      )
 
     commands.forEachIndexed { index, command ->
       when (val result = bleRepository.sendCommand(command)) {
@@ -127,8 +126,8 @@ class TelemetryRepository(
 
   private suspend fun sendSingleCommand(command: ByteArray): CosRayResult<Unit> {
     val deviceMac =
-            _connectedDevice.value?.macAddress
-                    ?: return CosRayResult.Error(IllegalStateException("No connected device"))
+      _connectedDevice.value?.macAddress
+        ?: return CosRayResult.Error(IllegalStateException("No connected device"))
     return when (val result = bleRepository.sendCommand(command)) {
       is CosRayResult.Success -> {
         Log.i(TAG, "Sent manual firmware command to $deviceMac")
@@ -147,22 +146,21 @@ class TelemetryRepository(
   }
 
   suspend fun uploadBufferedSamples(): CosRayResult<Unit> {
-    val uploadResult: CosRayResult<Unit> =
-            runCosRayCatching {
-              while (true) {
-                val batch = uploadQueue.peekBatch(limit = UPLOAD_BATCH_SIZE)
-                if (batch.isEmpty()) break
+    val uploadResult: CosRayResult<Unit> = runCosRayCatching {
+      while (true) {
+        val batch = uploadQueue.peekBatch(limit = UPLOAD_BATCH_SIZE)
+        if (batch.isEmpty()) break
 
-                val tokenResult = authRepository.ensureValidToken()
-                val accessToken =
-                        when (tokenResult) {
-                          is CosRayResult.Success -> tokenResult.data
-                          is CosRayResult.Error -> throw tokenResult.throwable
-                        }
-                val uploadedIds = uploadBatch(accessToken = accessToken, batch = batch)
-                if (uploadedIds.isNotEmpty()) uploadQueue.delete(uploadedIds)
-              }
-            }
+        val tokenResult = authRepository.ensureValidToken()
+        val accessToken =
+          when (tokenResult) {
+            is CosRayResult.Success -> tokenResult.data
+            is CosRayResult.Error -> throw tokenResult.throwable
+          }
+        val uploadedIds = uploadBatch(accessToken = accessToken, batch = batch)
+        if (uploadedIds.isNotEmpty()) uploadQueue.delete(uploadedIds)
+      }
+    }
 
     return if (uploadResult is CosRayResult.Success) {
       _buffer.value = emptyList()
@@ -180,14 +178,13 @@ class TelemetryRepository(
     if (batch.isEmpty()) return emptyList()
 
     val uploadedIds = mutableListOf<Long>()
-    val failure =
-      runCatching {
-        batch.forEach { item ->
-          api.uploadPacket(accessToken, item.request)
-          uploadedIds += item.id
-        }
+    val failure = runCatching {
+      batch.forEach { item ->
+        api.uploadPacket(accessToken, item.request)
+        uploadedIds += item.id
       }
-        .exceptionOrNull()
+    }
+      .exceptionOrNull()
 
     if (failure != null && uploadedIds.isNotEmpty()) {
       runCatching { uploadQueue.delete(uploadedIds) }
@@ -218,9 +215,9 @@ class TelemetryRepository(
 }
 
 class FirmwarePacketAssembler(
-        private val nowMillis: () -> Long = { System.currentTimeMillis() },
-        private val packetTtlMillis: Long = DEFAULT_PACKET_TTL_MILLIS,
-        private val logger: FirmwarePacketAssemblerLogger = NoopFirmwarePacketAssemblerLogger,
+  private val nowMillis: () -> Long = { System.currentTimeMillis() },
+  private val packetTtlMillis: Long = DEFAULT_PACKET_TTL_MILLIS,
+  private val logger: FirmwarePacketAssemblerLogger = NoopFirmwarePacketAssemblerLogger,
 ) {
   private val partialPackets = linkedMapOf<Int, PartialPacket>()
 
@@ -232,13 +229,13 @@ class FirmwarePacketAssembler(
     if (chunk.size <= BLE_HEADER_SIZE) {
       stats.droppedFragments++
       logDrop(
-              reason = DropReason.CHUNK_TOO_SHORT,
-              macAddress = macAddress,
-              globalIndex = null,
-              globalTotal = null,
-              localIndex = null,
-              localTotal = null,
-              payloadSize = null,
+        reason = DropReason.CHUNK_TOO_SHORT,
+        macAddress = macAddress,
+        globalIndex = null,
+        globalTotal = null,
+        localIndex = null,
+        localTotal = null,
+        payloadSize = null,
       )
       return emptyList()
     }
@@ -250,13 +247,13 @@ class FirmwarePacketAssembler(
     if (globalTotal == 0 || globalIndex == 0 || localTotal == 0 || localIndex !in 1..localTotal) {
       stats.droppedFragments++
       logDrop(
-              reason = DropReason.INVALID_HEADER,
-              macAddress = macAddress,
-              globalIndex = globalIndex,
-              globalTotal = globalTotal,
-              localIndex = localIndex,
-              localTotal = localTotal,
-              payloadSize = (chunk.size - BLE_HEADER_SIZE).coerceAtLeast(0),
+        reason = DropReason.INVALID_HEADER,
+        macAddress = macAddress,
+        globalIndex = globalIndex,
+        globalTotal = globalTotal,
+        localIndex = localIndex,
+        localTotal = localTotal,
+        payloadSize = (chunk.size - BLE_HEADER_SIZE).coerceAtLeast(0),
       )
       return emptyList()
     }
@@ -265,33 +262,34 @@ class FirmwarePacketAssembler(
     if (payload.isEmpty()) {
       stats.droppedFragments++
       logDrop(
-              reason = DropReason.EMPTY_PAYLOAD,
-              macAddress = macAddress,
-              globalIndex = globalIndex,
-              globalTotal = globalTotal,
-              localIndex = localIndex,
-              localTotal = localTotal,
-              payloadSize = 0,
+        reason = DropReason.EMPTY_PAYLOAD,
+        macAddress = macAddress,
+        globalIndex = globalIndex,
+        globalTotal = globalTotal,
+        localIndex = localIndex,
+        localTotal = localTotal,
+        payloadSize = 0,
       )
       return emptyList()
     }
 
     var partialPacket = partialPackets[globalIndex]
-    if (partialPacket == null ||
-                    partialPacket.globalTotal != globalTotal ||
-                    partialPacket.localTotal != localTotal ||
-                    partialPacket.payloadSize != payload.size
+    if (
+      partialPacket == null ||
+        partialPacket.globalTotal != globalTotal ||
+        partialPacket.localTotal != localTotal ||
+        partialPacket.payloadSize != payload.size
     ) {
       if (partialPacket != null) {
         stats.droppedPackets++
         logDrop(
-                reason = DropReason.PARTIAL_RESET,
-                macAddress = macAddress,
-                globalIndex = globalIndex,
-                globalTotal = globalTotal,
-                localIndex = localIndex,
-                localTotal = localTotal,
-                payloadSize = payload.size,
+          reason = DropReason.PARTIAL_RESET,
+          macAddress = macAddress,
+          globalIndex = globalIndex,
+          globalTotal = globalTotal,
+          localIndex = localIndex,
+          localTotal = localTotal,
+          payloadSize = payload.size,
         )
       }
       partialPacket = PartialPacket(globalTotal, localTotal, payload.size)
@@ -303,13 +301,13 @@ class FirmwarePacketAssembler(
     if (existing != null) {
       stats.duplicateFragments++
       logDrop(
-              reason = DropReason.DUPLICATE_FRAGMENT,
-              macAddress = macAddress,
-              globalIndex = globalIndex,
-              globalTotal = globalTotal,
-              localIndex = localIndex,
-              localTotal = localTotal,
-              payloadSize = payload.size,
+        reason = DropReason.DUPLICATE_FRAGMENT,
+        macAddress = macAddress,
+        globalIndex = globalIndex,
+        globalTotal = globalTotal,
+        localIndex = localIndex,
+        localTotal = localTotal,
+        payloadSize = payload.size,
       )
     }
 
@@ -331,19 +329,19 @@ class FirmwarePacketAssembler(
       if (fragment == null) {
         stats.droppedPackets++
         logDrop(
-                reason = DropReason.MISSING_FRAGMENT_ON_ASSEMBLE,
-                macAddress = macAddress,
-                globalIndex = globalIndex,
-                globalTotal = globalTotal,
-                localIndex = null,
-                localTotal = localTotal,
-                payloadSize = partialPacket.payloadSize,
+          reason = DropReason.MISSING_FRAGMENT_ON_ASSEMBLE,
+          macAddress = macAddress,
+          globalIndex = globalIndex,
+          globalTotal = globalTotal,
+          localIndex = null,
+          localTotal = localTotal,
+          payloadSize = partialPacket.payloadSize,
         )
         return emptyList()
       }
       fragment.copyInto(
-              destination = packetBytes,
-              destinationOffset = (index - 1) * partialPacket.payloadSize,
+        destination = packetBytes,
+        destinationOffset = (index - 1) * partialPacket.payloadSize,
       )
     }
 
@@ -351,13 +349,13 @@ class FirmwarePacketAssembler(
     if (packetBytes.size < COMPLETE_PACKET_SIZE) {
       stats.droppedPackets++
       logDrop(
-              reason = DropReason.PACKET_TOO_SHORT,
-              macAddress = macAddress,
-              globalIndex = globalIndex,
-              globalTotal = globalTotal,
-              localIndex = null,
-              localTotal = localTotal,
-              payloadSize = partialPacket.payloadSize,
+        reason = DropReason.PACKET_TOO_SHORT,
+        macAddress = macAddress,
+        globalIndex = globalIndex,
+        globalTotal = globalTotal,
+        localIndex = null,
+        localTotal = localTotal,
+        payloadSize = partialPacket.payloadSize,
       )
       return emptyList()
     }
@@ -371,13 +369,13 @@ class FirmwarePacketAssembler(
       stats.parseFailures++
       stats.droppedPackets++
       logDrop(
-              reason = DropReason.PARSE_FAILED,
-              macAddress = macAddress,
-              globalIndex = globalIndex,
-              globalTotal = globalTotal,
-              localIndex = null,
-              localTotal = localTotal,
-              payloadSize = partialPacket.payloadSize,
+        reason = DropReason.PARSE_FAILED,
+        macAddress = macAddress,
+        globalIndex = globalIndex,
+        globalTotal = globalTotal,
+        localIndex = null,
+        localTotal = localTotal,
+        payloadSize = partialPacket.payloadSize,
       )
       emptyList()
     }
@@ -388,15 +386,15 @@ class FirmwarePacketAssembler(
   }
 
   fun snapshotStats(): FirmwarePacketAssemblerStats =
-          FirmwarePacketAssemblerStats(
-                  assembledPackets = stats.assembledPackets,
-                  droppedFragments = stats.droppedFragments,
-                  droppedPackets = stats.droppedPackets,
-                  parseFailures = stats.parseFailures,
-                  duplicateFragments = stats.duplicateFragments,
-                  outOfOrderFragments = stats.outOfOrderFragments,
-                  activePackets = partialPackets.size,
-          )
+    FirmwarePacketAssemblerStats(
+      assembledPackets = stats.assembledPackets,
+      droppedFragments = stats.droppedFragments,
+      droppedPackets = stats.droppedPackets,
+      parseFailures = stats.parseFailures,
+      duplicateFragments = stats.duplicateFragments,
+      outOfOrderFragments = stats.outOfOrderFragments,
+      activePackets = partialPackets.size,
+    )
 
   private fun maybeLogSummary(macAddress: String) {
     val total = stats.assembledPackets + stats.droppedPackets + stats.droppedFragments
@@ -404,8 +402,8 @@ class FirmwarePacketAssembler(
     if (total % SUMMARY_LOG_EVERY != 0L) return
     val s = snapshotStats()
     logger.info(
-            TAG,
-            "summary mac=$macAddress assembled=${s.assembledPackets} droppedFragments=${s.droppedFragments} droppedPackets=${s.droppedPackets} parseFailures=${s.parseFailures} duplicates=${s.duplicateFragments} outOfOrder=${s.outOfOrderFragments} active=${s.activePackets}"
+      TAG,
+      "summary mac=$macAddress assembled=${s.assembledPackets} droppedFragments=${s.droppedFragments} droppedPackets=${s.droppedPackets} parseFailures=${s.parseFailures} duplicates=${s.duplicateFragments} outOfOrder=${s.outOfOrderFragments} active=${s.activePackets}",
     )
   }
 
@@ -415,63 +413,63 @@ class FirmwarePacketAssembler(
       partialPackets.remove(oldestKey)
       stats.droppedPackets++
       logDrop(
-              reason = DropReason.TRIMMED_OLD_PARTIAL,
-              macAddress = macAddress,
-              globalIndex = oldestKey,
-              globalTotal = null,
-              localIndex = null,
-              localTotal = null,
-              payloadSize = null,
+        reason = DropReason.TRIMMED_OLD_PARTIAL,
+        macAddress = macAddress,
+        globalIndex = oldestKey,
+        globalTotal = null,
+        localIndex = null,
+        localTotal = null,
+        payloadSize = null,
       )
     }
   }
 
   private fun cleanupExpiredPackets(nowMillis: Long, macAddress: String) {
     val expiredKeys =
-            partialPackets
-                    .filterValues { partial -> nowMillis - partial.lastUpdatedAtMillis > packetTtlMillis }
-                    .keys
+      partialPackets
+        .filterValues { partial -> nowMillis - partial.lastUpdatedAtMillis > packetTtlMillis }
+        .keys
     if (expiredKeys.isEmpty()) return
 
     expiredKeys.forEach { key ->
       partialPackets.remove(key)
       stats.droppedPackets++
       logDrop(
-              reason = DropReason.EXPIRED_PARTIAL_TTL,
-              macAddress = macAddress,
-              globalIndex = key,
-              globalTotal = null,
-              localIndex = null,
-              localTotal = null,
-              payloadSize = null,
+        reason = DropReason.EXPIRED_PARTIAL_TTL,
+        macAddress = macAddress,
+        globalIndex = key,
+        globalTotal = null,
+        localIndex = null,
+        localTotal = null,
+        payloadSize = null,
       )
     }
   }
 
   private fun logDrop(
-          reason: DropReason,
-          macAddress: String?,
-          globalIndex: Int?,
-          globalTotal: Int?,
-          localIndex: Int?,
-          localTotal: Int?,
-          payloadSize: Int?,
+    reason: DropReason,
+    macAddress: String?,
+    globalIndex: Int?,
+    globalTotal: Int?,
+    localIndex: Int?,
+    localTotal: Int?,
+    payloadSize: Int?,
   ) {
     logger.debug(
-            TAG,
-            "consume drop reason=${reason.code} mac=${macAddress ?: "?"} globalIndex=${globalIndex ?: "?"} globalTotal=${globalTotal ?: "?"} localIndex=${localIndex ?: "?"} localTotal=${localTotal ?: "?"} payloadSize=${payloadSize ?: "?"}"
+      TAG,
+      "consume drop reason=${reason.code} mac=${macAddress ?: "?"} globalIndex=${globalIndex ?: "?"} globalTotal=${globalTotal ?: "?"} localIndex=${localIndex ?: "?"} localTotal=${localTotal ?: "?"} payloadSize=${payloadSize ?: "?"}",
     )
   }
 
   private fun Byte.toUnsignedInt(): Int = toInt() and 0xFF
 
   private data class PartialPacket(
-          val globalTotal: Int,
-          val localTotal: Int,
-          val payloadSize: Int,
-          val fragments: MutableMap<Int, ByteArray> = mutableMapOf(),
-          var lastUpdatedAtMillis: Long = 0L,
-          var maxSeenIndex: Int = 0,
+    val globalTotal: Int,
+    val localTotal: Int,
+    val payloadSize: Int,
+    val fragments: MutableMap<Int, ByteArray> = mutableMapOf(),
+    var lastUpdatedAtMillis: Long = 0L,
+    var maxSeenIndex: Int = 0,
   )
 
   companion object {
@@ -507,13 +505,13 @@ object AndroidFirmwarePacketAssemblerLogger : FirmwarePacketAssemblerLogger {
 }
 
 data class FirmwarePacketAssemblerStats(
-        val assembledPackets: Long,
-        val droppedFragments: Long,
-        val droppedPackets: Long,
-        val parseFailures: Long,
-        val duplicateFragments: Long,
-        val outOfOrderFragments: Long,
-        val activePackets: Int,
+  val assembledPackets: Long,
+  val droppedFragments: Long,
+  val droppedPackets: Long,
+  val parseFailures: Long,
+  val duplicateFragments: Long,
+  val outOfOrderFragments: Long,
+  val activePackets: Int,
 )
 
 private enum class DropReason(val code: String) {
@@ -530,10 +528,10 @@ private enum class DropReason(val code: String) {
 }
 
 private class Stats(
-        var assembledPackets: Long = 0,
-        var droppedFragments: Long = 0,
-        var droppedPackets: Long = 0,
-        var parseFailures: Long = 0,
-        var duplicateFragments: Long = 0,
-        var outOfOrderFragments: Long = 0,
+  var assembledPackets: Long = 0,
+  var droppedFragments: Long = 0,
+  var droppedPackets: Long = 0,
+  var parseFailures: Long = 0,
+  var duplicateFragments: Long = 0,
+  var outOfOrderFragments: Long = 0,
 )

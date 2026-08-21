@@ -2,7 +2,6 @@ package com.grid.cosrayapp.feature.settings
 
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
-import androidx.core.content.pm.PackageInfoCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,9 +16,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
@@ -44,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.pm.PackageInfoCompat
 import com.grid.cosrayapp.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,15 +56,14 @@ fun SettingsScreen(
   onOpenDrawer: () -> Unit,
 ) {
   val context = LocalContext.current
-  val versionInfo =
-    remember {
-      try {
-        val packageInfo: PackageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-        "${packageInfo.versionName} (${PackageInfoCompat.getLongVersionCode(packageInfo)})"
-      } catch (e: PackageManager.NameNotFoundException) {
-        "Unknown"
-      }
+  val versionInfo = remember {
+    try {
+      val packageInfo: PackageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+      "${packageInfo.versionName} (${PackageInfoCompat.getLongVersionCode(packageInfo)})"
+    } catch (e: PackageManager.NameNotFoundException) {
+      "Unknown"
     }
+  }
 
   Scaffold(
     topBar = {

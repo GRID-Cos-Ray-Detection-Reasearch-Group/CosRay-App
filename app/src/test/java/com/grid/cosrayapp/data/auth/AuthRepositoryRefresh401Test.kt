@@ -3,7 +3,6 @@ package com.grid.cosrayapp.data.auth
 import com.grid.cosrayapp.core.common.CosRayResult
 import com.grid.cosrayapp.core.datastore.AuthPreferences
 import com.grid.cosrayapp.core.datastore.StoredAuthData
-import com.grid.cosrayapp.core.datastore.UserPreferencesDataSource
 import com.grid.cosrayapp.core.network.CosRayApi
 import com.grid.cosrayapp.domain.model.AuthTokens
 import com.grid.cosrayapp.domain.model.User
@@ -39,11 +38,7 @@ class AuthRepositoryRefresh401Test {
     prefs.persistAuth(user, expiredTokens)
 
     val client =
-      HttpClient(
-        MockEngine {
-          respondError(HttpStatusCode.Unauthorized)
-        }
-      ) {
+      HttpClient(MockEngine { respondError(HttpStatusCode.Unauthorized) }) {
         expectSuccess = true
         install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
       }
