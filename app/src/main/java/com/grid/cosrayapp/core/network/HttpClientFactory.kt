@@ -4,6 +4,7 @@ import android.util.Log
 import com.grid.cosrayapp.BuildConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
+import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -13,7 +14,6 @@ import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
-import io.ktor.client.engine.okhttp.OkHttp
 import okhttp3.CertificatePinner
 
 object HttpClientFactory {
@@ -33,9 +33,7 @@ object HttpClientFactory {
     val authorizationHeaderRegex = Regex("(?i)(Authorization:)(\\s*)(Bearer\\s+)?([^\\r\\n]+)")
     // JSON: "access": "..." / "refresh": "..." / "access_token": "..." / "refresh_token": "..."
     val tokenFieldRegex =
-      Regex(
-        "(?i)\"(access|refresh|access_token|refresh_token)\"\\s*:\\s*\"[^\"]*\""
-      )
+      Regex("(?i)\"(access|refresh|access_token|refresh_token)\"\\s*:\\s*\"[^\"]*\"")
 
     return message
       .replace(authorizationHeaderRegex) { match ->
@@ -95,39 +93,38 @@ object HttpClientFactory {
       }
     } else {
       HttpClient(Android) {
-      expectSuccess = true
+        expectSuccess = true
 
+        install(HttpTimeout) {
+          requestTimeoutMillis = REQUEST_TIMEOUT_MS
+          connectTimeoutMillis = CONNECT_TIMEOUT_MS
+          socketTimeoutMillis = SOCKET_TIMEOUT_MS
+        }
 
-      install(HttpTimeout) {
-        requestTimeoutMillis = REQUEST_TIMEOUT_MS
-        connectTimeoutMillis = CONNECT_TIMEOUT_MS
-        socketTimeoutMillis = SOCKET_TIMEOUT_MS
+        install(HttpRequestRetry) {
+          retryOnServerErrors(maxRetries = MAX_RETRIES)
+          exponentialDelay()
+        }
+
+        install(ContentNegotiation) {
+          json(
+            Json {
+              ignoreUnknownKeys = true
+              isLenient = true
+              encodeDefaults = true
+              prettyPrint = false
+            }
+          )
+        }
+
+        install(Logging) {
+          // DEBUG 下也不输出 header/body（只保留基本可观测性），并额外兜底脱敏。
+          logger = debugLogger()
+          level = if (BuildConfig.DEBUG) LogLevel.INFO else LogLevel.NONE
+        }
+
+        defaultRequest { url(NetworkConfig.baseUrl) }
       }
-
-      install(HttpRequestRetry) {
-        retryOnServerErrors(maxRetries = MAX_RETRIES)
-        exponentialDelay()
-      }
-
-      install(ContentNegotiation) {
-        json(
-          Json {
-            ignoreUnknownKeys = true
-            isLenient = true
-            encodeDefaults = true
-            prettyPrint = false
-          }
-        )
-      }
-
-      install(Logging) {
-        // DEBUG 下也不输出 header/body（只保留基本可观测性），并额外兜底脱敏。
-        logger = debugLogger()
-        level = if (BuildConfig.DEBUG) LogLevel.INFO else LogLevel.NONE
-      }
-
-      defaultRequest { url(NetworkConfig.baseUrl) }
-    }
     }
 
   /** Create HttpClient with custom base URL for API testing */
@@ -171,9 +168,6 @@ object HttpClientFactory {
   private fun buildCertificatePinner(): CertificatePinner {
     val host = NetworkConfig.baseUrlHost
     val pins = BuildConfig.CERT_PINS
-    return CertificatePinner.Builder()
-      .add(host, *pins)
-      .add("*.$host", *pins)
-      .build()
+    return CertificatePinner.Builder().add(host, *pins).add("*.$host", *pins).build()
   }
 }

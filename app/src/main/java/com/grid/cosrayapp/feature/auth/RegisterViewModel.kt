@@ -16,7 +16,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @HiltViewModel
-class RegisterViewModel @Inject constructor(private val authRepository: AuthRepository) : ViewModel() {
+class RegisterViewModel @Inject constructor(private val authRepository: AuthRepository) :
+  ViewModel() {
   private val _uiState = MutableStateFlow(RegisterUiState())
   val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
 
@@ -41,9 +42,11 @@ class RegisterViewModel @Inject constructor(private val authRepository: AuthRepo
     if (!usernameValid || !emailValid || !passwordValid) {
       _uiState.update {
         it.copy(
-          usernameError = if (usernameValid) null else UiMessage.from(R.string.auth_error_invalid_username),
+          usernameError =
+            if (usernameValid) null else UiMessage.from(R.string.auth_error_invalid_username),
           emailError = if (emailValid) null else UiMessage.from(R.string.auth_error_invalid_email),
-          passwordError = if (passwordValid) null else UiMessage.from(R.string.auth_error_weak_password),
+          passwordError =
+            if (passwordValid) null else UiMessage.from(R.string.auth_error_weak_password),
         )
       }
       return

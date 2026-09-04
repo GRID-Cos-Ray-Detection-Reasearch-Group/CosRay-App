@@ -35,15 +35,17 @@ constructor(
           telemetryRepository.bufferedSamples,
         ) { devices, isScanning, connectionState, samples ->
           val items =
-            devices.map { device ->
-              DeviceItem(
-                detectorId = device.id.value,
-                name = device.name,
-                macAddress = device.macAddress,
-                rssi = device.signal.rssi,
-                signalQuality = device.signal.quality,
-              )
-            }.sortedByDescending { it.rssi }
+            devices
+              .map { device ->
+                DeviceItem(
+                  detectorId = device.id.value,
+                  name = device.name,
+                  macAddress = device.macAddress,
+                  rssi = device.signal.rssi,
+                  signalQuality = device.signal.quality,
+                )
+              }
+              .sortedByDescending { it.rssi }
           DeviceUiState(
             devices = items,
             isScanning = isScanning,

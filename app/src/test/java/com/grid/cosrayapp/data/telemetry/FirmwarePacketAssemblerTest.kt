@@ -70,13 +70,14 @@ class FirmwarePacketAssemblerTest {
     val assembler = FirmwarePacketAssembler(logger = NoopFirmwarePacketAssemblerLogger)
     val packet = buildMuonPacketBytes(pkgCnt = 2, utc = 1_710_000_111)
     val chunks = buildBleFragments(packet, globalTotal = 1, globalIndex = 1)
-    val reordered = chunks.toMutableList().apply {
-      if (size >= 3) {
-        val tmp = this[0]
-        this[0] = this[2]
-        this[2] = tmp
+    val reordered =
+      chunks.toMutableList().apply {
+        if (size >= 3) {
+          val tmp = this[0]
+          this[0] = this[2]
+          this[2] = tmp
+        }
       }
-    }
 
     val requests = reordered.flatMap { assembler.consume(it, "AA:BB:CC:DD:EE:00") }
 
