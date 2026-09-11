@@ -15,7 +15,6 @@ import com.grid.cosrayapp.navigation.CosRayDestination
 import com.grid.cosrayapp.navigation.CosRayNavHost
 import com.grid.cosrayapp.navigation.rememberAuthState
 import com.grid.cosrayapp.navigation.rememberCosRayAppState
-import com.grid.cosrayapp.ui.theme.CosRayAppTheme
 
 @Composable
 fun CosRayApp(authRepository: AuthRepository) {

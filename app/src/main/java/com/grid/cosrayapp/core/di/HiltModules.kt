@@ -36,13 +36,12 @@ object HiltModules {
 
   @Provides
   @Singleton
-  fun provideJson(): Json =
-    Json {
-      ignoreUnknownKeys = true
-      isLenient = true
-      encodeDefaults = true
-      prettyPrint = false
-    }
+  fun provideJson(): Json = Json {
+    ignoreUnknownKeys = true
+    isLenient = true
+    encodeDefaults = true
+    prettyPrint = false
+  }
 
   @Provides
   @Singleton

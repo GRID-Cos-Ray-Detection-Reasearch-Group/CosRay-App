@@ -40,9 +40,7 @@ class ProtocolTest {
     val raw = buildMuonPacketBytes(pkgCnt = 42, utc = 1_710_000_000).copyOf(511)
 
     val error =
-      assertThrows(IllegalArgumentException::class.java) {
-        Protocol.MuonDataPkg.fromRawData(raw)
-      }
+      assertThrows(IllegalArgumentException::class.java) { Protocol.MuonDataPkg.fromRawData(raw) }
 
     assertEquals("μ子数据包长度错误：预期512字节，实际511字节", error.message)
   }
@@ -52,9 +50,7 @@ class ProtocolTest {
     val raw = buildTimelinePacketBytes(pkgCnt = 7).copyOf(511)
 
     val error =
-      assertThrows(IllegalArgumentException::class.java) {
-        Protocol.TimeLinePkg.fromRawData(raw)
-      }
+      assertThrows(IllegalArgumentException::class.java) { Protocol.TimeLinePkg.fromRawData(raw) }
 
     assertEquals("时间线数据包长度错误：预期512字节，实际511字节", error.message)
   }
@@ -75,25 +71,25 @@ class ProtocolTest {
   @Test
   fun `start command should match firmware command package format`() {
     val command =
-            Protocol.Command.buildStartCommand(
-                    packageId = 114_514,
-                    packetType = Protocol.Command.TYPE_MUON,
-            )
+      Protocol.Command.buildStartCommand(
+        packageId = 114_514,
+        packetType = Protocol.Command.TYPE_MUON,
+      )
 
     assertArrayEquals(
-            byteArrayOf(
-                    0x01,
-                    0x00,
-                    0x01,
-                    0xBF.toByte(),
-                    0x52,
-                    0x01,
-                    0x00,
-                    0x00,
-                    0x36,
-                    0x97.toByte()
-            ),
-            command,
+      byteArrayOf(
+        0x01,
+        0x00,
+        0x01,
+        0xBF.toByte(),
+        0x52,
+        0x01,
+        0x00,
+        0x00,
+        0x36,
+        0x97.toByte(),
+      ),
+      command,
     )
   }
 
@@ -168,11 +164,11 @@ class ProtocolTest {
       crc = crc xor ((data[index].toInt() and 0xFF) shl 8)
       repeat(8) {
         crc =
-                if ((crc and 0x8000) != 0) {
-                  ((crc shl 1) xor 0x1021) and 0xFFFF
-                } else {
-                  (crc shl 1) and 0xFFFF
-                }
+          if ((crc and 0x8000) != 0) {
+            ((crc shl 1) xor 0x1021) and 0xFFFF
+          } else {
+            (crc shl 1) and 0xFFFF
+          }
       }
     }
     return crc and 0xFFFF
