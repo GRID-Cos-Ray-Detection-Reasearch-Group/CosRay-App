@@ -26,53 +26,52 @@ class UserPreferencesDataSource(context: Context) : AuthPreferences {
   private val secureTokens = EncryptedTokenStore(context)
 
   @Suppress("ComplexCondition")
-  override val authData: Flow<StoredAuthData?> =
-    flow {
-      migrateLegacyTokensIfNeeded()
-      emitAll(
-        store.data.map { preferences ->
-          // token 必须从加密存储读取；若发现旧的明文 token，则尝试迁移。
-          val legacyAccess = preferences[Keys.ACCESS_TOKEN]
-          val legacyRefresh = preferences[Keys.REFRESH_TOKEN]
-          val access = secureTokens.readAccessToken() ?: legacyAccess
-          val refresh = secureTokens.readRefreshToken() ?: legacyRefresh
-          val expires = preferences[Keys.EXPIRES_AT]
-          val userId = preferences[Keys.USER_ID]
-          val email = preferences[Keys.USER_EMAIL]
-          val name = preferences[Keys.USER_NAME]
-          if (
-            access != null &&
-              refresh != null &&
-              expires != null &&
-              userId != null &&
-              email != null &&
-              name != null
-          ) {
-            StoredAuthData(
-              user =
-                User(
-                  id = UserId(userId),
-                  email = email,
-                  displayName = name,
-                  avatarUrl = preferences[Keys.USER_AVATAR],
-                  organization = preferences[Keys.USER_ORGANIZATION],
-                  roles =
-                    preferences[Keys.USER_ROLES]?.split(',')?.filter { it.isNotBlank() }
-                      ?: emptyList(),
-                ),
-              tokens =
-                AuthTokens.fromEpochMillis(
-                  accessToken = access,
-                  refreshToken = refresh,
-                  expiresAtMillis = expires,
-                ),
-            )
-          } else {
-            null
-          }
+  override val authData: Flow<StoredAuthData?> = flow {
+    migrateLegacyTokensIfNeeded()
+    emitAll(
+      store.data.map { preferences ->
+        // token 必须从加密存储读取；若发现旧的明文 token，则尝试迁移。
+        val legacyAccess = preferences[Keys.ACCESS_TOKEN]
+        val legacyRefresh = preferences[Keys.REFRESH_TOKEN]
+        val access = secureTokens.readAccessToken() ?: legacyAccess
+        val refresh = secureTokens.readRefreshToken() ?: legacyRefresh
+        val expires = preferences[Keys.EXPIRES_AT]
+        val userId = preferences[Keys.USER_ID]
+        val email = preferences[Keys.USER_EMAIL]
+        val name = preferences[Keys.USER_NAME]
+        if (
+          access != null &&
+            refresh != null &&
+            expires != null &&
+            userId != null &&
+            email != null &&
+            name != null
+        ) {
+          StoredAuthData(
+            user =
+              User(
+                id = UserId(userId),
+                email = email,
+                displayName = name,
+                avatarUrl = preferences[Keys.USER_AVATAR],
+                organization = preferences[Keys.USER_ORGANIZATION],
+                roles =
+                  preferences[Keys.USER_ROLES]?.split(',')?.filter { it.isNotBlank() }
+                    ?: emptyList(),
+              ),
+            tokens =
+              AuthTokens.fromEpochMillis(
+                accessToken = access,
+                refreshToken = refresh,
+                expiresAtMillis = expires,
+              ),
+          )
+        } else {
+          null
         }
-      )
-    }
+      }
+    )
+  }
 
   val darkTheme: Flow<Boolean?> = store.data.map { preferences -> preferences[Keys.DARK_THEME] }
   val oledDark: Flow<Boolean?> = store.data.map { preferences -> preferences[Keys.OLED_DARK] }

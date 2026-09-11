@@ -13,9 +13,7 @@ class InMemoryUploadQueueTest {
   fun `enqueue beyond maxSize should drop oldest`() = runTest {
     val queue = InMemoryUploadQueue(json = json, maxSize = 3)
     val requests =
-      (1..5).map { index ->
-        PacketUploadRequest(device = "D$index", packetType = "muon")
-      }
+      (1..5).map { index -> PacketUploadRequest(device = "D$index", packetType = "muon") }
 
     queue.enqueue(requests)
 
@@ -35,8 +33,7 @@ class InMemoryUploadQueueTest {
     // Simulate corruption by injecting a bad payload into the backing map.
     val itemsField = queue.javaClass.getDeclaredField("items")
     itemsField.isAccessible = true
-    @Suppress("UNCHECKED_CAST")
-    val items = itemsField.get(queue) as MutableMap<Long, String>
+    @Suppress("UNCHECKED_CAST") val items = itemsField.get(queue) as MutableMap<Long, String>
     items[2L] = "not-json"
 
     val batch = queue.peekBatch(limit = 10)

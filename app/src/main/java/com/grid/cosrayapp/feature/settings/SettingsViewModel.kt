@@ -21,7 +21,8 @@ constructor(
 ) : ViewModel() {
 
   val uiState: StateFlow<SettingsUiState> =
-    kotlinx.coroutines.flow.combine(
+    kotlinx.coroutines.flow
+      .combine(
         authRepository.authState,
         userPreferences.darkTheme,
         userPreferences.oledDark,
