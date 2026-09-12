@@ -55,14 +55,12 @@ jobs:
         run: |
           set -euo pipefail
           # Prefer signed file from build_sign if present
-          signed="${{ steps.build_sign.outputs.signedFile }}"
-          unsigned="${{ steps.build_sign.outputs.unsignedFile }}"
-          if [ -n "$signed" ]; then
-            echo "RELEASE_APK=$signed" >> $GITHUB_ENV
+          if [ -n "$SIGNED_FILE" ]; then
+            echo "RELEASE_APK=$SIGNED_FILE" >> $GITHUB_ENV
             exit 0
           fi
-          if [ -n "$unsigned" ]; then
-            echo "RELEASE_APK=$unsigned" >> $GITHUB_ENV
+          if [ -n "$UNSIGNED_FILE" ]; then
+            echo "RELEASE_APK=$UNSIGNED_FILE" >> $GITHUB_ENV
             exit 0
           fi
           # fallback: pick latest file
@@ -71,33 +69,35 @@ jobs:
             echo "No APK found to upload" && exit 1
           fi
           echo "RELEASE_APK=$apk" >> $GITHUB_ENV
+        env:
+          SIGNED_FILE: ${{ steps.build_sign.outputs.signedFile }}
+          UNSIGNED_FILE: ${{ steps.build_sign.outputs.unsignedFile }}
 
       - name: Determine version/tag
         id: determine_version
         run: |
           set -euo pipefail
           VERSION=""
-          if [ "${{ github.event_name }}" = "push" ]; then
+          if [ "$EVENT_NAME" = "push" ]; then
             if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
               VERSION=${GITHUB_REF#refs/tags/}
             fi
-          elif [ "${{ github.event_name }}" = "pull_request" ]; then
-            if [ "${{ github.event.pull_request.merged }}" != "true" ]; then
+          elif [ "$EVENT_NAME" = "pull_request" ]; then
+            if [ "$PR_MERGED" != "true" ]; then
               echo "PR not merged; aborting release." && exit 1
             fi
-            if [ "${{ github.event.pull_request.base.ref }}" != "main" ]; then
+            if [ "$PR_BASE_REF" != "main" ]; then
               echo "PR not targeting main; skipping release." && exit 1
             fi
-            if [ "${{ github.event.pull_request.head.ref }}" != "dev" ]; then
+            if [ "$PR_HEAD_REF" != "dev" ]; then
               echo "PR not from dev; skipping release." && exit 1
             fi
-            PR_TITLE="${{ github.event.pull_request.title }}"
             VERSION=$(echo "$PR_TITLE" | grep -Eo 'v[0-9]+\.[0-9]+\.[0-9]+' || true)
             if [ -z "$VERSION" ]; then
               echo "No version tag found in PR title: $PR_TITLE" && exit 1
             fi
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            VERSION="$INPUT_VERSION"
             if [ -z "$VERSION" ]; then
               echo "No version provided for workflow_dispatch; aborting." >&2 && exit 1
             fi
@@ -110,6 +110,13 @@ jobs:
             echo "No version determined from event; aborting." && exit 1
           fi
           echo "RELEASE_TAG=$VERSION" >> $GITHUB_ENV
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
 
 
       - name: Create tag if missing (PR merge)
@@ -117,9 +124,10 @@ jobs:
         env:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
           set -euo pipefail
-          COMMIT="${{ github.event.pull_request.merge_commit_sha }}"
+          COMMIT="$PR_MERGE_SHA"
           if [ -z "$COMMIT" ] || [ "$COMMIT" = "null" ]; then
             COMMIT="${GITHUB_SHA}"
           fi
@@ -134,15 +142,16 @@ jobs:
         id: generate_changelog
         run: |
           set -euo pipefail
-          TAG="${{ env.RELEASE_TAG }}"
           git fetch --prune --unshallow --tags || true
-          PREV_TAG=$(git tag --sort=-v:refname | grep -E 'v[0-9]+\.[0-9]+\.[0-9]+' | grep -v "^${TAG}$" | head -n1 || true)
+          PREV_TAG=$(git tag --sort=-v:refname | grep -E 'v[0-9]+\.[0-9]+\.[0-9]+' | grep -v "^${RELEASE_TAG}$" | head -n1 || true)
           if [ -n "$PREV_TAG" ]; then
-            git log "${PREV_TAG}..${TAG}" --pretty=format:"- %s (%an)" > CHANGELOG.md
+            git log "${PREV_TAG}..${RELEASE_TAG}" --pretty=format:"- %s (%an)" > CHANGELOG.md
           else
             git log --pretty=format:"- %s (%an)" > CHANGELOG.md
           fi
           echo "Generated changelog:" && echo "-----" && cat CHANGELOG.md && echo "-----"
+        env:
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
 
       - name: Create GitHub Release and upload APK
         uses: ncipollo/release-action@v1
